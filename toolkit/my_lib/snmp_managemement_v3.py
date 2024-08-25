@@ -2145,8 +2145,8 @@ class SwarcoSSH(ConnectionSSH):
             return
         res = self.send_commands_to_shell(commands, output='inputs102_111')
         # res = self.send_commands_to_shell(commands, )
-        print('res')
-        print(res)
+        # print('res')
+        # print(res)
         return res
 
 """" WEB MANAGEMENT """
