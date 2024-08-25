@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<h1 class="manage_snmp">{{ title }}</h1>
+
+<table border="3">
+        <tr>
+            <td>
+                <label for="visible_hosts"> Количетво хостов </label>
+                        <select id="visible_hosts">
+                                {% for num_host in num_hosts %}
+                                <option value="{{ num_host }}">{{ num_host }}</option>
+                                {% endfor %}
+                        </select>
+                     <button id="display_hosts_snmp"> Отобразить </button>
+                </td>
+        </tr>
+        <tr>
+            <td>
+                <label for="polling_get_interval"> Интервал запроса на получение данных, сек </label>
+                <input type="text" id="polling_get_interval" value="4">
+            </td>
+        </tr>
+</table>
+
+<br>
+
+<div>
+    {% csrf_token %}
+        <button id="send_data_to_db"> Добавить текущую конфигурацию в базу </button>  <input type="text" id="name_configuration_datahosts" maxlength="20">
+</div>
+
+<div>
+        {% csrf_token %}       
+        {{ data_form }} 
+        <button id="get_data_from_db"> Загрузить конфигурацию из базы </button>
+</div>
+
+
+<div>   
+        <label for="get_data_for_all_hosts">Отметить/снять "Получать данные с ДК" для всех хостов</label>
+        <input type="checkbox" id="get_data_for_all_hosts"></input>
+
+</div>
+
+
+
+<br>
+
+
+{% for num_host in num_hosts %}
+
+
+<table id="table_{{num_host}}" border="1" bgcolor="pink" cellpadding="8" cellspacing="4" align="center" hidden="">
+        <caption align="right"> Хост {{ num_host }} </caption>
+        <tr>
+                <td>
+                        {{ first_row_settings.label_settings }}
+                </td>
+                <td>    <label class="manage_snmp" for="ip_{{ num_host }}">IP-адресс</label>
+                        <input type="text" name="ip" class="immutable_data_snmp" id="ip_{{ num_host }}" maxlength="15">
+                </td> 
+                
+                <td>    <label class="manage_snmp" for="scn_{{ num_host }}">SCN</label>
+                        <input type="text" name="scn" class="immutable_data_snmp" id="scn_{{ num_host }}" maxlength="15">
+                </td>
+                <td>
+                        <label for="protocol_{{ num_host }}"> Протокол </label>
+                        <select name='select_protocols' class="immutable_data_snmp" id="protocol_{{ num_host }}">
+                                <option>-</option>
+                                <option>Swarco</option>
+                                <option>ПОТОК (S)</option>
+                                <option>ПОТОК (P)</option>
+                                <option>Peek</option>
+                        </select>
+                </td>
+
+        </tr>
+        <tr>    
+                <td>
+                        Информация с ДК 
+                </td>
+                <td>
+                        <input class="receive_data" type="checkbox" value="host_{{ num_host }}" id="getdatahost_{{ num_host }}">
+                        <label for="getdatahost_{{ num_host }}"></label>Получать данные с ДК</input>
+                        
+                </td>
+                <td colspan="2"><label class="label_datahost" id="datahost_{{ num_host }}">Данные с ДК</label></td>
+                
+        </tr>
+        <tr>
+                <td> Управление ДК </td>
+                <td>    <select type="" value="host_{{ num_host }}" id="setCommand_{{ num_host }}">
+                        <option> Выберите протокол </option>
+                        </select>
+                        <input placeholder="Значение фазы/команды" type="text" name="setval" class="" id="setval_{{ num_host }}" >
+                </td>
+
+                <td>
+                        
+                        <input type="checkbox" name="checkbox_hold" class="set_request" id="hold_{{ num_host }}" maxlength="15"> Удерживать
+                        <!-- {% csrf_token %} -->
+                        <button class="set_request" id="SetToHost_{{ num_host }}"> Отправить </button>
+                        <label class="set_timers_val" id="setTimerVal_{{ num_host }}"> 0  </label>
+                </td>
+                <td> <label id="recieve_data_from_terminal_{{num_host}}">Значения <br> Входов </label></td>
+        </tr>
+
+</table>
+
+{% endfor %}
+
+
+
+
+
+
+
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script src="{% static 'toolkit/js/controller_management_v1.js'%}"></script>
+{% endblock %}

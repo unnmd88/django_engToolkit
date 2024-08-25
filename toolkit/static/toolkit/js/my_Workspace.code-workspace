@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"name": "test_workspace",
+			"path": "../../../../../../../js.projects/test_workspace"
+		},
+		{
+			"name": "engineer_tools",
+			"path": "../../../../../../../js.projects/engineer_tools"
+		},
+		{
+			"name": "django",
+			"path": "../../../../.."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "engineer_tools"
+	}
+}

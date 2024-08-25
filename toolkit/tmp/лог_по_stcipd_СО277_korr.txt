@@ -1,0 +1,533 @@
+ 613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 25160K used, 4188K free, 0K shrd, 0K buff, 16352K cached
+CPU:   4% usr  12% sys   2% nic  80% idle   0% io   0% irq   0% sirq
+Load average: 0.36 0.69 0.94 2/57 19124
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19113 16789 root     R N   2160   7%   7% top
+  657   613 root     S    90872 309%   4% ./bin/itc -c etc/itc-config.xml
+  637     1 swarco   S N   6212  21%   2% ./bin/web_backend
+16686   531 root     S N   2600   9%   2% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    9     2 root     SW       0   0%   1% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   1% [sirq-net-rx/0]
+  841   812 root     T N  14752  50%   0% ./bin/stcipd -c ./etc/stcipd-config.json
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 25160K used, 4188K free, 0K shrd, 0K buff, 16352K cached
+CPU:   4% usr  36% sys  13% nic  45% idle   0% io   0% irq   0% sirq
+Load average: 0.36 0.69 0.94 2/57 19124
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19113 16789 root     R N   2160   7%  23% top
+16686   531 root     S N   2600   9%  14% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  657   613 root     S    90872 309%   5% ./bin/itc -c etc/itc-config.xml
+    9     2 root     SW       0   0%   5% [sirq-tasklet/0]
+  841   812 root     T N  14752  50%   0% ./bin/stcipd -c ./etc/stcipd-config.json
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  553     1 swarco   S     5088  17%   0% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+  302     2 root     SW       0   0%   0% [kworker/0:1]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+~ # kill -9 841
+~ # top
+Mem: 24532K used, 4816K free, 0K shrd, 0K buff, 16352K cached
+CPU:   0% usr  23% sys   7% nic  69% idle   0% io   0% irq   0% sirq
+Load average: 0.37 0.67 0.92 2/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19125 16789 root     R N   2156   7%  18% top
+  302     2 root     SW       0   0%   6% [kworker/0:1]
+    6     2 root     SWN      0   0%   6% [sirq-net-rx/0]
+  657   613 root     S    90872 309%   0% ./bin/itc -c etc/itc-config.xml
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  553     1 swarco   S     5088  17%   0% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+16686   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     RW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24540K used, 4808K free, 0K shrd, 0K buff, 16352K cached
+CPU:   6% usr   5% sys   0% nic  87% idle   0% io   0% irq   0% sirq
+Load average: 0.34 0.65 0.92 2/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   6% ./bin/itc -c etc/itc-config.xml
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+19125 16789 root     R N   2160   7%   1% top
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    9     2 root     SW       0   0%   1% [sirq-tasklet/0]
+16686   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     RW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24508K used, 4840K free, 0K shrd, 0K buff, 16352K cached
+CPU:   4% usr   4% sys   0% nic  90% idle   0% io   0% irq   0% sirq
+Load average: 0.31 0.64 0.91 3/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   4% ./bin/itc -c etc/itc-config.xml
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+19125 16789 root     R N   2160   7%   1% top
+    9     2 root     SW       0   0%   1% [sirq-tasklet/0]
+16686   531 root     S N   2600   9%   1% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+    4     2 root     RW       0   0%   0% [sirq-timer/0]
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24520K used, 4828K free, 0K shrd, 0K buff, 16352K cached
+CPU:   9% usr   6% sys   1% nic  82% idle   0% io   0% irq   0% sirq
+Load average: 0.29 0.63 0.91 2/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   9% ./bin/itc -c etc/itc-config.xml
+19125 16789 root     R N   2160   7%   4% top
+16686   531 root     S N   2600   9%   2% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+  302     2 root     SW       0   0%   0% [kworker/0:1]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24536K used, 4812K free, 0K shrd, 0K buff, 16352K cached
+CPU:   0% usr  72% sys  27% nic   0% idle   0% io   0% irq   0% sirq
+Load average: 0.29 0.63 0.91 2/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19125 16789 root     R N   2160   7%  54% top
+16686   531 root     S N   2600   9%  27% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  302     2 root     SW       0   0%   9% [kworker/0:1]
+  657   613 root     S    90872 309%   0% ./bin/itc -c etc/itc-config.xml
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  553     1 swarco   S     5088  17%   0% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24536K used, 4812K free, 0K shrd, 0K buff, 16352K cached
+CPU:   0% usr  70% sys  30% nic   0% idle   0% io   0% irq   0% sirq
+Load average: 0.29 0.63 0.91 2/52 19125
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19125 16789 root     R N   2160   7%  54% top
+16686   531 root     S N   2600   9%  27% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  637     1 swarco   S N   6212  21%   9% ./bin/web_backend
+  302     2 root     SW       0   0%   9% [kworker/0:1]
+  657   613 root     S    90872 309%   0% ./bin/itc -c etc/itc-config.xml
+  553     1 swarco   S     5088  17%   0% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+~ # top
+Mem: 24532K used, 4816K free, 0K shrd, 0K buff, 16352K cached
+CPU:   6% usr  25% sys   6% nic  62% idle   0% io   0% irq   0% sirq
+Load average: 0.29 0.63 0.91 2/52 19126
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19126 16789 root     R N   2156   7%  25% top
+  657   613 root     S    90872 309%   0% ./bin/itc -c etc/itc-config.xml
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  553     1 swarco   S     5088  17%   0% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+16686   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+  302     2 root     SW       0   0%   0% [kworker/0:1]
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24532K used, 4816K free, 0K shrd, 0K buff, 16352K cached
+CPU:   4% usr   5% sys   0% nic  90% idle   0% io   0% irq   0% sirq
+Load average: 0.27 0.62 0.90 2/52 19126
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   4% ./bin/itc -c etc/itc-config.xml
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    9     2 root     SW       0   0%   1% [sirq-tasklet/0]
+19126 16789 root     R N   2160   7%   1% top
+16686   531 root     S N   2600   9%   1% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     RW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24516K used, 4832K free, 0K shrd, 0K buff, 16352K cached
+CPU:   6% usr   4% sys   0% nic  88% idle   0% io   0% irq   0% sirq
+Load average: 0.24 0.61 0.90 2/52 19126
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   6% ./bin/itc -c etc/itc-config.xml
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+19126 16789 root     R N   2160   7%   1% top
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+16686   531 root     S N   2600   9%   1% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     RW       0   0%   0% [sirq-timer/0]
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24520K used, 4828K free, 0K shrd, 0K buff, 16352K cached
+CPU:   4% usr   6% sys   1% nic  87% idle   0% io   0% irq   0% sirq
+Load average: 0.22 0.60 0.89 2/52 19126
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+  657   613 root     S    90872 309%   4% ./bin/itc -c etc/itc-config.xml
+19126 16789 root     R N   2160   7%   3% top
+  302     2 root     SW       0   0%   2% [kworker/0:1]
+  553     1 swarco   S     5088  17%   1% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    9     2 root     SW       0   0%   1% [sirq-tasklet/0]
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+16686   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+    5     2 root     SWN      0   0%   0% [sirq-net-tx/0]
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+Mem: 24520K used, 4828K free, 0K shrd, 0K buff, 16352K cached
+CPU:   5% usr  50% sys  16% nic  27% idle   0% io   0% irq   0% sirq
+Load average: 0.22 0.60 0.89 2/52 19126
+  PID  PPID USER     STAT   VSZ %VSZ %CPU COMMAND
+19126 16789 root     R N   2160   7%  33% top
+16686   531 root     S N   2600   9%  17% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  657   613 root     S    90872 309%   6% ./bin/itc -c etc/itc-config.xml
+  553     1 swarco   S     5088  17%   6% /home/swarco/fbi_bus/fbi_bus -l 127.0.0.1:4000
+    5     2 root     SWN      0   0%   6% [sirq-net-tx/0]
+  637     1 swarco   S N   6212  21%   0% ./bin/web_backend
+  582     1 swarco   S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_itc.cfg -i /tmp/web_itc.pid -mc 20
+  539     1 root     S N   3836  13%   0% /usr/sbin/mini_httpd -C /etc/mini_httpd/web_admin.cfg -i /tmp/web_admin.pid -mc 12
+  797   531 root     S N   2600   9%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  531     1 root     S N   2244   8%   0% /usr/bin/dropbear -P /tmp/dropbearssh.pid
+  812   797 root     S N   2160   7%   0% -sh
+16789 16686 root     S N   2160   7%   0% -sh
+  643     1 root     S     2160   7%   0% /sbin/getty -L ttyAT0 115200 vt100
+    1     0 root     S     2156   7%   0% init
+  518     1 root     S N   2156   7%   0% /sbin/klogd
+  516     1 root     S N   2156   7%   0% /sbin/syslogd -m 0 -O /tmp/syslog -S -s 200 -b 1
+  613     1 root     S     2156   7%   0% {40_itc} /bin/sh /usr/sbin/runstartupscripts.sh /etc/init.d/user-appl-enabled.d/40_itc start
+  502     1 root     S N   1708   6%   0% /sbin/timekeeper
+  302     2 root     SW       0   0%   0% [kworker/0:1]
+    9     2 root     SW       0   0%   0% [sirq-tasklet/0]
+    6     2 root     SWN      0   0%   0% [sirq-net-rx/0]
+  841   812 root     Z N      0   0%   0% [stcipd]
+    4     2 root     SW       0   0%   0% [sirq-timer/0]
+   12     2 root     SW       0   0%   0% [sirq-rcu/0]
+   14     2 root     SW       0   0%   0% [kworker/u:0]
+  219     2 root     SW       0   0%   0% [kswapd0]
+  658     2 root     SW       0   0%   0% [flush-ubifs_0_0]
+    2     0 root     SW       0   0%   0% [kthreadd]
+    3     2 root     SW       0   0%   0% [sirq-high/0]
+    7     2 root     SW       0   0%   0% [sirq-blk/0]
+    8     2 root     SW       0   0%   0% [sirq-blk-pol/0]
+   10     2 root     SW       0   0%   0% [sirq-sched/0]
+~ # /home/swarco/stcip/bin/stcipd start
+STCIP Daemon. Please supply a single argument that is one of the following parameters.
+/home/swarco/stcip/bin/stcipd -[vsVai] -c <configfile>
+
+Arguments: 
+ --config (-c)        Specify config file to use.
+ --version (-v)       Version of STCIP daemon.
+ --sha (-s)           Show the GIT SHA, from which the STCIP daemon was built.
+ --verbose (-V)       Let STCIP daemon be extra verbose.
+ --major-version (-a) Show the major version of the STCIP daemon.
+ --minor-version (-i) Show the minor version of the STCIP daemon.
+
+ --help (-h)          This little dump.
+~ # /home/swarco/stcip/bin/stcipd --help
+STCIP Daemon. Please supply a single argument that is one of the following parameters.
+/home/swarco/stcip/bin/stcipd -[vsVai] -c <configfile>
+
+Arguments: 
+ --config (-c)        Specify config file to use.
+ --version (-v)       Version of STCIP daemon.
+ --sha (-s)           Show the GIT SHA, from which the STCIP daemon was built.
+ --verbose (-V)       Let STCIP daemon be extra verbose.
+ --major-version (-a) Show the major version of the STCIP daemon.
+ --minor-version (-i) Show the minor version of the STCIP daemon.
+
+ --help (-h)          This little dump.
+~ # /home/swarco/stcip/bin/stcipd -c -help
+terminate called after throwing an instance of 'SW_Invalid_JSON_Exception'
+  what():  
+#================================
+# EXCEPTION MESSAGE : Could not parse JSON root object ()
+# FUNCTION : get_root
+# FILE : /home/daniel/Projects/itc_software_glibc/packages/stcip/modules/common_source/SW_JSON_Config.hpp
+# LINE : 229
+#================================
+Aborted
+~ # /home/swarco/stcip/bin/stcipd -c -h
+terminate called after throwing an instance of 'SW_Invalid_JSON_Exception'
+  what():  
+#================================
+# EXCEPTION MESSAGE : Could not parse JSON root object ()
+# FUNCTION : get_root
+# FILE : /home/daniel/Projects/itc_software_glibc/packages/stcip/modules/common_source/SW_JSON_Config.hpp
+# LINE : 229
+#================================
+Aborted
+~ # /home/swarco/stcip/bin/stcipd -c /home/swarco/stcip/etc/stcipd-config.json > /dev/null
