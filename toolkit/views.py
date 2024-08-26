@@ -23,6 +23,9 @@ from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.my_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, snmp_managemement_v3
 
+protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
+
+
 def reverse_slashes(path):
     path = path.replace('\\', '/')
     return path
