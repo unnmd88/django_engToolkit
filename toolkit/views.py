@@ -228,7 +228,7 @@ def set_snmp_ajax(request, num_host):
         for num_host, data_request in set_dict.items():
             ip_adress, controller_type, scn, command, value = data_request.split(';')
             command, controller_type = command.upper(), controller_type.upper()
-            controller_type = get_type_object(controller_type, command)
+            controller_type = get_type_object_set_request(controller_type, command)
             host = snmp_managemement_v3.Controller(ip_adress, controller_type, scn)
             print(f'host -> {host}')
 
@@ -533,7 +533,7 @@ def controller_potok(request):
     return render(request, 'toolkit/potok.html', context=data)
 
 
-def get_type_object(controller_type, command):
+def get_type_object_set_request(controller_type, command):
     SNMP = 'SNMP'
     MAN = 'MAN'
 
@@ -555,3 +555,15 @@ def get_type_object(controller_type, command):
             return snmp_managemement_v3.AvailableProtocolsManagement.PEEK_UG405
         elif MAN in command:
             return snmp_managemement_v3.AvailableProtocolsManagement.PEEK_WEB
+
+
+def create_object_for_get_request(controller_type):
+
+    if controller_type == AvailableControllers.POTOK_P.value:
+        return snmp_managemement_v3.AvailableProtocolsManagement.POTOK_UG405
+    elif controller_type == AvailableControllers.POTOK_S.value:
+        return snmp_managemement_v3.AvailableProtocolsManagement.POTOK_STCIP
+    elif controller_type == AvailableControllers.SWARCO.value:
+        return snmp_managemement_v3.AvailableProtocolsManagement.SWARCO_STCIP
+    elif controller_type == AvailableControllers.PEEK.value:
+        return snmp_managemement_v3.AvailableProtocolsManagement.PEEK_UG405
