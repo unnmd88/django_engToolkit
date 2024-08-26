@@ -23,18 +23,6 @@ from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.my_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, snmp_managemement_v3
 
-protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
-CONTROLLER_TYPES = ('ПОТОК (P)', 'ПОТОК (S)', 'SWARCO', 'PEEK')
-
-
-class AvailableControllers(Enum):
-    """ Доступные типы контроллера """
-    SWARCO = 'SWARCO'
-    POTOK_P = 'ПОТОК (P)'
-    POTOK_S = 'ПОТОК (S)'
-    PEEK = 'PEEK'
-
-
 def reverse_slashes(path):
     path = path.replace('\\', '/')
     return path
@@ -56,6 +44,14 @@ def make_id(filename: str) -> int:
     else:
         id_for_db = 3
     return id_for_db
+
+
+class AvailableControllers(Enum):
+    """ Доступные типы контроллера """
+    SWARCO = 'SWARCO'
+    POTOK_P = 'ПОТОК (P)'
+    POTOK_S = 'ПОТОК (S)'
+    PEEK = 'PEEK'
 
 
 class ProcessedRequestBase:
