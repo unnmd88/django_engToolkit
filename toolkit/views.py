@@ -57,6 +57,17 @@ class AvailableControllers(Enum):
     PEEK = 'PEEK'
 
 
+class AvailableCommandsControllerManagement(Enum):
+
+    MAN = 'MAN'
+    SNMP = 'SNMP'
+    TERMINAL = 'ТЕРМИНАЛЬНАЯ КОМАНДА'
+    INPUTS_PEEK = 'ВВОДЫ'
+    UP_PEEK = 'ПАРАМЕТРЫ ПРОГРАММЫ'
+
+
+
+
 class ProcessedRequestBase:
     @staticmethod
     def reverse_slashes(path):
