@@ -1598,7 +1598,7 @@ class Controller:
             return PeekWeb(ip_adress, num_host)
 
 
-class ControllerManagement:
+class GetDataControllerManagement:
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',

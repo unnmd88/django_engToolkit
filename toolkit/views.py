@@ -21,7 +21,7 @@ from django.template.loader import render_to_string
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
-from toolkit.my_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, snmp_managemement_v3
+from toolkit.my_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, controller_management
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
 
@@ -198,21 +198,16 @@ def get_snmp_ajax(request, num_host):
 
     if request.GET:
         objects_methods = []
-        get_data_manager = snmp_managemement_v3.ControllerManagement()
-        for num_host, data in get_dict.items():
-            data = data.split(';')
-            if len(data) == 3:
-                ip_adress, controller_type, scn = data
-            else:
+        get_data_manager = controller_management.GetDataControllerManagement()
+        for num_host, data_request in get_dict.items():
+            data_request = data_request.split(';')
+            if len(data_request) != 3:
                 continue
-            obj = snmp_managemement_v3.Controller(ip_adress, controller_type.upper(), scn, num_host)
+            ip_adress, controller_type, scn = data_request
+            obj = controller_management.Controller(ip_adress, controller_type.upper(), scn, num_host)
             objects_methods.append(obj.get_current_mode)
         raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
         processed_data = get_data_manager.data_processing(raw_data_from_controllers)
-        #
-        # objects = snmp_managemement_v3.GetInfoFromController(get_dict)
-        # raw_data_from_controllers = asyncio.run(objects.main())
-        # processed_data = objects.data_processing(raw_data_from_controllers)
     else:
         print('nnnnnooo')
         return HttpResponse(json.dumps('Error: Failed to get data'), content_type='text/html')
@@ -236,10 +231,13 @@ def set_snmp_ajax(request, num_host):
         set_dict = request.POST.dict()
         print(f'set_dict: {set_dict}')
         for num_host, data_request in set_dict.items():
-            ip_adress, controller_type, scn, command, value = data_request.split(';')
-            command, controller_type = command.upper(), controller_type.upper()
-            controller_type = get_type_object_set_request(controller_type, command)
-            host = snmp_managemement_v3.Controller(ip_adress, controller_type, scn)
+            data_request = data_request.split(';')
+            if len(data_request) != 5:
+                continue
+            ip_adress, type_of_controller, scn, command, value = data_request
+            command, type_of_controller = command.upper(), type_of_controller.upper()
+            type_of_controller_management = get_type_object_set_request(type_of_controller, command)
+            host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
             print(f'host -> {host}')
 
             if command in set_stage:
@@ -254,7 +252,6 @@ def set_snmp_ajax(request, num_host):
                 else:
                     result = host.set_flash(value)
                 print('command in host.set_flash(value)')
-
             elif command in set_dark:
                 if inspect.iscoroutinefunction(host.set_dark):
                     result = asyncio.run(host.set_dark(value))
@@ -551,29 +548,29 @@ def get_type_object_set_request(controller_type, command):
 
     if controller_type == AvailableControllers.POTOK_P.value:
         if SNMP in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.POTOK_UG405
+            return controller_management.AvailableProtocolsManagement.POTOK_UG405
     elif controller_type == AvailableControllers.POTOK_S.value:
         if SNMP in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.POTOK_STCIP
+            return controller_management.AvailableProtocolsManagement.POTOK_STCIP
     elif controller_type == AvailableControllers.SWARCO.value:
         if SNMP in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.SWARCO_STCIP
+            return controller_management.AvailableProtocolsManagement.SWARCO_STCIP
         elif MAN in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.SWARCO_SSH
+            return controller_management.AvailableProtocolsManagement.SWARCO_SSH
     elif controller_type == AvailableControllers.PEEK.value:
         if SNMP in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.PEEK_UG405
+            return controller_management.AvailableProtocolsManagement.PEEK_UG405
         elif MAN in command:
-            return snmp_managemement_v3.AvailableProtocolsManagement.PEEK_WEB
+            return controller_management.AvailableProtocolsManagement.PEEK_WEB
 
 
 def create_object_for_get_request(num_host: str, controller_type: str, ip_adress: str, scn: str = None):
 
     if controller_type == AvailableControllers.POTOK_P.value:
-        return snmp_managemement_v3.PotokP(ip_adress, scn, num_host)
+        return controller_management.PotokP(ip_adress, scn, num_host)
     elif controller_type == AvailableControllers.POTOK_S.value:
-        return snmp_managemement_v3.PotokS(ip_adress, num_host)
+        return controller_management.PotokS(ip_adress, num_host)
     elif controller_type == AvailableControllers.SWARCO.value:
-        return snmp_managemement_v3.SwarcoSTCIP(ip_adress, num_host)
+        return controller_management.SwarcoSTCIP(ip_adress, num_host)
     elif controller_type == AvailableControllers.PEEK.value:
-        return snmp_managemement_v3.PeekUG405(ip_adress, scn, num_host)
+        return controller_management.PeekUG405(ip_adress, scn, num_host)

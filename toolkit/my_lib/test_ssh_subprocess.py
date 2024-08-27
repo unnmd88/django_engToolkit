@@ -4,7 +4,7 @@ import socket
 import subprocess
 import sys
 import time
-import snmp_managemement_v3
+import controller_management
 import aiohttp
 import requests
 

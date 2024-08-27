@@ -1,6 +1,6 @@
 import asyncio
 import inspect
 
-import snmp_managemement_v3
+import controller_management
 
 print(snmp_managemement_v3.AvailableProtocolsManagement.PEEK_UG405)
