@@ -2425,31 +2425,68 @@ class PeekWeb:
         table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
         table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
 
-        inputs.pop('MPP_MAN')
+        inputs_to_set = {}
+
+        set_man = True if inputs.get('MPP_MAN') == 'ВКЛ' else False
+        reset_man = True if inputs.get('MPP_MAN') in ('ВЫКЛ', 'ВФ') else False
+
+
+        print(f'set_man: {set_man}')
+        print(f'reset_man: {reset_man}')
+
 
         print(inputs)
         print('----!!!!--------')
         cnt, len_inputs, num_MPP_MAN = 0, len(inputs), None
         for row in [el.text.split() for el in table_INPUT_elements]:
+            if not inputs:
+                break
+
             if len(row) == 5:
                 num, name, state, time_state, actuator_val = row
             else:
                 continue
-            # print(f'num: {num}, name: {name},state: {state},time_state: {time_state},actuator_val: {actuator_val}')
-            if name not in inputs:
-                if name == 'MPP_MAN' and state == '0':
-                    num_MPP_MAN = num
-                    continue
-                elif name in self.MAN_INPUTS_STAGES and state == '1' and name != 'MPP_MAN':
-                    self._set_INPUTS(num, 'ВЫКЛ')
+            if name == 'MPP_MAN' and set_man and name in inputs and inputs.get(name) == 'ВКЛ':
+                continue
+
+            if set_man and name in self.MAN_INPUTS_STAGES and name not in inputs and state == '1':
+                inputs_to_set[name] = num, 'ВЫКЛ'
             elif name in inputs:
-                val_actuator_to_set = inputs.get(name)
-                val_actuator_curr = 'ВФ' if actuator_val == '-' else actuator_val
-                if val_actuator_to_set != val_actuator_curr:
-                    self._set_INPUTS(num, inputs.get(name))
-                    cnt += 1
-        if num_MPP_MAN:
-            self._set_INPUTS(num_MPP_MAN, 'ВКЛ')
+                inputs_to_set[name] = num, inputs.get(name)
+                inputs.pop(name)
+
+        print(f'-- inputs_to_set 1 -- {inputs_to_set}')
+        if set_man and 'MPP_MAN' in inputs_to_set.keys():
+            inputs_to_set['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
+        elif reset_man:
+            tmp_inputs = {}
+            tmp_inputs['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
+            inputs_to_set = tmp_inputs.update(inputs_to_set)
+            print(f'-- inputs_to_set -- {inputs_to_set}')
+
+        print(f'-- inputs_to_set перед for -- {inputs_to_set}')
+        for num, val in inputs_to_set.values():
+            self._set_INPUTS(num, val)
+
+        time.sleep(self.long_pause)
+
+
+        #     # print(f'num: {num}, name: {name},state: {state},time_state: {time_state},actuator_val: {actuator_val}')
+        #     if name not in inputs:
+        #         if name == 'MPP_MAN' and state == '0':
+        #             num_MPP_MAN = num
+        #             continue
+        #         elif name in self.MAN_INPUTS_STAGES and state == '1' and name != 'MPP_MAN':
+        #             self._set_INPUTS(num, 'ВЫКЛ')
+        #     elif name in inputs:
+        #         val_actuator_to_set = inputs.get(name)
+        #         val_actuator_curr = 'ВФ' if actuator_val == '-' else actuator_val
+        #         if val_actuator_to_set != val_actuator_curr:
+        #             self._set_INPUTS(num, inputs.get(name))
+        #             cnt += 1
+        # if num_MPP_MAN:
+        #     inputs_to_set[num_MPP_MAN] = 'ВКЛ'
+        #     self._set_INPUTS(num_MPP_MAN, 'ВКЛ')
 
     def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
 
@@ -2617,7 +2654,7 @@ class PeekWeb:
         if value.isdigit() and int(value) in range(1, 9):
             inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
         elif value.lower() in ('0', 'false', 'reset', 'local', 'сброс', 'локал'):
-            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВЫКЛ' for i in range(9)}
+            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВФ' for i in range(9)}
         else:
             return
 
