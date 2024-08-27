@@ -735,8 +735,12 @@ class PotokS(BaseSTCIP):
     get_val_stage = {
         str(k): str(v) for k, v in zip(range(2, 66), range(1, 65))
     }
+    # set_val_stage = {
+    #     str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
+    # }
+
     set_val_stage = {
-        str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
+        str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))
     }
 
     # Command
@@ -835,12 +839,15 @@ class PotokS(BaseSTCIP):
 
     """ SET REQUEST """
 
-    async def set_stage(self, value=0):
+    async def set_stage(self, value='0'):
         """"
         Устанавливает  фазу.
         :param value:  Номер фазы в десятичном виде
         """
-        value = self.set_val_stage.get(str(value))
+        if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
+            value = '0'
+        else:
+            value = self.set_val_stage.get(str(value))
         await setCmd(
             SnmpEngine(),
             CommunityData(self.community),
@@ -1567,11 +1574,11 @@ class PeekUG405(BaseUG405):
 class AvailableProtocolsManagement(Enum):
 
     """ Протоколы управления """
-    POTOK_UG405 = ('ПОТОК_UG405', 'ПОТОК (P)')
-    POTOK_STCIP = ('ПОТОК_STCIP', 'ПОТОК (S)')
-    SWARCO_STCIP = ('SWARCO_STCIP', 'SWARCO')
+    POTOK_UG405 = 'POTOK_UG405'
+    POTOK_STCIP = 'POTOK_UG405'
+    SWARCO_STCIP = 'SWARCO_STCIP'
     SWARCO_SSH = 'SWARCO_SSH'
-    PEEK_UG405 = ('PEEK_UG405', 'PEEK')
+    PEEK_UG405 = 'PEEK_UG405'
     PEEK_WEB = 'PEEK_WEB'
 
 
@@ -1581,20 +1588,20 @@ class Controller:
         print('ya в new')
 
         print(type_object)
-        if type_object in AvailableProtocolsManagement.POTOK_STCIP.value:
+        if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
             return PotokS(ip_adress, num_host)
-        elif type_object in AvailableProtocolsManagement.POTOK_UG405.value:
+        elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
             return PotokP(ip_adress, scn, num_host)
-        elif type_object in AvailableProtocolsManagement.SWARCO_STCIP.value:
+        elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
             print('type_object == AllowedTypes.SWARCO_STCIP')
             return SwarcoSTCIP(ip_adress, num_host)
-        elif type_object == AvailableProtocolsManagement.SWARCO_SSH:
+        elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
             print('type_object == AllowedTypes.SWARCO_SSH')
             return SwarcoSSH(ip_adress, num_host)
-        elif type_object in AvailableProtocolsManagement.PEEK_UG405.value:
+        elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
             print('type_object in AvailableProtocolsManagement.PEEK_UG405.value')
             return PeekUG405(ip_adress, scn, num_host)
-        elif type_object == AvailableProtocolsManagement.PEEK_WEB:
+        elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
             return PeekWeb(ip_adress, num_host)
 
 
