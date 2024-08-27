@@ -1568,9 +1568,6 @@ class PeekUG405(BaseUG405):
         )
 
 
-
-
-
 class AvailableProtocolsManagement(Enum):
 
     """ Протоколы управления """
@@ -1586,20 +1583,16 @@ class Controller:
 
     def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
         print('ya в new')
-
         print(type_object)
         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
             return PotokS(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
             return PotokP(ip_adress, scn, num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-            print('type_object == AllowedTypes.SWARCO_STCIP')
             return SwarcoSTCIP(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-            print('type_object == AllowedTypes.SWARCO_SSH')
             return SwarcoSSH(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-            print('type_object in AvailableProtocolsManagement.PEEK_UG405.value')
             return PeekUG405(ip_adress, scn, num_host)
         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
             return PeekWeb(ip_adress, num_host)
@@ -2580,3 +2573,52 @@ class PeekWeb:
         self.driver.refresh()
         time.sleep(self.middle_pause)
         self.driver.close()
+
+
+    def set_stage(self, value, increase_the_timeout=False):
+        if increase_the_timeout:
+            self.short_pause += 1
+            self.middle_pause += 2
+            self.long_pause += 2
+
+        ##############################################################
+
+        # Боевой вариант
+        options = Options()
+        # options.add_argument('--headless')
+        # options.add_argument('--disable-gpu')
+        self.driver = webdriver.Chrome(options=options)
+        self.driver.get('http://' + self.ip_adress)
+        time.sleep(self.short_pause)
+        self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
+        time.sleep(self.short_pause)
+        self.driver.get('http://' + self.ip_adress)
+
+        # Тест вариант
+        # self.driver = webdriver.Chrome()
+        # self.driver.get('http://localhost/')
+        # time.sleep(self.short_pause)
+        # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
+        # time.sleep(self.short_pause)
+        # self.driver.get('http://localhost/')
+        # time.sleep(self.middle_pause)
+
+
+        time.sleep(self.middle_pause)
+
+        span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
+        time.sleep(self.middle_pause)
+
+        self.driver.refresh()
+        time.sleep(self.short_pause)
+        self._goto_content_frame(span_inputs)
+
+
+        if value.isdigit() and int(value) in range(1, 9):
+            inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
+        elif value.lower() in ('0', 'false', 'reset', 'local', 'сброс', 'локал'):
+            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВЫКЛ' for i in range(9)}
+        else:
+            return
+
+        self._manage_set_stage(inputs)
