@@ -1567,37 +1567,38 @@ class PeekUG405(BaseUG405):
 class AvailableProtocolsManagement(Enum):
 
     """ Протоколы управления """
-    POTOK_UG405 = 'ПОТОК_UG405'
-    POTOK_STCIP = 'ПОТОК_STCIP'
-    SWARCO_STCIP = 'SWARCO_STCIP'
+    POTOK_UG405 = ('ПОТОК_UG405', 'ПОТОК (P)')
+    POTOK_STCIP = ('ПОТОК_STCIP', 'ПОТОК (S)')
+    SWARCO_STCIP = ('SWARCO_STCIP', 'SWARCO')
     SWARCO_SSH = 'SWARCO_SSH'
-    PEEK_UG405 = 'PEEK_UG405'
+    PEEK_UG405 = ('PEEK_UG405', 'PEEK')
     PEEK_WEB = 'PEEK_WEB'
 
 
 class Controller:
 
-    def __new__(cls, ip_adress, type_object, scn: str = None):
+    def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
         print('ya в new')
 
         print(type_object)
-        if type_object == AvailableProtocolsManagement.POTOK_STCIP:
-            return PotokS(ip_adress)
-        elif type_object == AvailableProtocolsManagement.POTOK_UG405:
-            return PotokP(ip_adress, scn)
-        elif type_object == AvailableProtocolsManagement.SWARCO_STCIP:
+        if type_object in AvailableProtocolsManagement.POTOK_STCIP.value:
+            return PotokS(ip_adress, num_host)
+        elif type_object in AvailableProtocolsManagement.POTOK_UG405.value:
+            return PotokP(ip_adress, scn, num_host)
+        elif type_object in AvailableProtocolsManagement.SWARCO_STCIP.value:
             print('type_object == AllowedTypes.SWARCO_STCIP')
-            return SwarcoSTCIP(ip_adress)
+            return SwarcoSTCIP(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_SSH:
             print('type_object == AllowedTypes.SWARCO_SSH')
-            return SwarcoSSH(ip_adress)
-        elif type_object == AvailableProtocolsManagement.PEEK_UG405:
-            return PeekUG405(ip_adress, scn)
+            return SwarcoSSH(ip_adress, num_host)
+        elif type_object in AvailableProtocolsManagement.PEEK_UG405.value:
+            print('type_object in AvailableProtocolsManagement.PEEK_UG405.value')
+            return PeekUG405(ip_adress, scn, num_host)
         elif type_object == AvailableProtocolsManagement.PEEK_WEB:
-            return PeekWeb(ip_adress)
+            return PeekWeb(ip_adress, num_host)
 
 
-class ControllerManagementRequset:
+class ControllerManagement:
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -1621,52 +1622,85 @@ class ControllerManagementRequset:
     def __init__(self, data=None):
         self.data = data
 
-    def create_snmp_object_get_request(self, num_host, ip_adress, protocol, scn):
-        # protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
-        protocols = ('ПОТОК (P)', 'ПОТОК (S)', 'SWARCO', 'PEEK')
-        obj = None
-        protocol = protocol.upper()
-        if protocol == protocols[0]:
-            obj = PotokP(ip_adress, scn, num_host, )
-        elif protocol == protocols[1]:
-            obj = PotokS(ip_adress, num_host, )
-        elif protocol == protocols[2]:
-            obj = SwarcoSTCIP(ip_adress, num_host, )
-        elif protocol == protocols[3]:
-            obj = PeekUG405(ip_adress, scn, num_host, )
-        return obj
+    # def create_snmp_object_get_request(self, num_host, ip_adress, protocol, scn):
+    #     # protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
+    #     protocols = ('ПОТОК (P)', 'ПОТОК (S)', 'SWARCO', 'PEEK')
+    #     obj = None
+    #     protocol = protocol.upper()
+    #     if protocol == protocols[0]:
+    #         obj = PotokP(ip_adress, scn, num_host, )
+    #     elif protocol == protocols[1]:
+    #         obj = PotokS(ip_adress, num_host, )
+    #     elif protocol == protocols[2]:
+    #         obj = SwarcoSTCIP(ip_adress, num_host, )
+    #     elif protocol == protocols[3]:
+    #         obj = PeekUG405(ip_adress, scn, num_host, )
+    #     return obj
 
-    def create_set_request(self, num_host, ip_adress, protocol, scn, command, value):
+    # def create_object_for_get_request(self, num_host: str, controller_type: str, ip_adress: str, scn: str = None):
+    #
+    #     if controller_type == AvailableControllers.POTOK_P.value:
+    #         return snmp_managemement_v3.PotokP(ip_adress, scn, num_host)
+    #     elif controller_type == AvailableControllers.POTOK_S.value:
+    #         return snmp_managemement_v3.PotokS(ip_adress, num_host)
+    #     elif controller_type == AvailableControllers.SWARCO.value:
+    #         return snmp_managemement_v3.SwarcoSTCIP(ip_adress, num_host)
+    #     elif controller_type == AvailableControllers.PEEK.value:
+    #         return snmp_managemement_v3.PeekUG405(ip_adress, scn, num_host)
 
-        obj = None
 
-        if protocol == self.protocols[0]:
-            obj = PotokP(ip_adress, scn)
-        elif protocol == self.protocols[1]:
-            obj = PotokS(ip_adress, num_host, )
-        elif protocol == self.protocols[2]:
-            if command in self.swarco_ssh:
-                obj = SwarcoSSH(ip_adress, )
-            elif command in self.snmp_set_request:
-                obj = SwarcoSTCIP(ip_adress, )
-        elif protocol == self.protocols[3]:
-            if command in self.snmp_set_request:
-                obj = PeekUG405(ip_adress, scn)
-            elif command in self.peek_web:
-                pass  # Тут необходимо создать экземпляр класса PeekWeb
-        return obj
+    # def create_set_request(self, num_host, ip_adress, protocol, scn, command, value):
+    #
+    #     obj = None
+    #
+    #     if protocol == self.protocols[0]:
+    #         obj = PotokP(ip_adress, scn)
+    #     elif protocol == self.protocols[1]:
+    #         obj = PotokS(ip_adress, num_host, )
+    #     elif protocol == self.protocols[2]:
+    #         if command in self.swarco_ssh:
+    #             obj = SwarcoSSH(ip_adress, )
+    #         elif command in self.snmp_set_request:
+    #             obj = SwarcoSTCIP(ip_adress, )
+    #     elif protocol == self.protocols[3]:
+    #         if command in self.snmp_set_request:
+    #             obj = PeekUG405(ip_adress, scn)
+    #         elif command in self.peek_web:
+    #             pass  # Тут необходимо создать экземпляр класса PeekWeb
+    #     return obj
 
-    async def main(self):
-        tasks = []
-        for num_host, data in self.data.items():
-            data = data.split(';')
-            if len(data) != 3:
-                continue
-            ip_adress, protocol, scn = data
-            host = self.create_snmp_object_get_request(num_host, ip_adress, protocol, scn)
-            if host is None:
-                return
-            tasks.append(host.get_current_mode())
+    # async def main(self):
+    #     tasks = []
+    #     for num_host, data in self.data.items():
+    #         data = data.split(';')
+    #         if len(data) != 3:
+    #             continue
+    #         ip_adress, protocol, scn = data
+    #         host = self.create_snmp_object_get_request(num_host, ip_adress, protocol, scn)
+    #         if host is None:
+    #             return
+    #         tasks.append(host.get_current_mode())
+    #
+    #     start_time = time.time()
+    #     result = await asyncio.gather(*tasks)
+    #     print(f'Время выполнения: {time.time() - start_time}')
+    #
+    #     print(result)
+    #     return result
+
+
+    async def main(self, tasks_inner, option):
+        print(tasks_inner)
+
+        if tasks_inner is None or option is None:
+            return
+
+        if option == 'set':
+            tasks = [method(value) for method, value in tasks_inner]
+        elif option == 'get':
+            tasks = [method() for method in tasks_inner]
+        else:
+            return False
 
         start_time = time.time()
         result = await asyncio.gather(*tasks)
@@ -1674,6 +1708,7 @@ class ControllerManagementRequset:
 
         print(result)
         return result
+
 
     def data_processing(self, raw_data):
 
@@ -2048,7 +2083,7 @@ class ConnectionSSH:
 class SwarcoSSH(ConnectionSSH):
     inp_stages = {str(stage): str(inp) for stage, inp in zip(range(1, 9), range(104, 112))}
 
-    def __init__(self, ip_adress):
+    def __init__(self, ip_adress: str, num_host: str = None):
         self.ip_adress = ip_adress
 
     @staticmethod
@@ -2175,7 +2210,7 @@ class PeekWeb:
     span_refresh_change = '//*[@id="refresh_button"]'
     span_start = '//*[@id="mainnav"]/li[1]/a'
 
-    def __init__(self, ip_adress):
+    def __init__(self, ip_adress: str, num_host: str = None):
         self.ip_adress = ip_adress
         self.driver = None
 

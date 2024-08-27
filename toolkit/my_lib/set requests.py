@@ -49,7 +49,7 @@ def make_methods_for_snmp_commands(num_host, ip_adress, protocol, scn, value, re
 
     tasks = []
 
-    host = snmp_managemement_v3.ControllerManagementRequset()
+    host = snmp_managemement_v3.ControllerManagement()
     host = host.create_snmp_object_get_request(num_host, ip_adress, protocol, scn)
 
     if 'фаза' in request:
@@ -119,7 +119,7 @@ if type_request == 'snmp_requset':
     ip_adress, protocol, scn, request = argv[2].split(';')
     type_set, value = request.split('=')
 
-    host = snmp_managemement_v3.ControllerManagementRequset()
+    host = snmp_managemement_v3.ControllerManagement()
     host = host.create_snmp_object_get_request(protocol, ip_adress, scn)
 
 
