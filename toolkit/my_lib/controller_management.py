@@ -3,6 +3,7 @@ import socket
 import subprocess
 import sys
 import itertools
+from collections.abc import Iterable
 import time
 from datetime import datetime
 from enum import Enum, auto
@@ -2473,7 +2474,6 @@ class PeekWeb:
 
 
     def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
-
         """ Метод создаёт web сессию, в которрй совершаются действия в зависимости от переданных аргументов:
         :param bool increase_the_timeout: увеличивает таймаут с каждым новым вызовом метода у экземпляра
         :param bool session_for_greenroad: если метод вызван для "Зелёной улицы" приложения Engineering_tool_kit,
@@ -2495,6 +2495,20 @@ class PeekWeb:
                Например: MPP_MAN=ВКЛ, MPP_PH1=ВЫКЛ, CP_RED=ВКЛ, UP_1=154, UP_3=1 и т.д.
         :param expected_state_for_greenroad: фаза, которую необходимо включить из Engineering_tool_kit_v1.0 "greenroad"
         """
+
+
+        if inputs is None and user_parameters is None:
+            raise ValueError('inputs и user_parameters могут быть пустыми одновременно')
+        elif inputs and not isinstance(inputs, Iterable):
+            raise ValueError('inputs должен быть итерируемым объектом')
+        elif user_parameters and not isinstance(user_parameters, Iterable):
+            raise ValueError('user_parameters должен быть итерируемым объектом')
+
+
+
+
+
+
 
         if increase_the_timeout:
             self.short_pause += 1
