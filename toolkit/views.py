@@ -255,6 +255,8 @@ def set_snmp_ajax(request, num_host):
                 else:
                     result = host.set_dark(value)
                 print('command in host.set_dark(value)')
+            elif command == 'ВВОДЫ':
+                result = host.session_manager(inputs=(inp for inp in value.split(',')))
 
         res = {num_host: result}
 
@@ -540,6 +542,7 @@ def controller_potok(request):
 def get_type_object_set_request(controller_type, command):
     SNMP = 'SNMP'
     MAN = 'MAN'
+    INPUTS = 'ВВОДЫ'
 
     command = command.upper()
 
@@ -557,8 +560,9 @@ def get_type_object_set_request(controller_type, command):
     elif controller_type == AvailableControllers.PEEK.value:
         if SNMP in command:
             return controller_management.AvailableProtocolsManagement.PEEK_UG405.value
-        elif MAN in command:
+        elif MAN in command or INPUTS in command:
             return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
+
 
 
 def get_type_object_get_request(controller_type: str):

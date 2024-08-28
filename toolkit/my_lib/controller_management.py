@@ -2244,7 +2244,7 @@ class PeekWeb:
             user_parameters_dict = {inp: val for inp, val in (up.split('=') for up in user_parameters)}
         else:
             user_parameters_dict = None
-        return inps_dict, set_stageMAN, reset_stageMAN, set_reset_flash, set_reset_dark, user_parameters_dict
+        return inps_dict,  user_parameters_dict
 
     def _start_and_login(self):
         """ Метод, в котором производится нажатие в нужные элементы чтобы залогинится """
@@ -2501,11 +2501,11 @@ class PeekWeb:
             self.middle_pause += 2
             self.long_pause += 2
 
-        inputs, set_stageMAN, reset_stageMAN, set_reset_flash, set_reset_dark, user_parameters = \
-            PeekWeb._make_inputs_and_user_parameters(inputs, user_parameters)
+        inputs, user_parameters = PeekWeb._make_inputs_and_user_parameters(inputs, user_parameters)
+
         print(f'inputs = {inputs}, user_parameters = {user_parameters},')
-        print(f'set_stageMAN = {set_stageMAN}, reset_stageMAN = {reset_stageMAN},')
-        print(f'set_reset_flash = {set_reset_flash}, set_reset_dark = {set_reset_dark},')
+        # print(f'set_stageMAN = {set_stageMAN}, reset_stageMAN = {reset_stageMAN},')
+        # print(f'set_reset_flash = {set_reset_flash}, set_reset_dark = {set_reset_dark},')
 
         ##############################################################
 
@@ -2537,8 +2537,7 @@ class PeekWeb:
             time.sleep(self.short_pause)
             self._goto_content_frame(span_inputs)
 
-            if set_stageMAN:
-                self._manage_set_inputs(inputs)
+            self._manage_set_inputs(inputs)
 
             # table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
             # table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
@@ -2648,3 +2647,53 @@ class PeekWeb:
 
 
         self._manage_set_inputs(inputs, set_man, reset_man)
+
+
+    def set_flash(self, value, increase_the_timeout=False):
+        if increase_the_timeout:
+            self.short_pause += 1
+            self.middle_pause += 2
+            self.long_pause += 2
+
+        ##############################################################
+
+        # Боевой вариант
+        options = Options()
+        # options.add_argument('--headless')
+        # options.add_argument('--disable-gpu')
+        self.driver = webdriver.Chrome(options=options)
+        self.driver.get('http://' + self.ip_adress)
+        time.sleep(self.short_pause)
+        self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
+        time.sleep(self.short_pause)
+        self.driver.get('http://' + self.ip_adress)
+
+        # Тест вариант
+        # self.driver = webdriver.Chrome()
+        # self.driver.get('http://localhost/')
+        # time.sleep(self.short_pause)
+        # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
+        # time.sleep(self.short_pause)
+        # self.driver.get('http://localhost/')
+        # time.sleep(self.middle_pause)
+
+
+        time.sleep(self.middle_pause)
+
+        span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
+        time.sleep(self.middle_pause)
+
+        self.driver.refresh()
+        time.sleep(self.short_pause)
+        self._goto_content_frame(span_inputs)
+
+
+        if value.lower() in ('1', 'true', 'set', 'on', 'установить'):
+            inputs = {'MPP_FL': 'ВКЛ'}
+        elif value.lower() in ('0', 'false', 'reset', 'off', 'сброс'):
+            inputs = {'MPP_FL': 'ВЫКЛ'}
+        else:
+            return
+
+
+        self._manage_set_inputs(inputs,)
