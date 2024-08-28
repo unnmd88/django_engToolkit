@@ -2432,7 +2432,6 @@ class PeekWeb:
 
         print(inputs)
         print('----!!!!--------')
-        cnt, len_inputs, num_MPP_MAN = 0, len(inputs), None
         for row in [el.text.split() for el in table_INPUT_elements]:
             # if not inputs:
             #     break
@@ -2472,23 +2471,6 @@ class PeekWeb:
 
         time.sleep(self.long_pause)
 
-
-        #     # print(f'num: {num}, name: {name},state: {state},time_state: {time_state},actuator_val: {actuator_val}')
-        #     if name not in inputs:
-        #         if name == 'MPP_MAN' and state == '0':
-        #             num_MPP_MAN = num
-        #             continue
-        #         elif name in self.MAN_INPUTS_STAGES and state == '1' and name != 'MPP_MAN':
-        #             self._set_INPUTS(num, 'ВЫКЛ')
-        #     elif name in inputs:
-        #         val_actuator_to_set = inputs.get(name)
-        #         val_actuator_curr = 'ВФ' if actuator_val == '-' else actuator_val
-        #         if val_actuator_to_set != val_actuator_curr:
-        #             self._set_INPUTS(num, inputs.get(name))
-        #             cnt += 1
-        # if num_MPP_MAN:
-        #     inputs_to_set[num_MPP_MAN] = 'ВКЛ'
-        #     self._set_INPUTS(num_MPP_MAN, 'ВКЛ')
 
     def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
 
