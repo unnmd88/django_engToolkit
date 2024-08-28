@@ -2420,15 +2420,15 @@ class PeekWeb:
         print(INPS)
         return INPS
 
-    def _manage_set_stage(self, inputs):
+    def _manage_set_inputs(self, inputs, set_man=False, reset_man=False):
 
         table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
         table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
 
         inputs_to_set = {}
 
-        set_man = True if inputs.get('MPP_MAN') == 'ВКЛ' else False
-        reset_man = True if inputs.get('MPP_MAN') in ('ВЫКЛ', 'ВФ') else False
+        # set_man = True if inputs.get('MPP_MAN') == 'ВКЛ' else False
+        # reset_man = True if inputs.get('MPP_MAN') in ('ВЫКЛ', 'ВФ') else False
 
 
         print(f'set_man: {set_man}')
@@ -2439,19 +2439,27 @@ class PeekWeb:
         print('----!!!!--------')
         cnt, len_inputs, num_MPP_MAN = 0, len(inputs), None
         for row in [el.text.split() for el in table_INPUT_elements]:
-            if not inputs:
-                break
+            # if not inputs:
+            #     break
 
+            # Проверка корректности считанных данных
             if len(row) == 5:
                 num, name, state, time_state, actuator_val = row
             else:
                 continue
-            if name == 'MPP_MAN' and set_man and name in inputs and inputs.get(name) == 'ВКЛ':
-                continue
 
+            # Если необходимо установить фазу, добавляем в inputs_to_set
+            if name == 'MPP_MAN' and set_man:
+                if state != '1':
+                    print(*row)
+                    inputs_to_set[name] = num, 'ВКЛ'
+                continue
+            # Если необходимо установить фазу и у какого то ввода MPP_PHx значение 1, то его добавляем в inputs_to_set
             if set_man and name in self.MAN_INPUTS_STAGES and name not in inputs and state == '1':
                 inputs_to_set[name] = num, 'ВЫКЛ'
-            elif name in inputs:
+                continue
+
+            if name in inputs:
                 inputs_to_set[name] = num, inputs.get(name)
                 inputs.pop(name)
 
@@ -2459,9 +2467,8 @@ class PeekWeb:
         if set_man and 'MPP_MAN' in inputs_to_set.keys():
             inputs_to_set['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
         elif reset_man:
-            tmp_inputs = {}
-            tmp_inputs['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
-            inputs_to_set = tmp_inputs.update(inputs_to_set)
+            tmp_inputs = {'MPP_MAN': inputs_to_set.pop('MPP_MAN')}
+            inputs_to_set = tmp_inputs | inputs_to_set
             print(f'-- inputs_to_set -- {inputs_to_set}')
 
         print(f'-- inputs_to_set перед for -- {inputs_to_set}')
@@ -2554,7 +2561,7 @@ class PeekWeb:
             self._goto_content_frame(span_inputs)
 
             if set_stageMAN:
-                self._manage_set_stage(inputs)
+                self._manage_set_inputs(inputs)
 
             # table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
             # table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
@@ -2651,11 +2658,16 @@ class PeekWeb:
         self._goto_content_frame(span_inputs)
 
 
+
+
         if value.isdigit() and int(value) in range(1, 9):
             inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
+            set_man, reset_man = True, False
         elif value.lower() in ('0', 'false', 'reset', 'local', 'сброс', 'локал'):
-            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВФ' for i in range(9)}
+            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВЫКЛ' if i == 0 else 'ВФ' for i in range(9)}
+            set_man, reset_man = False, True
         else:
             return
 
-        self._manage_set_stage(inputs)
+
+        self._manage_set_inputs(inputs, set_man, reset_man)
