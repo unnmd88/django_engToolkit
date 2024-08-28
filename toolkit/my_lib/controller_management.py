@@ -2427,13 +2427,8 @@ class PeekWeb:
 
         inputs_to_set = {}
 
-        # set_man = True if inputs.get('MPP_MAN') == 'ВКЛ' else False
-        # reset_man = True if inputs.get('MPP_MAN') in ('ВЫКЛ', 'ВФ') else False
-
-
         print(f'set_man: {set_man}')
         print(f'reset_man: {reset_man}')
-
 
         print(inputs)
         print('----!!!!--------')
