@@ -8,7 +8,7 @@ import controller_management
 import requests
 from pysnmp.smi.rfc1902 import ObjectType, ObjectIdentity
 
-from toolkit.my_lib import snmpmanagement_acync
+from toolkit.sdp_lib import snmpmanagement_acync
 
 class GetDataFromController:
 

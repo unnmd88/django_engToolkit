@@ -8,7 +8,7 @@ import aiohttp
 import requests
 
 from pysnmp.hlapi.asyncio import *
-from toolkit.my_lib.configuration import auth, path_snmpget, path_snmpset
+from toolkit.sdp_lib.configuration import auth, path_snmpget, path_snmpset
 
 
 # snmp_get = path_snmpget

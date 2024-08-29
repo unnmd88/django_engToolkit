@@ -21,7 +21,7 @@ from django.template.loader import render_to_string
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
-from toolkit.my_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, controller_management
+from toolkit.sdp_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, controller_management
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
 
@@ -273,7 +273,7 @@ def set_snmp_ajax(request, num_host):
     #                                                             output='inputs102_111')
     #             result = {num_host: result_ssh}
     #         else:
-    #             subprocess.Popen([sys.executable, 'toolkit/my_lib/set requests.py',
+    #             subprocess.Popen([sys.executable, 'toolkit/sdp_lib/set requests.py',
     #                               f'{num_host};{data_request}'])
     #             result = {num_host: 'Команда отправлена'}
     # else:
