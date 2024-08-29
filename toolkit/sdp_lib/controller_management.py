@@ -1,12 +1,8 @@
-import os
-import socket
-import subprocess
-import sys
 import itertools
 from collections.abc import Iterable
 import time
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 import asyncio
 import paramiko
 import aiohttp
@@ -18,7 +14,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-import requests
 
 """*******************************************************************
 ***                          GET-REQUEST                          ****   

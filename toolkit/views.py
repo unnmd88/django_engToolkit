@@ -21,7 +21,7 @@ from django.template.loader import render_to_string
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
-from toolkit.sdp_lib import sdp_func_lib, snmpmanagement_v2, conflicts, toolkit_lib, controller_management
+from toolkit.sdp_lib import conflicts, controller_management
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
 
