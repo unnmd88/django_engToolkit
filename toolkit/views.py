@@ -263,21 +263,7 @@ def set_snmp_ajax(request, num_host):
     else:
         res = {num_host: 'error_set_request'}
 
-    #     swarco_ssh_commands = ('фаза man', 'терминальная команда')
-    #     for num_host, data_request in set_dict.items():
-    #         ip_adress, protocol, scn, command, value = data_request.split(';')
-    #         command = command.lower()
-    #         if protocol == protocols[2] and command in swarco_ssh_commands:
-    #             host = snmp_managemement_v3.SwarcoSSH(ip_adress)
-    #             result_ssh = host.manage_send_commands_to_shell(command, value, separ=',',
-    #                                                             output='inputs102_111')
-    #             result = {num_host: result_ssh}
-    #         else:
-    #             subprocess.Popen([sys.executable, 'toolkit/sdp_lib/set requests.py',
-    #                               f'{num_host};{data_request}'])
-    #             result = {num_host: 'Команда отправлена'}
-    # else:
-    #     result = {num_host: 'error_set_request'}
+    print(f'set_snmp_ajax перед return')
 
     return HttpResponse(json.dumps(res, ensure_ascii=False), content_type='text/html')
 
@@ -361,12 +347,15 @@ def manage_snmp(request):
     third_row_set = {'set_btn': 'Отправить'}
     form = ControllerManagementData()
 
+    print(BASE_DIR / 'data/db.sqlite3')
+
     host_data = {
         'first_row_settings': first_row_settings,
         'second_row_get': second_row_get,
         'third_row_set': third_row_set,
         'num_hosts': [i for i in range(1, 31)],
         'data_form': form,
+        'title': 'Управление контроллером'
     }
 
     return render(request, 'toolkit/manage_snmp.html', context=host_data)
