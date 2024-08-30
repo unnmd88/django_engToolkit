@@ -92,7 +92,7 @@ WSGI_APPLICATION = 'engineering_tools.wsgi.application'
 #     }
 # }
 
-#DB для docker
+# DB для docker
 # DATABASES = {
 #     'default': {
 #         # Меняем настройку Django: теперь для работы будет использоваться

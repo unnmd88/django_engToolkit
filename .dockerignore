@@ -1,0 +1,12 @@
+# Virtual Environment
+.env
+venv/
+env/
+
+# PyCharm-specific files
+.idea/
+
+venv
+.git
+db.sqlite3
+/data/db.sqlite3
