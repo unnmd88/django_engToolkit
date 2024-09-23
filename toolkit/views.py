@@ -205,7 +205,7 @@ def get_snmp_ajax(request, num_host):
                 continue
             ip_adress, controller_type, scn = data_request
             controller_type_request = get_type_object_get_request(controller_type.upper())
-            obj = controller_management.Controller(ip_adress, controller_type_request , scn, num_host)
+            obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
             objects_methods.append(obj.get_current_mode)
         raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
         processed_data = get_data_manager.data_processing(raw_data_from_controllers)
@@ -347,7 +347,7 @@ def manage_snmp(request):
     third_row_set = {'set_btn': 'Отправить'}
     form = ControllerManagementData()
 
-    print(BASE_DIR / 'data/db.sqlite3')
+    # print(BASE_DIR / 'data/db.sqlite3')
 
     host_data = {
         'first_row_settings': first_row_settings,

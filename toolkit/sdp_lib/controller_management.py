@@ -1568,7 +1568,7 @@ class AvailableProtocolsManagement(Enum):
 
     """ Протоколы управления """
     POTOK_UG405 = 'POTOK_UG405'
-    POTOK_STCIP = 'POTOK_UG405'
+    POTOK_STCIP = 'POTOK_STCIP'
     SWARCO_STCIP = 'SWARCO_STCIP'
     SWARCO_SSH = 'SWARCO_SSH'
     PEEK_UG405 = 'PEEK_UG405'
