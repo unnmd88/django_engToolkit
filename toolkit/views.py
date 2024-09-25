@@ -17,13 +17,20 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import QueryDict
 from django.urls import reverse
 from django.template.loader import render_to_string
+from rest_framework.viewsets import ModelViewSet
 
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.sdp_lib import conflicts, controller_management
+from toolkit.serializers import ControllerHostsSerializer
+
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
+
+class ControllersViewSet(ModelViewSet):
+    queryset = ControllerManagement.objects.all()
+    serializer_class = ControllerHostsSerializer
 
 def reverse_slashes(path):
     path = path.replace('\\', '/')

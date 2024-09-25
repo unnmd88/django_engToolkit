@@ -1,11 +1,17 @@
 from django.conf.urls.static import static
 from django.urls import path, re_path, register_converter
+from rest_framework.routers import SimpleRouter
 
 from engineering_tools import settings
 from . import views
 from . import converters
+from .views import ControllersViewSet
+
+router = SimpleRouter()
+router.register(r'api', ControllersViewSet)
 
 register_converter(converters.FourDigitYearConverter, "year4")
+
 
 urlpatterns = [
     path('', views.index, name='home'),
@@ -40,6 +46,8 @@ urlpatterns = [
     # path("archive/<year4:year>/", views.archive, name='archive'),
 
 ]
+
+urlpatterns += router.urls
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
