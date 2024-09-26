@@ -14,7 +14,7 @@
 
 </head>
 <body>
-
+    {% if SHARED_DESKTOP == '0' %}
     <header class="head_menu">
 
         <a href="{% url 'home'%}" class="logo"> Главная </a>
@@ -49,9 +49,10 @@
         </nav>
 
     </header>
+    {% endif %}
 
 
-
+    <p>SHARED_DESKTOP--> {{ SHARED_DESKTOP }}</p>
 
 {% block content %} {% endblock %}
 </body>

@@ -18,12 +18,13 @@ from django.http import QueryDict
 from django.urls import reverse
 from django.template.loader import render_to_string
 from rest_framework.viewsets import ModelViewSet
+from rest_framework import generics
 
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.sdp_lib import conflicts, controller_management
-from toolkit.serializers import ControllerHostsSerializer
+from toolkit.serializers import ControllerHostsSerializer, TrafficLightsSerializer
 
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
@@ -31,6 +32,14 @@ protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405
 class ControllersViewSet(ModelViewSet):
     queryset = ControllerManagement.objects.all()
     serializer_class = ControllerHostsSerializer
+
+
+class TrafficLightsAPIVeiw(generics.ListAPIView):
+    queryset = TrafficLightObjects.objects.all()
+    serializer_class = TrafficLightsSerializer
+
+
+
 
 def reverse_slashes(path):
     path = path.replace('\\', '/')

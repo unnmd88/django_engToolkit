@@ -5,7 +5,7 @@ from rest_framework.routers import SimpleRouter
 from engineering_tools import settings
 from . import views
 from . import converters
-from .views import ControllersViewSet
+from .views import ControllersViewSet, TrafficLightsAPIVeiw
 
 router = SimpleRouter()
 router.register(r'api', ControllersViewSet)
@@ -38,6 +38,8 @@ urlpatterns = [
          name='save_configuration_snmp'),
     path(r"manage_snmp/get-configuration-controller-management/", views.get_configuration_controller_management,
          name='get_configuration_controller_management'),
+
+    path('api/v1/traffilight_objects/', TrafficLightsAPIVeiw.as_view())
 
 
     # path('toolkit/', views.index, name='toolkit'),
