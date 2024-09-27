@@ -502,56 +502,36 @@ $(".set_request").click(function (){
 }
 );
 
-async function write_setTimerVal (num_host) {
+$(".hold_request").click(function () {
+    let num_host = $(this).attr('id').split('_')[1];
+    let tags = [`#ip_${num_host}`, `#scn_${num_host}`, `#protocol_${num_host}`,
+                `#setCommand_${num_host}`, `#setval_${num_host}`, `#SetToHost_${num_host}`]
 
-    console.log('function write_setTimerVal');
+
+    if (check_valid_data_hold_request(num_host) && $(`#hold_${num_host}`).is(':checked')) {
+        tags.forEach((element) => document.querySelector(element).disabled = true);
+    }
+    else {
+        tags.forEach((element) => document.querySelector(element).disabled = false);
+    }
+}
+);
+
+// Функция записывает значение, какое количество секунд назад была отправлена команда set_request,
+// а также вызывает функцию повторной отправки set_request(удержание)
+async function write_setTimerVal (num_host) {
 
     let curr_val = +$(`#setTimerVal_${num_host}`).text();
     $(`#setTimerVal_${num_host}`).text(++curr_val);
 
-    console.log(check_valid_data_hold_request(num_host));
-
-    if (check_valid_data_hold_request(num_host)) {
-        console.log('axios');
-        // let res1 = await axios.get(`get-data-snmp-ax/${num_host}/`, {
-        //     params: {
-        //       paramOne: 'one',
-        //       paramTwo: 'two',
-        //       paramThree: 'three',
-        //       foo: 1,
-        //       bar: 2,
-        //     },
-        //   });
-        // console.log(res1.data);
-
-        let data_request = {};
-        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
-                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
-                                 `${$(`#scn_${num_host}`).val()};` + 
-                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
-                                 `${$('#setval_' + num_host).val()}`
-
-
-        axios({
-            method: 'post',
-            url: `set-data-snmp-ax/${num_host}/`,
-            data: data_request,
-            headers: {
-              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
-              "content-type": "application/json"
-            }
-          }).then(function (response) {
-            console.log(`response`);
-            // console.log(response);
-            console.log(response.data);
-
-          }).catch(function (error) {
-            console.log(error)
-          });
-
-    }
-
+    let dataIsValid = check_valid_data_hold_request(num_host);
+    let checkboxIsChecked = $(`#hold_${num_host}`).is(':checked');
     
+
+    if (curr_val % 20 === 0 && dataIsValid && checkboxIsChecked) {
+        console.log('axios');
+        set_request_axios (num_host);
+}
 }
 
 function sendRequstCommon (num_host) {
@@ -634,25 +614,20 @@ function check_valid_data_hold_request (num_host) {
 
     console.log('зашел в function check_valid_data_hold_request');
 
-    const allowed_data_to_hold = {
-        [CONTROLLERS[0]]: ['Фаза SNMP'],
-        [CONTROLLERS[1]]: ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'],
-        [CONTROLLERS[2]]: ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP'],
-        [CONTROLLERS[3]]: ['Фаза SNMP'],
-    }
+    let allowed_data_to_hold = {};       
+    allowed_data_to_hold[CONTROLLERS[0]] = ['Фаза SNMP'];
+    allowed_data_to_hold[CONTROLLERS[1]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+    allowed_data_to_hold[CONTROLLERS[2]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP'];
+    allowed_data_to_hold[CONTROLLERS[3]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+    allowed_data_to_hold[CONTROLLERS[3]] = ['Фаза SNMP'];
 
     let controller_type = `${$(`#protocol_${num_host} option:selected`).text()}`;
     let type_command = `${$(`#setCommand_${num_host} option:selected`).text()}`;
 
-
-
     const commands_content = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
 
-    console.log(controller_type);
-    console.log(type_command);
     
     if (!CONTROLLERS.includes(controller_type)){
-        console.log(controller_type)
         console.log('1')
         return false;
     };
@@ -661,11 +636,11 @@ function check_valid_data_hold_request (num_host) {
         console.log('2')
         return true;
     }
-    else if (controller_type === CONTROLLERS[1] && allowed_data_to_hold.CONTROLLERS[1].includes(type_command)) {
+    else if (controller_type === CONTROLLERS[1] && allowed_data_to_hold[CONTROLLERS[1]].includes(type_command)) {
         console.log('3')
         return true;
     }
-    else if (controller_type === CONTROLLERS[2] && allowed_data_to_hold.CONTROLLERS[2].includes(type_command)) {
+    else if (controller_type === CONTROLLERS[2] && allowed_data_to_hold[CONTROLLERS[2]].includes(type_command)) {
         console.log('4')
         return true;
     }
@@ -674,3 +649,32 @@ function check_valid_data_hold_request (num_host) {
         return false;
     }
 };
+
+
+// Отправка повторного запроса(удержание) с помощью библиотеки axios
+function set_request_axios (num_host) {
+
+    let data_request = {};
+        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
+                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
+                                 `${$(`#scn_${num_host}`).val()};` + 
+                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
+                                 `${$('#setval_' + num_host).val()}`
+
+        axios({
+            method: 'post',
+            url: `set-data-snmp-ax/${num_host}/`,
+            data: data_request,
+            headers: {
+              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
+              "content-type": "application/json"
+            }
+          }).then(function (response) {
+            console.log(`response`);
+            // console.log(response);
+            console.log(response.data);
+
+          }).catch(function (error) {
+            console.log(error)
+          });
+    }

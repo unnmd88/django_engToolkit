@@ -41,6 +41,8 @@ class TrafficLightsAPIVeiw(generics.ListAPIView):
 
 
 
+
+
 def reverse_slashes(path):
     path = path.replace('\\', '/')
     return path
@@ -207,15 +209,28 @@ path_uploads = 'toolkit/uploads/'
 
 
 def get_mode_axios(request, num_host):
-    print(f'request.GET: {request.GET}')
-    print(f'request: {request}')
-    get_dict = request.GET.dict()
-    print(f'get_dict: {get_dict}')
+    data_request = json.loads(request.body.decode("utf-8"))
 
-    data = {'1': 'aдаптивный', '2': 'УУ', '23': 'фикс'}
+    print(f'data_request json: {data_request}')
+    print(f'type data_request json: {type(data_request)}')
 
-    return JsonResponse(data)
-    return JsonResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+
+    objects_methods = []
+    get_data_manager = controller_management.GetDataControllerManagement()
+    for num_host, data_request in data_request.items():
+        data_request = data_request.split(';')
+        if len(data_request) != 3:
+            continue
+        ip_adress, controller_type, scn = data_request
+        controller_type_request = get_type_object_get_request(controller_type.upper())
+        obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
+        objects_methods.append(obj.get_current_mode)
+    raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
+    processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+
+    return JsonResponse(processed_data)
+
+
 
 
 def set_requset_axios(request, num_host):
@@ -247,7 +262,6 @@ def set_requset_axios(request, num_host):
     print(f'result: {result}')
 
     return JsonResponse(result)
-    return JsonResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
 
 
 def get_snmp_ajax(request, num_host):
