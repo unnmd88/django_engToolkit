@@ -32,7 +32,12 @@ $(document).ready(function(){
 
 
 
+/*------------------------------------------------------------------------
+|                                Константы                               |
+------------------------------------------------------------------------*/
 
+const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
+const TYPE_COMMAND = ['']
 
 
 // --------------GET REQUEST SNMP------------------
@@ -497,9 +502,56 @@ $(".set_request").click(function (){
 }
 );
 
-function write_setTimerVal (num_host) {
+async function write_setTimerVal (num_host) {
+
+    console.log('function write_setTimerVal');
+
     let curr_val = +$(`#setTimerVal_${num_host}`).text();
     $(`#setTimerVal_${num_host}`).text(++curr_val);
+
+    console.log(check_valid_data_hold_request(num_host));
+
+    if (check_valid_data_hold_request(num_host)) {
+        console.log('axios');
+        // let res1 = await axios.get(`get-data-snmp-ax/${num_host}/`, {
+        //     params: {
+        //       paramOne: 'one',
+        //       paramTwo: 'two',
+        //       paramThree: 'three',
+        //       foo: 1,
+        //       bar: 2,
+        //     },
+        //   });
+        // console.log(res1.data);
+
+        let data_request = {};
+        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
+                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
+                                 `${$(`#scn_${num_host}`).val()};` + 
+                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
+                                 `${$('#setval_' + num_host).val()}`
+
+
+        axios({
+            method: 'post',
+            url: `set-data-snmp-ax/${num_host}/`,
+            data: data_request,
+            headers: {
+              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
+              "content-type": "application/json"
+            }
+          }).then(function (response) {
+            console.log(`response`);
+            // console.log(response);
+            console.log(response.data);
+
+          }).catch(function (error) {
+            console.log(error)
+          });
+
+    }
+
+    
 }
 
 function sendRequstCommon (num_host) {
@@ -578,3 +630,47 @@ function sendRequstCommon (num_host) {
 
 });
 
+function check_valid_data_hold_request (num_host) {
+
+    console.log('зашел в function check_valid_data_hold_request');
+
+    const allowed_data_to_hold = {
+        [CONTROLLERS[0]]: ['Фаза SNMP'],
+        [CONTROLLERS[1]]: ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'],
+        [CONTROLLERS[2]]: ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP'],
+        [CONTROLLERS[3]]: ['Фаза SNMP'],
+    }
+
+    let controller_type = `${$(`#protocol_${num_host} option:selected`).text()}`;
+    let type_command = `${$(`#setCommand_${num_host} option:selected`).text()}`;
+
+
+
+    const commands_content = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+
+    console.log(controller_type);
+    console.log(type_command);
+    
+    if (!CONTROLLERS.includes(controller_type)){
+        console.log(controller_type)
+        console.log('1')
+        return false;
+    };
+
+    if (type_command === commands_content[0]) {
+        console.log('2')
+        return true;
+    }
+    else if (controller_type === CONTROLLERS[1] && allowed_data_to_hold.CONTROLLERS[1].includes(type_command)) {
+        console.log('3')
+        return true;
+    }
+    else if (controller_type === CONTROLLERS[2] && allowed_data_to_hold.CONTROLLERS[2].includes(type_command)) {
+        console.log('4')
+        return true;
+    }
+    else {
+        console.log('5')
+        return false;
+    }
+};

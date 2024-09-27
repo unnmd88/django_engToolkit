@@ -206,6 +206,50 @@ path_tmp = 'toolkit/tmp/'
 path_uploads = 'toolkit/uploads/'
 
 
+def get_mode_axios(request, num_host):
+    print(f'request.GET: {request.GET}')
+    print(f'request: {request}')
+    get_dict = request.GET.dict()
+    print(f'get_dict: {get_dict}')
+
+    data = {'1': 'aдаптивный', '2': 'УУ', '23': 'фикс'}
+
+    return JsonResponse(data)
+    return JsonResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+
+
+def set_requset_axios(request, num_host):
+    data_request = json.loads(request.body.decode("utf-8"))
+
+    print(f'data_request json: {data_request}')
+    print(f'type data_request json: {type(data_request)}')
+
+    try:
+        for num_host, data_request in data_request.items():
+            data_request = data_request.split(';')
+            if len(data_request) != 5:
+                continue
+
+        ip_adress, type_of_controller, scn, command, value = data_request
+        command, type_of_controller = command.upper(), type_of_controller.upper()
+        type_of_controller_management = get_type_object_set_request(type_of_controller, command)
+        host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
+
+        if inspect.iscoroutinefunction(host.set_stage):
+            asyncio.run(host.set_stage(value))
+            result = {f'Хост {num_host}': f'команда {command} <{value}> успешно отправлена'}
+        else:
+            result = {f'Хост {num_host}': f'Ошибка данных, команда {command} <{value}> не была отправлена'}
+
+    except Exception as err:
+        result = {f'Хост {num_host}': f'Ошибка данных была отправлена'}
+
+    print(f'result: {result}')
+
+    return JsonResponse(result)
+    return JsonResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+
+
 def get_snmp_ajax(request, num_host):
     print(f'request.GET: {request.GET}')
     print(f'request: {request}')
