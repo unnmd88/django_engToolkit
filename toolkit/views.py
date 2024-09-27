@@ -209,10 +209,17 @@ path_uploads = 'toolkit/uploads/'
 
 
 def get_mode_axios(request, num_host):
-    data_request = json.loads(request.body.decode("utf-8"))
 
-    print(f'data_request json: {data_request}')
-    print(f'type data_request json: {type(data_request)}')
+    print(f'request: {request}')
+    print(f'request.GET: {request.GET}')
+    data_request = request.GET.dict()
+    print(f'get_dict: {data_request}')
+
+
+    # data_request = json.loads(request.body.decode("utf-8"))
+    #
+    # print(f'data_request json: {data_request}')
+    # print(f'type data_request json: {type(data_request)}')
 
 
     objects_methods = []
@@ -228,7 +235,12 @@ def get_mode_axios(request, num_host):
     raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
     processed_data = get_data_manager.data_processing(raw_data_from_controllers)
 
-    return JsonResponse(processed_data)
+
+    # print(f'json.dumps(processed_data, ensure_ascii=False): {json.dumps(processed_data, ensure_ascii=False)}')
+    # return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
+    return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
+    return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
+
 
 
 
