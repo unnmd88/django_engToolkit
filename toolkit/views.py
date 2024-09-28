@@ -211,9 +211,10 @@ path_uploads = 'toolkit/uploads/'
 
 
 def get_mode_axios(request, num_host):
+    print(f'get_mode_axios')
 
-    print(f'request: {request}')
-    print(f'request.GET: {request.GET}')
+    # print(f'request: {request}')
+    # print(f'request.GET: {request.GET}')
     data_request = request.GET.dict()
     print(f'get_dict: {data_request}')
 
@@ -233,15 +234,22 @@ def get_mode_axios(request, num_host):
         ip_adress, controller_type, scn = data_request
         controller_type_request = get_type_object_get_request(controller_type.upper())
         obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
+        if obj is None:
+            continue
         objects_methods.append(obj.get_current_mode)
-    raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
-    processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+    if objects_methods:
+        raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
+        processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+    else:
+        processed_data = {'Baaaad data': True}
+
+    print(processed_data)
 
 
     # print(f'json.dumps(processed_data, ensure_ascii=False): {json.dumps(processed_data, ensure_ascii=False)}')
     # return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
-    return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
-    return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
+    # return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
+    return JsonResponse(processed_data)
 
 
 

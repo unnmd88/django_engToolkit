@@ -437,6 +437,7 @@ function sendReqGetData () {
         }
         });
     }
+
     else {
         let val_interval = +$('#polling_get_interval').val();
         if(Number.isInteger(val_interval)) {
@@ -458,25 +459,69 @@ function sendReqGetData () {
 
 async function sendReqGetDataAxios() {
     console.log('sendReqGetDataAxios');
-    console.log('collect_data_from_hosts()');
-    let data = collect_data_from_hosts();
-    console.log(collect_data_from_hosts());
     
-    
-    try {
-        const response = await axios.get(
-            `get-data-snmp-ax/1/`,
-            {
-                params: collect_data_from_hosts(),
-                // headers: {
-                //   "content-type": "application/json"
-                // }
-              }
-        );
-        console.log('response.data');
-        console.log(response.data);
 
-        let val_interval = +$('#polling_get_interval').val();       
+    let num_checked_checkbox = $('.receive_data:checked').length;
+    if (num_checked_checkbox > 0) {
+        console.log('if (num_checked_checkbox > 0)');
+        try {
+            const response = await axios.get(
+                `get-data-snmp-ax/1/`,
+                {
+                  params: collect_data_from_hosts()
+                }
+            );
+            console.log('response.data');
+            console.log(response.data);
+            // let data_to_write = response.data;
+
+            for (const [num_host, write_data] of Object.entries(response.data)) {
+                $(`#datahost_${num_host}`).text(write_data);
+              }
+
+            // $.each(data_to_write, function(num_host, write_data) {
+            //     $(`#datahost_${num_host}`).text(write_data);
+            // });
+    
+
+    
+    
+    
+          } catch (error) {
+            if (error.response) { // get response with a status code not in range 2xx
+              console.log(error.response.data);
+              console.log(error.response.status);
+              console.log(error.response.headers);
+            } else if (error.request) { // no response
+              console.log(error.request);
+            } else { // Something wrong in setting up the request
+              console.log('Error', error.message);
+            }
+            console.log(error.config);
+          }
+
+          let val_interval = +$('#polling_get_interval').val();       
+          if(Number.isInteger(val_interval)) {
+              val_interval = +val_interval;
+              if (val_interval === 0) {
+                  setTimeout(sendReqGetDataAxios, 1000);
+              }
+              else {
+                  val_interval = val_interval * 1000;
+                  setTimeout(sendReqGetDataAxios, val_interval);
+              }        
+          }
+
+          else {
+              setTimeout(sendReqGetDataAxios, 1000);
+          }
+
+
+
+    }
+
+    else {
+        let val_interval = +$('#polling_get_interval').val();
         if(Number.isInteger(val_interval)) {
             val_interval = +val_interval;
             if (val_interval === 0) {
@@ -489,38 +534,8 @@ async function sendReqGetDataAxios() {
         }
         else {
             setTimeout(sendReqGetDataAxios, 1000);
-        }
-
-
-
-      } catch (error) {
-        if (error.response) { // get response with a status code not in range 2xx
-          console.log(error.response.data);
-          console.log(error.response.status);
-          console.log(error.response.headers);
-        } else if (error.request) { // no response
-          console.log(error.request);
-        } else { // Something wrong in setting up the request
-          console.log('Error', error.message);
-        }
-        console.log(error.config);
-      }
-
-
-      let val_interval = +$('#polling_get_interval').val();       
-      if(Number.isInteger(val_interval)) {
-          val_interval = +val_interval;
-          if (val_interval === 0) {
-              setTimeout(sendReqGetDataAxios, 1000);
-          }
-          else {
-              val_interval = val_interval * 1000;
-              setTimeout(sendReqGetDataAxios, val_interval);
-          }        
-      }
-      else {
-          setTimeout(sendReqGetDataAxios, 1000);
-      }
+        }   
+    } 
 
 }
 

@@ -1580,6 +1580,7 @@ class Controller:
     def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
         print('ya в new')
         print(type_object)
+
         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
             return PotokS(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
