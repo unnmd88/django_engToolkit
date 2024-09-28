@@ -5,7 +5,7 @@ from django.utils import timezone
 
 
 class TrafficLightObjects(models.Model):
-    num_CO = models.CharField(max_length=10)
+    num_CO = models.CharField(max_length=20)
     type_controller = models.CharField(max_length=10)
     ip_adress = models.CharField(max_length=12)
     adress = models.TextField(blank=True)

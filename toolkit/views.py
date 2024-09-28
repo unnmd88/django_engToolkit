@@ -19,12 +19,30 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import QueryDict
 from django.urls import reverse
 from django.template.loader import render_to_string
+from rest_framework.viewsets import ModelViewSet
+from rest_framework import generics
 
 from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.sdp_lib import conflicts, controller_management
+from toolkit.serializers import ControllerHostsSerializer, TrafficLightsSerializer
+
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
+
+
+class ControllersViewSet(ModelViewSet):
+    queryset = ControllerManagement.objects.all()
+    serializer_class = ControllerHostsSerializer
+
+
+class TrafficLightsAPIVeiw(generics.ListAPIView):
+    queryset = TrafficLightObjects.objects.all()
+    serializer_class = TrafficLightsSerializer
+
+
+
+
 
 
 def reverse_slashes(path):
@@ -190,6 +208,74 @@ controllers_menu = [
 
 path_tmp = 'toolkit/tmp/'
 path_uploads = 'toolkit/uploads/'
+
+
+def get_mode_axios(request, num_host):
+
+    print(f'request: {request}')
+    print(f'request.GET: {request.GET}')
+    data_request = request.GET.dict()
+    print(f'get_dict: {data_request}')
+
+
+    # data_request = json.loads(request.body.decode("utf-8"))
+    #
+    # print(f'data_request json: {data_request}')
+    # print(f'type data_request json: {type(data_request)}')
+
+
+    objects_methods = []
+    get_data_manager = controller_management.GetDataControllerManagement()
+    for num_host, data_request in data_request.items():
+        data_request = data_request.split(';')
+        if len(data_request) != 3:
+            continue
+        ip_adress, controller_type, scn = data_request
+        controller_type_request = get_type_object_get_request(controller_type.upper())
+        obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
+        objects_methods.append(obj.get_current_mode)
+    raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
+    processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+
+
+    # print(f'json.dumps(processed_data, ensure_ascii=False): {json.dumps(processed_data, ensure_ascii=False)}')
+    # return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
+    return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
+    return JsonResponse(json.dumps(processed_data, ensure_ascii=False))
+
+
+
+
+
+def set_requset_axios(request, num_host):
+    data_request = json.loads(request.body.decode("utf-8"))
+
+    print(f'data_request json: {data_request}')
+    print(f'type data_request json: {type(data_request)}')
+
+    try:
+        for num_host, data_request in data_request.items():
+            data_request = data_request.split(';')
+            if len(data_request) != 5:
+                continue
+
+        ip_adress, type_of_controller, scn, command, value = data_request
+        command, type_of_controller = command.upper(), type_of_controller.upper()
+        type_of_controller_management = get_type_object_set_request(type_of_controller, command)
+        host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
+
+        if inspect.iscoroutinefunction(host.set_stage):
+            asyncio.run(host.set_stage(value))
+            result = {f'Хост {num_host}': f'команда {command} <{value}> успешно отправлена'}
+        else:
+            result = {f'Хост {num_host}': f'Ошибка данных, команда {command} <{value}> не была отправлена'}
+
+    except Exception as err:
+        result = {f'Хост {num_host}': f'Ошибка данных была отправлена'}
+
+    print(f'result: {result}')
+
+    return JsonResponse(result)
 
 
 def get_snmp_ajax(request, num_host):

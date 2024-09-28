@@ -20,7 +20,8 @@ $(document).ready(function(){
     //     $(`#datahost_${num_host}`).text('--');
     // });
 
-    sendReqGetData();
+    // sendReqGetData();
+    sendReqGetDataAxios();
 
     $(`#table_1`).show();
 });
@@ -32,7 +33,12 @@ $(document).ready(function(){
 
 
 
+/*------------------------------------------------------------------------
+|                                Константы                               |
+------------------------------------------------------------------------*/
 
+const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
+const TYPE_COMMAND = ['']
 
 
 // --------------GET REQUEST SNMP------------------
@@ -394,7 +400,8 @@ function collect_data_from_hosts (){
 function sendReqGetData () {
     let num_checked_checkbox = $('.receive_data:checked').length;
     if (num_checked_checkbox > 0) {
-
+       
+          
         $.ajax({
         type: "GET",
         url: `get-data-snmp/1/`,
@@ -449,6 +456,74 @@ function sendReqGetData () {
 }
 
 
+async function sendReqGetDataAxios() {
+    console.log('sendReqGetDataAxios');
+    console.log('collect_data_from_hosts()');
+    let data = collect_data_from_hosts();
+    console.log(collect_data_from_hosts());
+    
+    
+    try {
+        const response = await axios.get(
+            `get-data-snmp-ax/1/`,
+            {
+                params: collect_data_from_hosts(),
+                // headers: {
+                //   "content-type": "application/json"
+                // }
+              }
+        );
+        console.log('response.data');
+        console.log(response.data);
+
+        let val_interval = +$('#polling_get_interval').val();       
+        if(Number.isInteger(val_interval)) {
+            val_interval = +val_interval;
+            if (val_interval === 0) {
+                setTimeout(sendReqGetDataAxios, 1000);
+            }
+            else {
+                val_interval = val_interval * 1000;
+                setTimeout(sendReqGetDataAxios, val_interval);
+            }        
+        }
+        else {
+            setTimeout(sendReqGetDataAxios, 1000);
+        }
+
+
+
+      } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      }
+
+
+      let val_interval = +$('#polling_get_interval').val();       
+      if(Number.isInteger(val_interval)) {
+          val_interval = +val_interval;
+          if (val_interval === 0) {
+              setTimeout(sendReqGetDataAxios, 1000);
+          }
+          else {
+              val_interval = val_interval * 1000;
+              setTimeout(sendReqGetDataAxios, val_interval);
+          }        
+      }
+      else {
+          setTimeout(sendReqGetDataAxios, 1000);
+      }
+
+}
+
  /*------------------------------------------------------------------------
 |                               SET REQUEST                                |
 --------------------------------------------------------------------------*/
@@ -497,9 +572,36 @@ $(".set_request").click(function (){
 }
 );
 
-function write_setTimerVal (num_host) {
+$(".hold_request").click(function () {
+    let num_host = $(this).attr('id').split('_')[1];
+    let tags = [`#ip_${num_host}`, `#scn_${num_host}`, `#protocol_${num_host}`,
+                `#setCommand_${num_host}`, `#setval_${num_host}`, `#SetToHost_${num_host}`]
+
+
+    if (check_valid_data_hold_request(num_host) && $(`#hold_${num_host}`).is(':checked')) {
+        tags.forEach((element) => document.querySelector(element).disabled = true);
+    }
+    else {
+        tags.forEach((element) => document.querySelector(element).disabled = false);
+    }
+}
+);
+
+// Функция записывает значение, какое количество секунд назад была отправлена команда set_request,
+// а также вызывает функцию повторной отправки set_request(удержание)
+async function write_setTimerVal (num_host) {
+
     let curr_val = +$(`#setTimerVal_${num_host}`).text();
     $(`#setTimerVal_${num_host}`).text(++curr_val);
+
+    let dataIsValid = check_valid_data_hold_request(num_host);
+    let checkboxIsChecked = $(`#hold_${num_host}`).is(':checked');
+    
+
+    if (curr_val % 20 === 0 && dataIsValid && checkboxIsChecked) {
+        console.log('axios');
+        set_request_axios (num_host);
+}
 }
 
 function sendRequstCommon (num_host) {
@@ -578,3 +680,71 @@ function sendRequstCommon (num_host) {
 
 });
 
+function check_valid_data_hold_request (num_host) {
+
+    console.log('зашел в function check_valid_data_hold_request');
+
+    let allowed_data_to_hold = {};       
+    allowed_data_to_hold[CONTROLLERS[0]] = ['Фаза SNMP'];
+    allowed_data_to_hold[CONTROLLERS[1]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+    allowed_data_to_hold[CONTROLLERS[2]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP'];
+    allowed_data_to_hold[CONTROLLERS[3]] = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+    allowed_data_to_hold[CONTROLLERS[3]] = ['Фаза SNMP'];
+
+    let controller_type = `${$(`#protocol_${num_host} option:selected`).text()}`;
+    let type_command = `${$(`#setCommand_${num_host} option:selected`).text()}`;
+
+    const commands_content = ['Фаза SNMP', 'ОС SNMP', 'ЖМ SNMP', 'КК SNMP'];
+
+    
+    if (!CONTROLLERS.includes(controller_type)){
+        console.log('1')
+        return false;
+    };
+
+    if (type_command === commands_content[0]) {
+        console.log('2')
+        return true;
+    }
+    else if (controller_type === CONTROLLERS[1] && allowed_data_to_hold[CONTROLLERS[1]].includes(type_command)) {
+        console.log('3')
+        return true;
+    }
+    else if (controller_type === CONTROLLERS[2] && allowed_data_to_hold[CONTROLLERS[2]].includes(type_command)) {
+        console.log('4')
+        return true;
+    }
+    else {
+        console.log('5')
+        return false;
+    }
+};
+
+
+// Отправка повторного запроса(удержание) с помощью библиотеки axios
+function set_request_axios (num_host) {
+
+    let data_request = {};
+        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
+                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
+                                 `${$(`#scn_${num_host}`).val()};` + 
+                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
+                                 `${$('#setval_' + num_host).val()}`
+
+        axios({
+            method: 'post',
+            url: `set-data-snmp-ax/${num_host}/`,
+            data: data_request,
+            headers: {
+              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
+              "content-type": "application/json"
+            }
+          }).then(function (response) {
+            console.log(`response`);
+            // console.log(response);
+            console.log(response.data);
+
+          }).catch(function (error) {
+            console.log(error)
+          });
+    }

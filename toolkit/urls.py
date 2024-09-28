@@ -1,11 +1,17 @@
 from django.conf.urls.static import static
 from django.urls import path, re_path, register_converter
+from rest_framework.routers import SimpleRouter
 
 from engineering_tools import settings
 from . import views
 from . import converters
+from .views import ControllersViewSet, TrafficLightsAPIVeiw
+
+router = SimpleRouter()
+router.register(r'api', ControllersViewSet)
 
 register_converter(converters.FourDigitYearConverter, "year4")
+
 
 urlpatterns = [
     path('', views.index, name='home'),
@@ -27,11 +33,16 @@ urlpatterns = [
 
     # path(r"manage_snmp/test_ajax/", views.test_ajax, name='test_ajax'),
     path("manage_snmp/get-data-snmp/<int:num_host>/", views.get_snmp_ajax, name='test_ajax'),
+    path("manage_snmp/get-data-snmp-ax/<int:num_host>/", views.get_mode_axios, name='get_mode_axios'),
+    path("manage_snmp/set-data-snmp-ax/<int:num_host>/", views.set_requset_axios, name='set_requset_axios'),
+
     path(r"manage_snmp/set-snmp-ajax/<int:num_host>/", views.set_snmp_ajax, name='set-snmp-ajax'),
     path(r"manage_snmp/save-configuration-controller-management/", views.save_configuration_snmp,
          name='save_configuration_snmp'),
     path(r"manage_snmp/get-configuration-controller-management/", views.get_configuration_controller_management,
          name='get_configuration_controller_management'),
+
+    path('api/v1/traffilight_objects/', TrafficLightsAPIVeiw.as_view())
 
 
     # path('toolkit/', views.index, name='toolkit'),
@@ -40,6 +51,8 @@ urlpatterns = [
     # path("archive/<year4:year>/", views.archive, name='archive'),
 
 ]
+
+urlpatterns += router.urls
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

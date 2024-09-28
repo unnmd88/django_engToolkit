@@ -25,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+SHARED_DESKTOP = os.getenv('SHARED_DESKTOP')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if os.getenv('DEBUG') in ('1', 'True') else False
-
-SHARED_DESKTOP = True if os.getenv('SHARED_DESKTOP') in ('1', 'True') else False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', '192.168.45.90', '192.168.45.66', 'http://127.0.0.1:8081']
 
@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+
     'toolkit.apps.ToolkitConfig',
+    'rest_framework',
 
 ]
 
@@ -74,6 +76,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
 
+                'toolkit.context_processors.get_val_SHARED_DESKTOP'
             ],
         },
     },
@@ -147,9 +150,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
