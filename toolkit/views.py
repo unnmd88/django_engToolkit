@@ -9,6 +9,8 @@ import asyncio
 import inspect
 from io import StringIO, BytesIO
 
+from engineering_tools.settings import SHARED_DESKTOP
+
 from pathlib import Path
 
 from django.core.files import File
@@ -355,7 +357,8 @@ def manage_snmp(request):
         'third_row_set': third_row_set,
         'num_hosts': [i for i in range(1, 31)],
         'data_form': form,
-        'title': 'Управление контроллером'
+        'title': 'Управление контроллером',
+        'flag SHARED_DESKTOP': SHARED_DESKTOP
     }
 
     return render(request, 'toolkit/manage_snmp.html', context=host_data)
