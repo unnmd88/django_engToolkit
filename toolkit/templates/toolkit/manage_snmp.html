@@ -2,6 +2,14 @@
 {% load static %}
 
 {% block content %}
+
+{% if SHARED_DESKTOP == '1' %}
+
+<a href="http://192.168.45.66/" class="logo"> Главная </a>
+<br>
+
+{% endif %}
+
 <h1 class="manage_snmp">{{ title }}</h1>
 
 <table border="3">
