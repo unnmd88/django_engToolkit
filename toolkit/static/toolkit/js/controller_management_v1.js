@@ -508,7 +508,7 @@ async function sendReqGetDataAxios() {
         console.log('if (num_checked_checkbox > 0)');
         try {
             const response = await axios.get(
-                `get-data-snmp-ax/1/`,
+                `/api/v1/get-data-from-controller-ax/`,
                 {
                   params: collect_data_from_hosts()
                 }
@@ -776,8 +776,9 @@ function check_valid_data_hold_request (num_host) {
 };
 
 
+
 // Отправка повторного запроса(удержание) с помощью библиотеки axios
-function set_request_axios (num_host) {
+async function set_request_axios(num_host) {
 
     let data_request = {};
         data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
@@ -786,31 +787,43 @@ function set_request_axios (num_host) {
                                  `${$(`#setCommand_${num_host} option:selected`).text()};` +
                                  `${$('#setval_' + num_host).val()}`
 
-        axios({
-            method: 'post',
-            url: `/api/v1/set-data-snmp-ax/${num_host}/`,
-            data: data_request,
-            headers: {
-              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
-            //   "content-type": "application/json"
-            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+    let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
+    try {
+        const response = await axios.post(            
+            `/api/v1/set-request-to-controller-ax/${num_host}/`,
+            {
+              data: data_request,
             },
-            auth: {
-                username: 'janedoe',
-                password: 's00pers3cret'
-              },
-          }).then(function (response) {
-            console.log(`response`);
-            // console.log(response);
-            console.log(response.data);
+            {  
+              headers: {
+              "X-CSRFToken": csrfToken, 
+              "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+            //   "content-type": "application/json"
+              }
+            }
+        );
 
-          }).catch(function (error) {
-            console.log(error)
-          });
-    }
+        const res = response.data;
+        // console.log('res[result]');
+        // console.log(res['result']);
 
+        console.log('response.data');
+        console.log(response.data);
 
-
+        
+    } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      }
+}
 /*
 ------------------------------------------------
 *****               ARCHIVE                *****
@@ -944,6 +957,36 @@ function get_data_from_db () {
     );
  }
 
+
+ // Отправка повторного запроса(удержание) с помощью библиотеки axios
+function set_request_axios_archive (num_host) {
+
+    let data_request = {};
+        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
+                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
+                                 `${$(`#scn_${num_host}`).val()};` + 
+                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
+                                 `${$('#setval_' + num_host).val()}`
+
+        axios({
+            method: 'post',
+            url: `/api/v1/set-request-to-controller-ax/${num_host}/`,
+            data: data_request,
+            headers: {
+              "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
+            //   "content-type": "application/json"
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+            },
+
+          }).then(function (response) {
+            console.log(`response`);
+            // console.log(response);
+            console.log(response.data);
+
+          }).catch(function (error) {
+            console.log(error)
+          });
+    }
 
 
 

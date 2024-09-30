@@ -5,7 +5,7 @@ from rest_framework.routers import SimpleRouter
 from engineering_tools import settings
 from . import views
 from . import converters
-from .views import ControllersViewSet, TrafficLightsAPIVeiw
+from .views import ControllersViewSet, TrafficLightsAPIVeiw, GetDataFromControllerAPIView, SetRequestToControllerAPIView
 
 router = SimpleRouter()
 router.register(r'api', ControllersViewSet)
@@ -33,8 +33,13 @@ urlpatterns = [
 
     # path(r"manage_snmp/test_ajax/", views.test_ajax, name='test_ajax'),
     # path("manage_snmp/get-data-snmp/<int:num_host>/", views.get_snmp_ajax, name='test_ajax'),
-    path("manage_snmp/get-data-snmp-ax/<int:num_host>/", views.get_mode_axios, name='get_mode_axios'),
-    path("api/v1/set-data-snmp-ax/<int:num_host>/", views.set_requset_axios, name='set_requset_axios'),
+
+    # path("manage_snmp/get-data-snmp-ax/<int:num_host>/", views.get_mode_axios, name='get_mode_axios'),
+    path("api/v1/get-data-from-controller-ax/", GetDataFromControllerAPIView.as_view()),
+
+    path("api/v1/set-request-to-controller-ax/<int:num_host>/", SetRequestToControllerAPIView.as_view()),
+
+
     # path("manage_snmp/set-data-snmp-ax/<int:num_host>/", views.set_requset_axios, name='set_requset_axios'),
     # path(r"manage_snmp/set-snmp-ajax/<int:num_host>/", views.set_snmp_ajax, name='set-snmp-ajax'),
     # path(r"manage_snmp/save-configuration-controller-management/", views.save_configuration_snmp,
