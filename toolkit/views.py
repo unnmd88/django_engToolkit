@@ -9,6 +9,9 @@ import asyncio
 import inspect
 from io import StringIO, BytesIO
 
+from django import forms
+from django.views.generic import ListView
+
 from engineering_tools.settings import SHARED_DESKTOP
 
 from pathlib import Path
@@ -41,7 +44,7 @@ class TrafficLightsAPIVeiw(generics.ListAPIView):
     serializer_class = TrafficLightsSerializer
 
 
-
+# class GetControllerData(View)
 
 
 
@@ -252,9 +255,6 @@ def get_mode_axios(request, num_host):
     return JsonResponse(processed_data)
 
 
-
-
-
 def set_requset_axios(request, num_host):
     data_request = json.loads(request.body.decode("utf-8"))
 
@@ -389,6 +389,47 @@ def get_configuration_controller_management(request):
     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
 
 
+def get_configuration_controller_management_ax(request):
+    print(f'get_configuration_controller_management_ax')
+    # print(f'test_body1: {json.loads(request.body.decode("utf-8"))}')
+
+    if request.GET:
+        get_dict = request.GET.dict()
+        print(f'get_dict {get_dict}')
+        name = get_dict.get('name_configuration')
+
+        w = ControllerManagement.objects.get(name=name)
+
+        print(w.data)
+        print(f'type(w.data) = {type(w.data)}')
+
+        # data = {
+        #     'data': [{1: w.data}, {2: 'fdf;10.23.'}],
+        #
+        # }
+        data = {
+            'data': json.loads(w.data),
+            'num_visible_hosts': json.loads(w.num_visible_hosts),
+            'result': True
+        }
+    else:
+        data = {'result': False}
+
+    return JsonResponse(data)
+
+
+def get_names_configuration_controller_management_ax(request):
+
+    first_option = 'Выбор конфигурации'
+    names = {k: v if k > 0 else first_option
+             for k, v in enumerate([el.name for el in ControllerManagement.objects.all()])}
+    print(f'nameees --> {names}')
+
+    return JsonResponse(names)
+
+
+
+
 def save_configuration_snmp(request):
     if request.POST:
 
@@ -414,6 +455,59 @@ def save_configuration_snmp(request):
     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
 
 
+def save_configuration_controller_management_axios(request):
+
+    data_request = json.loads(request.body.decode("utf-8")).get('data')
+    print(f'data_request SV_AXIOS: {data_request} ')
+
+    name = data_request.pop('name')
+    num_visible_hosts = data_request.pop('num_visible_hosts')
+    configuration = ControllerManagement(name=name, data=json.dumps(data_request, ensure_ascii=False),
+                                         num_visible_hosts=num_visible_hosts,
+                                         category=1)
+
+    try:
+        configuration.save()
+        result = True
+    except Exception as err:
+        print('error ' + str(err))
+        result = False
+
+    qset = ControllerManagement.objects.filter(name=name)
+    res = json.loads(qset[0].data) if len(qset) == 1 else 'null'
+    res['num_visible_hostsSSs'] = qset[0].num_visible_hosts
+
+    print(f'res__: {res}')
+    print(f'res__ typy: {type(res)}')
+
+
+
+
+
+    # if request.POST:
+    #
+    #     print('save_snmp_curr_configuration')
+    #     post_dict = request.POST.dict()
+    #     print(f'request.POST.dict(): {post_dict}')
+    #
+    #     name = post_dict.pop('name')
+    #     num_visible_hosts = post_dict.pop('num_visible_hosts')
+    #     configuration = ControllerManagement(name=name, data=post_dict,
+    #                                          num_visible_hosts=num_visible_hosts,
+    #                                          category=1)
+    #     try:
+    #         configuration.save()
+    #         result = True
+    #     except Exception as err:
+    #         print('error ' + str(err))
+    #         result = False
+    # else:
+    #     result = False
+    # res = {'result': res}
+
+    return JsonResponse(res)
+
+
 def my_python_function(request):  # Ваш код Python здесь
     response_data = {'message': 'Функция Python вызвана успешно!'}
     print(response_data)
@@ -436,12 +530,36 @@ def about(request):
     return render(request, 'toolkit/about.html', {'title': 'О сайте', 'menu_header': menu_header})
 
 
+# def manage_snmp(request):
+#     first_row_settings = {'label_settings': 'Настройки ДК', 'ip': 'IP-адресс', 'scn': 'SCN', 'protocol': 'Протокол'}
+#     second_row_get = {'controller_data': 'Информация с ДК', 'label_get_data': 'Получать данные с ДК',
+#                       'label_data': 'Данные с ДК'}
+#     third_row_set = {'set_btn': 'Отправить'}
+#     form = ControllerManagementData()
+#
+#     # print(BASE_DIR / 'data/db.sqlite3')
+#
+#     host_data = {
+#         'first_row_settings': first_row_settings,
+#         'second_row_get': second_row_get,
+#         'third_row_set': third_row_set,
+#         'num_hosts': [i for i in range(1, 31)],
+#         'data_form': form,
+#         'title': 'Управление контроллером',
+#         'flag SHARED_DESKTOP': SHARED_DESKTOP
+#     }
+#
+#     return render(request, 'toolkit/manage_snmp.html', context=host_data)
+
+
 def manage_snmp(request):
     first_row_settings = {'label_settings': 'Настройки ДК', 'ip': 'IP-адресс', 'scn': 'SCN', 'protocol': 'Протокол'}
     second_row_get = {'controller_data': 'Информация с ДК', 'label_get_data': 'Получать данные с ДК',
                       'label_data': 'Данные с ДК'}
     third_row_set = {'set_btn': 'Отправить'}
     form = ControllerManagementData()
+    lst = [el.name for el in ControllerManagement.objects.all()]
+    print(f'w:{lst}')
 
     # print(BASE_DIR / 'data/db.sqlite3')
 
@@ -451,6 +569,7 @@ def manage_snmp(request):
         'third_row_set': third_row_set,
         'num_hosts': [i for i in range(1, 31)],
         'data_form': form,
+        'lst': lst,
         'title': 'Управление контроллером',
         'flag SHARED_DESKTOP': SHARED_DESKTOP
     }

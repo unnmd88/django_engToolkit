@@ -22,6 +22,7 @@ $(document).ready(function(){
 
     // sendReqGetData();
     sendReqGetDataAxios();
+    get_name_configs();
 
     $(`#table_1`).show();
 });
@@ -105,6 +106,8 @@ $(`select[name=select_protocols]`).change( function () {
     let protocol = $(`#protocol_${num_host} option:selected`).text();
     make_commands(num_host, protocol);
 });
+
+
  
 /*------------------------------------------------------------------------
 |                     Функции для обработчиков событий                   |
@@ -252,54 +255,107 @@ $("#send_data_to_db").click( function() {
     if (!confirm('Хотите добавить текущие настройки хостов в базу данных ?')) {
         return false;
     }
-    send_data_to_db();
+    send_data_to_db_ax();
     } 
 )
 
 $("#get_data_from_db").click( function() {
     alert('sdfsfdsb');
-    get_data_from_db();
+    get_data_from_db_ax();
     } 
 )
 
-// Функция загрузки конфигурации из бд
-function get_data_from_db () {
-    $.ajax({
-        // $(`#protocol_${num_host} option:selected`).text()
-        type: "POST",
-        url: `get-configuration-controller-management/`,
-        data: {
-            name_configuration: $(`#id_configuration_from_db option:selected`).text()
-        },
-        headers: {
-            'X-CSRFToken': $("input[name=csrfmiddlewaretoken]").val(),
-        },
-    
-        dataType: 'text',
-        cache: false,
-        success: function (data) {
-        // console.log(data)
-        
-        let postStringify = JSON.parse(data);
-        // console.log(postStringify);
+// Обработчик нажатия на выпадающий список "загрзить конфигурацию из дб"
+// $(`select[name=conf_from_db]`).click( function () {
+//     get_name_configs();
+// });
 
-        let visible_hosts, datahosts;
-        visible_hosts = postStringify.num_visible_hosts;
-        datahosts = postStringify.data.replace(/'/ig, '"');
-        datahosts = JSON.parse(datahosts);
-        console.log(datahosts);
+async function get_name_configs() {
+    // let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
+    try {
+        const response = await axios.get(`get-names-configuration-controller-management-ax/`);
 
-        write_data_from_db_to_all_hosts(visible_hosts, datahosts);
-        alert('Конфигурация загружена из БД');   
+        console.log('response.data');
+        console.log(response.data);
 
+        $(`#configuration_from_db option`).remove();
+        for (const [num_host, write_data] of Object.entries(response.data)) {
+            $(`#configuration_from_db`).append(`<option value="${num_host}">${write_data}</option>`);
+          }
+
+      } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
         }
-    });
+        console.log(error.config);
+      }
+    
+ }
+
+// Функция получает данные настроек хостов из БД и записывает их в соответствующие теги
+async function get_data_from_db_ax() {
+
+    let name = $(`#configuration_from_db option:selected`).text();
+    try {
+        const response = await axios.get(            
+            `get-configuration-controller-management-ax/`,
+            {
+                params: {
+                    name_configuration: name,
+                },
+            },
+
+        );
+        console.log('response.data');
+        console.log(response.data);
+        // get_name_configs();
+        
+        let resp_data = response.data;
+        console.log('visible_hosts.data');
+        console.log(resp_data);
+        console.log(resp_data['num_visible_hosts']);
+        console.log(resp_data['data']);
+
+        write_data_from_db_to_all_hosts(resp_data['num_visible_hosts'], resp_data['data']);
+        if (resp_data.result) {
+            alert(`Конфигурация "${name}" загружена из БД`); 
+        }
+        else {
+            alert(`Сбой при загрузке конфигурация "${name}" из БД`); 
+        } 
+
+        // let data_to_write = response.data;
+
+        // for (const [num_host, write_data] of Object.entries(response.data)) {
+        //     $(`#datahost_${num_host}`).text(write_data);
+        //   }
+
+
+      } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      }
     
  }
 
  // Функция записывает данные в теги инфу из бд
  function write_data_from_db_to_all_hosts (visible_hosts, datahosts) {
     let splited_data;
+
     $.each(datahosts, function(cur_host, write_data) {
         splited_data = write_data.split(';');
         // console.log(splited_data);
@@ -318,8 +374,8 @@ function get_data_from_db () {
  }
 
 // Функция проверяет валидность введённого имени в тектовое поле name_configuration_datahosts
-function check_valid_data_send_to_db () {
-    if ($("#name_configuration_datahosts").val().replace(/ /g,'').length < 3) {
+function check_valid_data_send_to_db (val_name) {
+    if (val_name.replace(/ /g,'').length < 3) {
         return false;
     }        
     return true;
@@ -346,35 +402,74 @@ function collect_data_from_all_hosts () {
 
 }
 
-// Скрипт отправки данных конфигурации в БД
- function send_data_to_db () {
-    if (!check_valid_data_send_to_db()) {
+// Асинхронный скрипт отправки данных конфигурации в БД
+ async function send_data_to_db_ax () {
+
+    const name_configuration = document.querySelector('#name_configuration_datahosts').value;
+
+    if (!check_valid_data_send_to_db(name_configuration)) {
         alert('Название конфигурации должно быть более 3 символов');
         return false;
     }
 
-    $.ajax({
-        
-        type: "POST",
-        url: `save-configuration-controller-management/`,
-        data: collect_data_from_all_hosts(),
-        headers: {
-            'X-CSRFToken': $("input[name=csrfmiddlewaretoken]").val(),
-        },
-        dataType: 'text',
-        cache: false,
-        success: function (data) {
-        let result = JSON.parse(data);
-        if (result.result) {
-            alert('Конфигурация успешно сохранена');
-        }    
-        // console.log(result);
-        // console.log(result.result);
-            }
-        }
-    );
- }
+    let select_vals = document.querySelectorAll('#configuration_from_db option');
+    console.log('select_vals');
+    console.log(select_vals);
 
+    for (let element of select_vals) {
+        if (element.text === name_configuration) {
+            console.log(`Конфигурация с таким названием "${element.text}" уже есть`);
+            return false;
+        }
+        
+    }
+
+    let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
+    try {
+        const response = await axios.post(            
+            `save-configuration-controller-management-ax/`,
+            {
+              data: collect_data_from_all_hosts(),
+            },
+            {  
+              headers: {
+              "X-CSRFToken": csrfToken, 
+              "content-type": "application/json"
+              }
+            }
+        );
+
+        if (response.result) {
+            alert('Конфигурация успешно сохранена');
+        }
+        else {
+            alert('Сбой при сохранении конфигурации');
+        }  
+        console.log('response.data');
+        console.log(typeof(response.data));
+        console.log(response.data);
+        
+        // let data_to_write = response.data;
+
+        for (const [num_host, write_data] of Object.entries(response.data)) {
+            $(`#datahost_${num_host}`).text(write_data);
+          }
+
+
+      } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      }
+    
+ }
 
  /*------------------------------------------------------------------------
 |                         GET CURRENT STATE                               |
@@ -397,64 +492,7 @@ function collect_data_from_hosts (){
     return data;
     }
 
-function sendReqGetData () {
-    let num_checked_checkbox = $('.receive_data:checked').length;
-    if (num_checked_checkbox > 0) {
-       
-          
-        $.ajax({
-        type: "GET",
-        url: `get-data-snmp/1/`,
-        data: collect_data_from_hosts(),
-    
-        dataType: 'text',
-        cache: false,
-        success: function (data) {
-        // console.log(data)
-        let postStringify = JSON.parse(data);
-        console.log(postStringify);
-    
-        $.each(postStringify, function(num_host, write_data) {
-            $(`#datahost_${num_host}`).text(write_data);
-        });
-    
-        let val_interval = +$('#polling_get_interval').val();       
-        if(Number.isInteger(val_interval)) {
-            val_interval = +val_interval;
-            if (val_interval === 0) {
-                setTimeout(sendReqGetData, 1000);
-            }
-            else {
-                val_interval = val_interval * 1000;
-                setTimeout(sendReqGetData, val_interval);
-            }        
-        }
-        else {
-            setTimeout(sendReqGetData, 1000);
-        }    
-        // console.log(val_interval)
-        // console.log('recursion')
-        }
-        });
-    }
 
-    else {
-        let val_interval = +$('#polling_get_interval').val();
-        if(Number.isInteger(val_interval)) {
-            val_interval = +val_interval;
-            if (val_interval === 0) {
-                setTimeout(sendReqGetData, 1000);
-            }
-            else {
-                val_interval = val_interval * 1000;
-                setTimeout(sendReqGetData, val_interval);
-            }        
-        }
-        else {
-            setTimeout(sendReqGetData, 1000);
-        }   
-    } 
-}
 
 
 async function sendReqGetDataAxios() {
@@ -478,14 +516,7 @@ async function sendReqGetDataAxios() {
             for (const [num_host, write_data] of Object.entries(response.data)) {
                 $(`#datahost_${num_host}`).text(write_data);
               }
-
-            // $.each(data_to_write, function(num_host, write_data) {
-            //     $(`#datahost_${num_host}`).text(write_data);
-            // });
-    
-
-    
-    
+   
     
           } catch (error) {
             if (error.response) { // get response with a status code not in range 2xx
@@ -763,3 +794,143 @@ function set_request_axios (num_host) {
             console.log(error)
           });
     }
+
+
+
+/*
+------------------------------------------------
+*****               ARCHIVE                *****
+------------------------------------------------
+
+// Функция получния данных о режиме ДК ajax(требует запуска при загрузке страницы)
+
+// function sendReqGetData () {
+//     let num_checked_checkbox = $('.receive_data:checked').length;
+//     if (num_checked_checkbox > 0) {
+       
+          
+//         $.ajax({
+//         type: "GET",
+//         url: `get-data-snmp/1/`,
+//         data: collect_data_from_hosts(),
+    
+//         dataType: 'text',
+//         cache: false,
+//         success: function (data) {
+//         // console.log(data)
+//         let postStringify = JSON.parse(data);
+//         console.log(postStringify);
+    
+//         $.each(postStringify, function(num_host, write_data) {
+//             $(`#datahost_${num_host}`).text(write_data);
+//         });
+    
+//         let val_interval = +$('#polling_get_interval').val();       
+//         if(Number.isInteger(val_interval)) {
+//             val_interval = +val_interval;
+//             if (val_interval === 0) {
+//                 setTimeout(sendReqGetData, 1000);
+//             }
+//             else {
+//                 val_interval = val_interval * 1000;
+//                 setTimeout(sendReqGetData, val_interval);
+//             }        
+//         }
+//         else {
+//             setTimeout(sendReqGetData, 1000);
+//         }    
+//         // console.log(val_interval)
+//         // console.log('recursion')
+//         }
+//         });
+//     }
+
+//     else {
+//         let val_interval = +$('#polling_get_interval').val();
+//         if(Number.isInteger(val_interval)) {
+//             val_interval = +val_interval;
+//             if (val_interval === 0) {
+//                 setTimeout(sendReqGetData, 1000);
+//             }
+//             else {
+//                 val_interval = val_interval * 1000;
+//                 setTimeout(sendReqGetData, val_interval);
+//             }        
+//         }
+//         else {
+//             setTimeout(sendReqGetData, 1000);
+//         }   
+//     } 
+// }
+
+
+
+// Функция загрузки конфигурации из бд
+function get_data_from_db () {
+    $.ajax({
+        // $(`#protocol_${num_host} option:selected`).text()
+        type: "POST",
+        url: `get-configuration-controller-management/`,
+        data: {
+            name_configuration: $(`#id_configuration_from_db option:selected`).text()
+        },
+        headers: {
+            'X-CSRFToken': $("input[name=csrfmiddlewaretoken]").val(),
+        },
+    
+        dataType: 'text',
+        cache: false,
+        success: function (data) {
+        // console.log(data)
+        
+        let postStringify = JSON.parse(data);
+        // console.log(postStringify);
+
+        let visible_hosts, datahosts;
+        visible_hosts = postStringify.num_visible_hosts;
+        datahosts = postStringify.data.replace(/'/ig, '"');
+        datahosts = JSON.parse(datahosts);
+        console.log(datahosts);
+
+        write_data_from_db_to_all_hosts(visible_hosts, datahosts);
+        alert('Конфигурация загружена из БД');   
+
+        }
+    });
+    
+ }
+
+
+
+// Скрипт отправки данных конфигурации в БД
+ function send_data_to_db () {
+    if (!check_valid_data_send_to_db()) {
+        alert('Название конфигурации должно быть более 3 символов');
+        return false;
+    }
+
+    $.ajax({        
+        type: "POST",
+        url: `save-configuration-controller-management/`,
+        data: collect_data_from_all_hosts(),
+        headers: {
+            'X-CSRFToken': $("input[name=csrfmiddlewaretoken]").val(),
+        },
+        dataType: 'text',
+        cache: false,
+        success: function (data) {
+        let result = JSON.parse(data);
+        if (result.result) {
+            alert('Конфигурация успешно сохранена');
+        }    
+        // console.log(result);
+        // console.log(result.result);
+            }
+        }
+    );
+ }
+
+
+
+
+*/

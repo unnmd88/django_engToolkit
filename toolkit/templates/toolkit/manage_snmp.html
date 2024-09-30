@@ -10,6 +10,8 @@
 
 {% endif %}
 
+{{ lst }}
+
 <h1 class="manage_snmp">{{ title }}</h1>
 
 <table border="3">
@@ -34,31 +36,33 @@
 
 <br>
 
-<div>
+<!-- <div>
     {% csrf_token %}
-        <button id="send_data_to_db"> Добавить текущую конфигурацию в базу </button>  <input type="text" id="name_configuration_datahosts" maxlength="20">
-</div>
+        
+</div> -->
+{% csrf_token %}
 
-<div>
-        {% csrf_token %}       
-        {{ data_form }} 
-        <button id="get_data_from_db"> Загрузить конфигурацию из базы </button>
-</div>
+<table>
+        <tr>
+        <td><button id="get_data_from_db"> Загрузить конфигурацию из базы </button></td>
+        <td><select name="conf_from_db" id="configuration_from_db"> </select></td>
+        </tr>
 
-
+        <tr>
+        <td><button id="send_data_to_db"> Добавить текущую конфигурацию в базу </button> </td>
+        <td> <input type="text" id="name_configuration_datahosts" maxlength="20" placeholder="Введите название"> </td>
+        </tr>
+</table>
+<br>
 <div>   
         <label for="get_data_for_all_hosts">Отметить/снять "Получать данные с ДК" для всех хостов</label>
         <input type="checkbox" id="get_data_for_all_hosts"></input>
 
 </div>
 
-
-
-<br>
-
+<br> <br>
 
 {% for num_host in num_hosts %}
-
 
 <table id="table_{{num_host}}" border="1" bgcolor="pink" cellpadding="8" cellspacing="4" align="center" hidden="">
         <caption align="right"> Хост {{ num_host }} </caption>

@@ -39,8 +39,18 @@ urlpatterns = [
     path(r"manage_snmp/set-snmp-ajax/<int:num_host>/", views.set_snmp_ajax, name='set-snmp-ajax'),
     path(r"manage_snmp/save-configuration-controller-management/", views.save_configuration_snmp,
          name='save_configuration_snmp'),
+    path(r"manage_snmp/save-configuration-controller-management-ax/", views.save_configuration_controller_management_axios,
+         name='save_configuration_controller_management_axios'),
     path(r"manage_snmp/get-configuration-controller-management/", views.get_configuration_controller_management,
          name='get_configuration_controller_management'),
+    path(r"manage_snmp/get-configuration-controller-management-ax/", views.get_configuration_controller_management_ax,
+         name='get_configuration_controller_management_ax'),
+    path(r"manage_snmp/get-names-configuration-controller-management-ax/", views.get_names_configuration_controller_management_ax,
+         name='get_names_configuration_controller_management_ax'),
+
+
+
+
 
     path('api/v1/traffilight_objects/', TrafficLightsAPIVeiw.as_view())
 
