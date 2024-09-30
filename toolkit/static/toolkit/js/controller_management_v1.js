@@ -304,7 +304,7 @@ async function get_data_from_db_ax() {
     let name = $(`#configuration_from_db option:selected`).text();
     try {
         const response = await axios.get(            
-            `api/v1/get-configuration-controller-management-ax/`,
+            `/api/v1/get-configuration-controller-management-ax/`,
             {
                 params: {
                     name_configuration: name,
@@ -440,8 +440,8 @@ function collect_data_from_all_hosts () {
         );
 
         const res = response.data;
-        console.log('res[result]');
-        console.log(res['result']);
+        // console.log('res[result]');
+        // console.log(res['result']);
         if (res['result']) {
             alert('Конфигурация успешно сохранена');
             get_name_configs();
@@ -682,6 +682,11 @@ function sendRequstCommon (num_host) {
     let num_host = $(this).attr('id').split('_')[1];;
     // console.log($(this).attr('id'));
 
+
+    set_request_axios (num_host);
+    return false;
+
+
     console.log(num_host);
     let data_request = {};
     // data[num_host] = (`${$('#ip_' + num_host).val()};
@@ -783,12 +788,17 @@ function set_request_axios (num_host) {
 
         axios({
             method: 'post',
-            url: `set-data-snmp-ax/${num_host}/`,
+            url: `/api/v1/set-data-snmp-ax/${num_host}/`,
             data: data_request,
             headers: {
               "X-CSRFToken": $("input[name=csrfmiddlewaretoken]").val(), 
-              "content-type": "application/json"
-            }
+            //   "content-type": "application/json"
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+            },
+            auth: {
+                username: 'janedoe',
+                password: 's00pers3cret'
+              },
           }).then(function (response) {
             console.log(`response`);
             // console.log(response);

@@ -256,13 +256,19 @@ def get_mode_axios(request, num_host):
 
 
 def set_requset_axios(request, num_host):
-    data_request = json.loads(request.body.decode("utf-8"))
 
-    print(f'data_request json: {data_request}')
-    print(f'type data_request json: {type(data_request)}')
+    # try:
+    #     data_request = json.loads(request.body.decode("utf-8"))
+    #
+    # except:
+    #     pass
+
+
+    print(request.POST)
+    print(request.POST.dict())
 
     try:
-        for num_host, data_request in data_request.items():
+        for num_host, data_request in request.POST.dict().items():
             data_request = data_request.split(';')
             if len(data_request) != 5:
                 continue
