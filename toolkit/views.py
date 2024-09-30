@@ -286,110 +286,110 @@ def set_requset_axios(request, num_host):
     return JsonResponse(result)
 
 
-def get_snmp_ajax(request, num_host):
-    print(f'request.GET: {request.GET}')
-    print(f'request: {request}')
-    get_dict = request.GET.dict()
-    print(f'get_dict: {get_dict}')
-
-    if request.GET:
-        objects_methods = []
-        get_data_manager = controller_management.GetDataControllerManagement()
-        for num_host, data_request in get_dict.items():
-            data_request = data_request.split(';')
-            if len(data_request) != 3:
-                continue
-            ip_adress, controller_type, scn = data_request
-            controller_type_request = get_type_object_get_request(controller_type.upper())
-            obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
-            objects_methods.append(obj.get_current_mode)
-        raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
-        processed_data = get_data_manager.data_processing(raw_data_from_controllers)
-    else:
-        print('nnnnnooo')
-        return HttpResponse(json.dumps('Error: Failed to get data'), content_type='text/html')
-
-    return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
-
-
-def set_snmp_ajax(request, num_host):
-    print(f'set_snmp_ajax')
-    result = None
-    if request.POST:
-
-        set_stage = ('ФАЗА MAN', 'ФАЗА SNMP')
-        set_flash = ('ЖМ MAN', 'ЖМ SNMP')
-        set_dark = ('ОС MAN', 'ОС SNMP')
-
-        set_dict = request.POST.dict()
-        print(f'set_dict: {set_dict}')
-        for num_host, data_request in set_dict.items():
-            data_request = data_request.split(';')
-            if len(data_request) != 5:
-                continue
-            ip_adress, type_of_controller, scn, command, value = data_request
-            command, type_of_controller = command.upper(), type_of_controller.upper()
-            type_of_controller_management = get_type_object_set_request(type_of_controller, command)
-            host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
-            print(f'host -> {host}')
-
-            if command in set_stage:
-                if inspect.iscoroutinefunction(host.set_stage):
-                    result = asyncio.run(host.set_stage(value))
-                else:
-                    result = host.set_stage(value)
-                print('command in set_stage')
-            elif command in set_flash:
-                if inspect.iscoroutinefunction(host.set_flash):
-                    result = asyncio.run(host.set_flash(value))
-                else:
-                    result = host.set_flash(value)
-                print('command in host.set_flash(value)')
-            elif command in set_dark:
-                if inspect.iscoroutinefunction(host.set_dark):
-                    result = asyncio.run(host.set_dark(value))
-                else:
-                    result = host.set_dark(value)
-                print('command in host.set_dark(value)')
-            elif command == 'ВВОДЫ':
-                result = host.session_manager(inputs=(inp for inp in value.split(',')))
-
-        res = {num_host: result}
-
-    else:
-        res = {num_host: 'error_set_request'}
-
-    print(f'set_snmp_ajax перед return')
-
-    return HttpResponse(json.dumps(res, ensure_ascii=False), content_type='text/html')
-
-
-def get_configuration_controller_management(request):
-    if request.POST:
-        set_dict = request.POST.dict()
-        print(f'set_dict {set_dict}')
-        name = set_dict.get('name_configuration')
-
-        w = ControllerManagement.objects.get(name=name)
-
-        print(w.data)
-        print(f'type(w.data) = {type(w.data)}')
-
-        # data = {
-        #     'data': [{1: w.data}, {2: 'fdf;10.23.'}],
-        #
-        # }
-        data = {
-            'data': w.data,
-            'num_visible_hosts': w.num_visible_hosts,
-        }
-    else:
-        data = {'data': False}
-
-    return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+# def get_snmp_ajax(request, num_host):
+#     print(f'request.GET: {request.GET}')
+#     print(f'request: {request}')
+#     get_dict = request.GET.dict()
+#     print(f'get_dict: {get_dict}')
+#
+#     if request.GET:
+#         objects_methods = []
+#         get_data_manager = controller_management.GetDataControllerManagement()
+#         for num_host, data_request in get_dict.items():
+#             data_request = data_request.split(';')
+#             if len(data_request) != 3:
+#                 continue
+#             ip_adress, controller_type, scn = data_request
+#             controller_type_request = get_type_object_get_request(controller_type.upper())
+#             obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
+#             objects_methods.append(obj.get_current_mode)
+#         raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
+#         processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+#     else:
+#         print('nnnnnooo')
+#         return HttpResponse(json.dumps('Error: Failed to get data'), content_type='text/html')
+#
+#     return HttpResponse(json.dumps(processed_data, ensure_ascii=False), content_type='text/html')
+#
+#
+# def set_snmp_ajax(request, num_host):
+#     print(f'set_snmp_ajax')
+#     result = None
+#     if request.POST:
+#
+#         set_stage = ('ФАЗА MAN', 'ФАЗА SNMP')
+#         set_flash = ('ЖМ MAN', 'ЖМ SNMP')
+#         set_dark = ('ОС MAN', 'ОС SNMP')
+#
+#         set_dict = request.POST.dict()
+#         print(f'set_dict: {set_dict}')
+#         for num_host, data_request in set_dict.items():
+#             data_request = data_request.split(';')
+#             if len(data_request) != 5:
+#                 continue
+#             ip_adress, type_of_controller, scn, command, value = data_request
+#             command, type_of_controller = command.upper(), type_of_controller.upper()
+#             type_of_controller_management = get_type_object_set_request(type_of_controller, command)
+#             host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
+#             print(f'host -> {host}')
+#
+#             if command in set_stage:
+#                 if inspect.iscoroutinefunction(host.set_stage):
+#                     result = asyncio.run(host.set_stage(value))
+#                 else:
+#                     result = host.set_stage(value)
+#                 print('command in set_stage')
+#             elif command in set_flash:
+#                 if inspect.iscoroutinefunction(host.set_flash):
+#                     result = asyncio.run(host.set_flash(value))
+#                 else:
+#                     result = host.set_flash(value)
+#                 print('command in host.set_flash(value)')
+#             elif command in set_dark:
+#                 if inspect.iscoroutinefunction(host.set_dark):
+#                     result = asyncio.run(host.set_dark(value))
+#                 else:
+#                     result = host.set_dark(value)
+#                 print('command in host.set_dark(value)')
+#             elif command == 'ВВОДЫ':
+#                 result = host.session_manager(inputs=(inp for inp in value.split(',')))
+#
+#         res = {num_host: result}
+#
+#     else:
+#         res = {num_host: 'error_set_request'}
+#
+#     print(f'set_snmp_ajax перед return')
+#
+#     return HttpResponse(json.dumps(res, ensure_ascii=False), content_type='text/html')
 
 
-def get_configuration_controller_management_ax(request):
+# def get_configuration_controller_management(request):
+#     if request.POST:
+#         set_dict = request.POST.dict()
+#         print(f'set_dict {set_dict}')
+#         name = set_dict.get('name_configuration')
+#
+#         w = ControllerManagement.objects.get(name=name)
+#
+#         print(w.data)
+#         print(f'type(w.data) = {type(w.data)}')
+#
+#         # data = {
+#         #     'data': [{1: w.data}, {2: 'fdf;10.23.'}],
+#         #
+#         # }
+#         data = {
+#             'data': w.data,
+#             'num_visible_hosts': w.num_visible_hosts,
+#         }
+#     else:
+#         data = {'data': False}
+#
+#     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+
+
+def get_configuration_controller_management_axios(request):
     print(f'get_configuration_controller_management_ax')
     # print(f'test_body1: {json.loads(request.body.decode("utf-8"))}')
 
@@ -418,7 +418,7 @@ def get_configuration_controller_management_ax(request):
     return JsonResponse(data)
 
 
-def get_names_configuration_controller_management_ax(request):
+def get_names_configuration_controller_management_axios(request):
 
     first_option = 'Выбор конфигурации'
     names = {k: v if k > 0 else first_option
@@ -430,29 +430,29 @@ def get_names_configuration_controller_management_ax(request):
 
 
 
-def save_configuration_snmp(request):
-    if request.POST:
-
-        print('save_snmp_curr_configuration')
-        post_dict = request.POST.dict()
-        print(f'request.POST.dict(): {post_dict}')
-
-        name = post_dict.pop('name')
-        num_visible_hosts = post_dict.pop('num_visible_hosts')
-        configuration = ControllerManagement(name=name, data=post_dict,
-                                             num_visible_hosts=num_visible_hosts,
-                                             category=1)
-        try:
-            configuration.save()
-            result = True
-        except Exception as err:
-            print('error ' + str(err))
-            result = False
-    else:
-        result = False
-
-    data = {'result': result}
-    return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
+# def save_configuration_snmp(request):
+#     if request.POST:
+#
+#         print('save_snmp_curr_configuration')
+#         post_dict = request.POST.dict()
+#         print(f'request.POST.dict(): {post_dict}')
+#
+#         name = post_dict.pop('name')
+#         num_visible_hosts = post_dict.pop('num_visible_hosts')
+#         configuration = ControllerManagement(name=name, data=post_dict,
+#                                              num_visible_hosts=num_visible_hosts,
+#                                              category=1)
+#         try:
+#             configuration.save()
+#             result = True
+#         except Exception as err:
+#             print('error ' + str(err))
+#             result = False
+#     else:
+#         result = False
+#
+#     data = {'result': result}
+#     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
 
 
 def save_configuration_controller_management_axios(request):
@@ -473,12 +473,12 @@ def save_configuration_controller_management_axios(request):
         print('error ' + str(err))
         result = False
 
-    qset = ControllerManagement.objects.filter(name=name)
-    res = json.loads(qset[0].data) if len(qset) == 1 else 'null'
-    res['num_visible_hostsSSs'] = qset[0].num_visible_hosts
-
-    print(f'res__: {res}')
-    print(f'res__ typy: {type(res)}')
+    # qset = ControllerManagement.objects.filter(name=name)
+    # res = json.loads(qset[0].data) if len(qset) == 1 else 'null'
+    # res['num_visible_hostsSSs'] = qset[0].num_visible_hosts
+    #
+    # print(f'res__: {res}')
+    # print(f'res__ typy: {type(res)}')
 
 
 
@@ -505,7 +505,7 @@ def save_configuration_controller_management_axios(request):
     #     result = False
     # res = {'result': res}
 
-    return JsonResponse(res)
+    return JsonResponse({'result': result})
 
 
 def my_python_function(request):  # Ваш код Python здесь

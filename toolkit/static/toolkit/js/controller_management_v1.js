@@ -273,7 +273,7 @@ $("#get_data_from_db").click( function() {
 async function get_name_configs() {
     // let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
     try {
-        const response = await axios.get(`get-names-configuration-controller-management-ax/`);
+        const response = await axios.get(`/api/v1/get-names-configuration-controller-management-ax/`);
 
         console.log('response.data');
         console.log(response.data);
@@ -304,7 +304,7 @@ async function get_data_from_db_ax() {
     let name = $(`#configuration_from_db option:selected`).text();
     try {
         const response = await axios.get(            
-            `get-configuration-controller-management-ax/`,
+            `api/v1/get-configuration-controller-management-ax/`,
             {
                 params: {
                     name_configuration: name,
@@ -427,7 +427,7 @@ function collect_data_from_all_hosts () {
     let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
     try {
         const response = await axios.post(            
-            `save-configuration-controller-management-ax/`,
+            `/api/v1/save-configuration-controller-management-ax/`,
             {
               data: collect_data_from_all_hosts(),
             },
@@ -439,8 +439,12 @@ function collect_data_from_all_hosts () {
             }
         );
 
-        if (response.result) {
+        const res = response.data;
+        console.log('res[result]');
+        console.log(res['result']);
+        if (res['result']) {
             alert('Конфигурация успешно сохранена');
+            get_name_configs();
         }
         else {
             alert('Сбой при сохранении конфигурации');
