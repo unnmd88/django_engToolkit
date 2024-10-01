@@ -36,8 +36,7 @@ urlpatterns = [
 
     # path("manage_snmp/get-data-snmp-ax/<int:num_host>/", views.get_mode_axios, name='get_mode_axios'),
     path("api/v1/get-data-from-controller-ax/", GetDataFromControllerAPIView.as_view()),
-
-    path("api/v1/set-request-to-controller-ax/<int:num_host>/", SetRequestToControllerAPIView.as_view()),
+    path("api/v1/set-request-to-controller-ax/", SetRequestToControllerAPIView.as_view()),
 
 
     # path("manage_snmp/set-data-snmp-ax/<int:num_host>/", views.set_requset_axios, name='set_requset_axios'),

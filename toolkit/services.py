@@ -1,7 +1,10 @@
 import asyncio
 import inspect
+import json
 from enum import Enum
+
 from toolkit.sdp_lib import controller_management
+
 
 
 class AvailableControllers(Enum):
@@ -53,9 +56,16 @@ class GetDataFromController:
 
 
 class SetRequestToController:
+
     def __init__(self, request):
         self.request = request
-        self.data_request = request.POST.dict()
+        # self.data_request = json.loads(request.body.decode("utf-8")).get('data')
+        # print(f'self.data_request: {self.data_request}')
+        # print(f'self.request: {self.request}')
+        self.data_request = request.data.get('data')
+
+        print(f'request.data = self.data_request: {self.data_request}')
+        # self.data_request = request.POST.dict()
 
     def set_command_request(self):
 
@@ -63,7 +73,7 @@ class SetRequestToController:
         set_flash = ('ЖМ MAN', 'ЖМ SNMP')
         set_dark = ('ОС MAN', 'ОС SNMP')
 
-        result = None
+        result = msg = num_host = None
 
         for num_host, data_request in self.data_request.items():
             data_request = data_request.split(';')
@@ -77,7 +87,8 @@ class SetRequestToController:
 
             if command in set_stage:
                 if inspect.iscoroutinefunction(host.set_stage):
-                    result = asyncio.run(host.set_stage(value))
+                    isError = asyncio.run(host.set_stage(value))
+                    result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_stage(value)
                 print('command in set_stage')
@@ -96,7 +107,7 @@ class SetRequestToController:
             elif command == 'ВВОДЫ':
                 result = host.session_manager(inputs=(inp for inp in value.split(',')))
 
-        return result
+        return num_host, result, msg
 
     def get_type_object_set_request(self, controller_type, command):
 
@@ -122,3 +133,27 @@ class SetRequestToController:
                 return controller_management.AvailableProtocolsManagement.PEEK_UG405.value
             elif MAN in command or INPUTS in command:
                 return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
+
+    def get_result_command(self, res, host):
+
+        messages = {
+            'success': 'Команда успешно отправлена',
+            'No SNMP response received before timeout': 'Хост недоступен',
+            'common': 'Ошибка отправки команды'
+        }
+
+        if isinstance(host, controller_management.SwarcoSSH):
+            if res is None:
+                result, msg = False, messages.get('common')
+            else:
+                result, msg = True, res
+        elif isinstance(host, (controller_management.PotokS, controller_management.PotokP,
+                        controller_management.SwarcoSTCIP, controller_management.PeekUG405)):
+            if res is None or not res:
+                result, msg = True, messages.get('success')
+            else:
+                result, msg = False, messages.get(res.__str__(), messages.get('common'))
+        else:
+            result = msg = None
+
+        return result, msg

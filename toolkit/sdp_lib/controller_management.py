@@ -14,7 +14,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-
 """*******************************************************************
 ***                          GET-REQUEST                          ****   
 **********************************************************************
@@ -726,7 +725,6 @@ class SwarcoSTCIP(BaseSTCIP):
         await self.set_swarcoUTCTrafftechPlanCommand(value)
 
 
-
 class PotokS(BaseSTCIP):
     get_val_stage = {
         str(k): str(v) for k, v in zip(range(2, 66), range(1, 65))
@@ -761,8 +759,10 @@ class PotokS(BaseSTCIP):
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent), ),
         )
 
-        if varBinds and len(varBinds) >= 4:
+        if errorIndication is None and varBinds and len(varBinds) >= 4:
             return self, self.num_host, varBinds
+        else:
+            return self, self.num_host, False
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """
@@ -844,13 +844,14 @@ class PotokS(BaseSTCIP):
             value = '0'
         else:
             value = self.set_val_stage.get(str(value))
-        await setCmd(
+        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
             CommunityData(self.community),
             UdpTransportTarget((self.ip_adress, 161)),
             ContextData(),
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))
         )
+        return errorIndication
 
     async def set_potokUTCCommandAllRed(self, value=0):
         """"
@@ -884,7 +885,7 @@ class PotokS(BaseSTCIP):
         :param timeout: таймаут подключения
         :param retries: количество попыток подключения
         """
-        await getCmd(
+        await setCmd(
             SnmpEngine(),
             CommunityData(self.community),
             UdpTransportTarget((self.ip_adress, 161), ),
@@ -1565,7 +1566,6 @@ class PeekUG405(BaseUG405):
 
 
 class AvailableProtocolsManagement(Enum):
-
     """ Протоколы управления """
     POTOK_UG405 = 'POTOK_UG405'
     POTOK_STCIP = 'POTOK_STCIP'
@@ -1645,7 +1645,6 @@ class GetDataControllerManagement:
     #     elif controller_type == AvailableControllers.PEEK.value:
     #         return snmp_managemement_v3.PeekUG405(ip_adress, scn, num_host)
 
-
     # def create_set_request(self, num_host, ip_adress, protocol, scn, command, value):
     #
     #     obj = None
@@ -1685,7 +1684,6 @@ class GetDataControllerManagement:
     #     print(result)
     #     return result
 
-
     async def main(self, tasks_inner, option):
         print(tasks_inner)
 
@@ -1706,15 +1704,16 @@ class GetDataControllerManagement:
         print(result)
         return result
 
-
     def data_processing(self, raw_data):
 
         processed_data = {}
 
         for host_data in raw_data:
-            if not host_data:
+            if not host_data and len(host_data) != 3:
                 continue
             obj, num_host, varBinds = host_data
+            if not varBinds:
+                processed_data[num_host] = 'Хост недоступен'
             # print(f'host data --> {host_data}')
             if isinstance(obj, SwarcoSTCIP):
                 processed_data[num_host] = self.make_data_for_swarco(obj, varBinds)
@@ -2181,6 +2180,7 @@ class SwarcoSSH(ConnectionSSH):
         print(res)
         return res
 
+
 """" WEB MANAGEMENT """
 
 
@@ -2241,7 +2241,7 @@ class PeekWeb:
             user_parameters_dict = {inp: val for inp, val in (up.split('=') for up in user_parameters)}
         else:
             user_parameters_dict = None
-        return inps_dict,  user_parameters_dict
+        return inps_dict, user_parameters_dict
 
     def _start_and_login(self):
         """ Метод, в котором производится нажатие в нужные элементы чтобы залогинится """
@@ -2468,7 +2468,6 @@ class PeekWeb:
 
         time.sleep(self.long_pause)
 
-
     def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
         """ Метод создаёт web сессию, в которрй совершаются действия в зависимости от переданных аргументов:
         :param bool increase_the_timeout: увеличивает таймаут с каждым новым вызовом метода у экземпляра
@@ -2492,19 +2491,12 @@ class PeekWeb:
         :param expected_state_for_greenroad: фаза, которую необходимо включить из Engineering_tool_kit_v1.0 "greenroad"
         """
 
-
         if inputs is None and user_parameters is None:
             raise ValueError('inputs и user_parameters могут быть пустыми одновременно')
         elif inputs and not isinstance(inputs, Iterable):
             raise ValueError('inputs должен быть итерируемым объектом')
         elif user_parameters and not isinstance(user_parameters, Iterable):
             raise ValueError('user_parameters должен быть итерируемым объектом')
-
-
-
-
-
-
 
         if increase_the_timeout:
             self.short_pause += 1
@@ -2604,7 +2596,6 @@ class PeekWeb:
         time.sleep(self.middle_pause)
         self.driver.close()
 
-
     def set_stage(self, value, increase_the_timeout=False):
         if increase_the_timeout:
             self.short_pause += 1
@@ -2636,7 +2627,6 @@ class PeekWeb:
         # self.driver.get('http://localhost/')
         # time.sleep(self.middle_pause)
 
-
         time.sleep(self.middle_pause)
 
         span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
@@ -2645,9 +2635,6 @@ class PeekWeb:
         self.driver.refresh()
         time.sleep(self.short_pause)
         self._goto_content_frame(span_inputs)
-
-
-
 
         if value.isdigit() and int(value) in range(1, 9):
             inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
@@ -2658,9 +2645,7 @@ class PeekWeb:
         else:
             return
 
-
         self._manage_set_inputs(inputs, set_man, reset_man)
-
 
     def set_flash(self, value, increase_the_timeout=False):
         if increase_the_timeout:
@@ -2690,7 +2675,6 @@ class PeekWeb:
         # self.driver.get('http://localhost/')
         # time.sleep(self.middle_pause)
 
-
         time.sleep(self.middle_pause)
 
         span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
@@ -2700,7 +2684,6 @@ class PeekWeb:
         time.sleep(self.short_pause)
         self._goto_content_frame(span_inputs)
 
-
         if value.lower() in ('1', 'true', 'set', 'on', 'установить'):
             inputs = {'MPP_FL': 'ВКЛ'}
         elif value.lower() in ('0', 'false', 'reset', 'off', 'сброс'):
@@ -2708,5 +2691,4 @@ class PeekWeb:
         else:
             return
 
-
-        self._manage_set_inputs(inputs,)
+        self._manage_set_inputs(inputs, )

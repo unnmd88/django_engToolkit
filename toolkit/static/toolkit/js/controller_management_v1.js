@@ -654,28 +654,7 @@ async function write_setTimerVal (num_host) {
 }
 }
 
-function sendRequstCommon (num_host) {
-    $.ajax({
 
-        type: "POST",
-        url: `set_snmp_ajax/${num_host}/`,
-        data: {values: 'ТЕСТ ПОСТ ЗАПРОСА',
-               csrfmiddlewaretoken:$("input[name=csrfmiddlewaretoken]").val(),
-        },
-    
-        dataType: 'text',
-        cache: false,
-        success: function (data) {
-        console.log(data)
-        if (data == 'yes'){
-        console.log(data);
-            }
-        else if (data == 'no'){
-                }
-            }
-        }
-    );
- }
 
 // Отправка set request по id кнопки отправить
  $('.set_request').click(function() {
@@ -683,7 +662,8 @@ function sendRequstCommon (num_host) {
     // console.log($(this).attr('id'));
 
 
-    set_request_axios (num_host);
+
+    set_request_axios(num_host);
     return false;
 
 
@@ -735,6 +715,7 @@ function sendRequstCommon (num_host) {
 
 });
 
+// Функиця проверяет валилность данных для отправки команды
 function check_valid_data_hold_request (num_host) {
 
     console.log('зашел в function check_valid_data_hold_request');
@@ -776,10 +757,33 @@ function check_valid_data_hold_request (num_host) {
 };
 
 
+function sendRequstCommon (num_host) {
+    $.ajax({
 
-// Отправка повторного запроса(удержание) с помощью библиотеки axios
+        type: "POST",
+        url: `set_snmp_ajax/${num_host}/`,
+        data: {values: 'ТЕСТ ПОСТ ЗАПРОСА',
+               csrfmiddlewaretoken:$("input[name=csrfmiddlewaretoken]").val(),
+        },
+    
+        dataType: 'text',
+        cache: false,
+        success: function (data) {
+        console.log(data)
+        if (data == 'yes'){
+        console.log(data);
+            }
+        else if (data == 'no'){
+                }
+            }
+        }
+    );
+ }
+
+// Отправка запроса команды с помощью библиотеки axios
 async function set_request_axios(num_host) {
 
+    let res_elem = document.querySelector(`#recieve_data_from_terminal_${num_host}`);
     let data_request = {};
         data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
                                  `${$(`#protocol_${num_host} option:selected`).text()};` + 
@@ -788,27 +792,42 @@ async function set_request_axios(num_host) {
                                  `${$('#setval_' + num_host).val()}`
 
     let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
+    
+
     try {
+        res_elem.textContent = ('Ожидаю ответа...')
         const response = await axios.post(            
-            `/api/v1/set-request-to-controller-ax/${num_host}/`,
+            `/api/v1/set-request-to-controller-ax/`,
             {
               data: data_request,
             },
             {  
               headers: {
               "X-CSRFToken": csrfToken, 
-              "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-            //   "content-type": "application/json"
+            //   "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+              "content-type": "application/json"
               }
             }
         );
 
-        const res = response.data;
+      const res = response.data;
+
+      let resp_message = res['message'];
+      let msg_to_write;
+      if (resp_message === null) {
+        msg_to_write = "Сбой отправки. Проверьте корректность данных запроса"
+      }
+      else {
+        msg_to_write = resp_message
+      }
+      res_elem.textContent = msg_to_write;
         // console.log('res[result]');
         // console.log(res['result']);
 
         console.log('response.data');
         console.log(response.data);
+        console.log(response.data['message']);
+        
 
         
     } catch (error) {
@@ -822,7 +841,10 @@ async function set_request_axios(num_host) {
           console.log('Error', error.message);
         }
         console.log(error.config);
+        res_elem.textContent = 'Команда не отправлена, сервер недоступен';
       }
+
+      
 }
 /*
 ------------------------------------------------

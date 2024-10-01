@@ -278,13 +278,21 @@ class GetDataFromControllerAPIView(APIView):
 
 class SetRequestToControllerAPIView(APIView):
 
-    def post(self, request, num_host):
+    def post(self, request):
 
         print(f'post-post')
         manager = SetRequestToController(request)
-        result = manager.set_command_request()
+        num_host, result, msg = manager.set_command_request()
 
-        return Response({num_host: result})
+        context = {
+            'num_host': int(num_host) if num_host.isdigit() else num_host,
+            'result': result,
+            'message': msg
+        }
+
+        return Response(context)
+
+
 
 
 # def set_requset_axios(request, num_host):
