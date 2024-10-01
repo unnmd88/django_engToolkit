@@ -258,21 +258,29 @@ path_uploads = 'toolkit/uploads/'
 
 
 class GetDataFromControllerAPIView(APIView):
-    def get(self, request):
+    # def get(self, request):
+    #
+    #
+    #
+    #     manager = GetDataFromController(request)
+    #     objects_methods = manager.create_objects_methods()
+    #     if objects_methods:
+    #         processed_data = manager.get_data_from_controllers(objects_methods)
+    #     else:
+    #         processed_data = {'software fault': 'Программный сбой'}
+    #
+    #     return Response(processed_data)
+    def post(self, request):
+
+        print(f'req_data = {request.data}')
 
         manager = GetDataFromController(request)
         objects_methods = manager.create_objects_methods()
         if objects_methods:
             processed_data = manager.get_data_from_controllers(objects_methods)
         else:
-            processed_data = {'testov1': ['Testocv', 'Textov'],
-                              'result': False}
+            processed_data = {'software fault': 'Программный сбой'}
 
-        return Response(processed_data)
-
-    def post(self, request):
-        processed_data = {'testov1': 'post',
-                          'post': True}
         return Response(processed_data)
 
 

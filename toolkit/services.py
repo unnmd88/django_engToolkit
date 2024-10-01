@@ -18,12 +18,15 @@ class AvailableControllers(Enum):
 class GetDataFromController:
     def __init__(self, request):
         self.request = request
-        self.data_request = request.GET.dict()
+        self.data_request = request.data.get('data', {})
+        self.processed_data = {}
 
     def create_objects_methods(self):
         objects_methods = []
 
         for num_host, data_request in self.data_request.items():
+            if isinstance(data_request, int):
+                continue
             data_request = data_request.split(';')
             if len(data_request) != 3:
                 continue
@@ -31,6 +34,7 @@ class GetDataFromController:
             controller_type_request = self.get_type_object_get_request(controller_type.upper())
             obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
             if obj is None:
+                self.processed_data[num_host] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
             objects_methods.append(obj.get_current_mode)
         return objects_methods
@@ -41,7 +45,7 @@ class GetDataFromController:
 
         raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
         processed_data = get_data_manager.data_processing(raw_data_from_controllers)
-        return processed_data
+        return self.processed_data | processed_data
 
     def get_type_object_get_request(self, controller_type: str):
 

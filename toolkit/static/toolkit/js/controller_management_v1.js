@@ -502,16 +502,23 @@ function collect_data_from_hosts (){
 async function sendReqGetDataAxios() {
     console.log('sendReqGetDataAxios');
     
-
     let num_checked_checkbox = $('.receive_data:checked').length;
+
     if (num_checked_checkbox > 0) {
         console.log('if (num_checked_checkbox > 0)');
         try {
-            const response = await axios.get(
+            let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
+            const response = await axios.post(
                 `/api/v1/get-data-from-controller-ax/`,
                 {
-                  params: collect_data_from_hosts()
-                }
+                    data: collect_data_from_hosts(),
+                },
+                  {  
+                    headers: {
+                    "X-CSRFToken": csrfToken, 
+                    // "content-type": "application/json"
+                    }
+                  }
             );
             console.log('response.data');
             console.log(response.data);
@@ -550,9 +557,6 @@ async function sendReqGetDataAxios() {
           else {
               setTimeout(sendReqGetDataAxios, 1000);
           }
-
-
-
     }
 
     else {
@@ -660,59 +664,7 @@ async function write_setTimerVal (num_host) {
  $('.set_request').click(function() {
     let num_host = $(this).attr('id').split('_')[1];;
     // console.log($(this).attr('id'));
-
-
-
     set_request_axios(num_host);
-    return false;
-
-
-    console.log(num_host);
-    let data_request = {};
-    // data[num_host] = (`${$('#ip_' + num_host).val()};
-    //                    ${$(`#protocol_${num_host} option:selected`).text()};
-    //                    ${$(`#scn_${num_host}`).val()};
-    //                    ${$(`#setCommand_${num_host} option:selected`).text()}=${$('#setval_' + num_host).val()}                       
-    //                    `);
-    data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
-                             `${$(`#protocol_${num_host} option:selected`).text()};` + 
-                             `${$(`#scn_${num_host}`).val()};` + 
-                             `${$(`#setCommand_${num_host} option:selected`).text()};` +
-                             `${$('#setval_' + num_host).val()}`
-
-    $(`#recieve_data_from_terminal_${num_host}`).text('Команда отправлена');
-
-    console.log(data_request);
-
-    $.ajax({
-        type: "POST",
-        url: `set-snmp-ajax/${num_host}/`,
-        data: data_request,
-        headers: {
-            'X-CSRFToken': $("input[name=csrfmiddlewaretoken]").val(),
-        },
-        dataType: 'text',
-        cache: false,
-        success: function (data) {
-        let postStringify = JSON.parse(data);
-
-        $.each(postStringify, function(num_host, write_data) {
-            let content = write_data.replace('\n', "<br>");
-            console.log(content);
-            $(`#recieve_data_from_terminal_${num_host}`).html(content);
-        });
-
-        console.log(data)
-        if (data == 'yes'){
-        console.log(data);
-            }
-        else if (data == 'no'){
-                }
-            }
-        }
-    );
-
-
 });
 
 // Функиця проверяет валилность данных для отправки команды
