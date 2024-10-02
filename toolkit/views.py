@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import ast
 from datetime import datetime as dt
 import time
 from enum import Enum
@@ -10,7 +11,9 @@ import inspect
 from io import StringIO, BytesIO
 
 from django import forms
+from django.core import serializers
 from django.views.generic import ListView
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -34,17 +37,70 @@ from toolkit.sdp_lib import conflicts, controller_management
 from toolkit.serializers import ControllerHostsSerializer, TrafficLightsSerializer
 from toolkit.services import GetDataFromController, SetRequestToController
 
+from django.core.exceptions import ObjectDoesNotExist
+
 protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
 
 
-class ControllersViewSet(ModelViewSet):
-    queryset = ControllerManagement.objects.all()
-    serializer_class = ControllerHostsSerializer
+class ControllersViewSet(APIView):
+
+    def get(self, request):
+        queryset = ControllerManagement.objects.all()
+
+        name_configuration = self.request.query_params.get('name_configuration')
+        if name_configuration is not None:
+            queryset = queryset.filter(name=self.request.query_params.get('name_configuration')).values()[0]
+            print(f'queryset from if: {queryset}')
+            try:
+                queryset['data'] = ast.literal_eval(queryset.get('data'))
+                print(f'queryset from try: {queryset}')
+                return Response(queryset)
+            except Exception as err:
+                print(f'err: {err}')
+                return Response({'Fault': 'Ошибка получения конфигураии'})
+        return Response({'Error': 'Имя конфигурации не определено'})
+
+
+        # queryset['data'] = json.dumps(queryset['data'])
+        # print(f'queryset_val: {queryset}')
+        # print(f'type queryset_val: {type(queryset)}')
+        # jsn = json.dumps(queryset[0])
+
+        # qs_json = JSONRenderer().render(queryset)
+        # print(f'queryset: {queryset}')
+        # print(f'type qs_json: {type(qs_json)}')
+        # qs_json2 = json.loads(qs_json)
+        # print(f'qs_json2: {qs_json2}')
+
+
+        return Response({'dask' : '1',
+                         'mask': 'erwe',
+                         'nested': eval("{'nested1' : 1,'nested2': 2}")
+                         })
+
+
+
+
+
+    # serializer_class = ControllerHostsSerializer
+    # print(f'serializer_class: {serializer_class}' )
+    # def get_queryset(self):
+    #
+    #     queryset = ControllerManagement.objects.all()
+    #     name_configuration = self.request.query_params.get('name_configuration')
+    #     if name_configuration is not None:
+    #         queryset = queryset.filter(name=self.request.query_params.get('name_configuration'))
+    #     print(f'queryset: {queryset}')
+    #     print(f'serializer_class: {self.serializer_class}')
+    #     return queryset
+
 
 
 class TrafficLightsAPIVeiw(generics.ListAPIView):
     queryset = TrafficLightObjects.objects.all()
     serializer_class = TrafficLightsSerializer
+
+
 
 
 # class GetControllerData(View)
@@ -301,8 +357,15 @@ class SetRequestToControllerAPIView(APIView):
         return Response(context)
 
 
+class GetNamesConfigurationControllerManagementAPIView(APIView):
+    def get(self, request):
 
+        first_option = 'Выбор конфигурации'
+        names = {k: v if k > 0 else first_option
+                 for k, v in enumerate([el[0] for el in ControllerManagement.objects.values_list('name')])}
+        print(f'nameees2 --> {names}')
 
+        return Response(names)
 # def set_requset_axios(request, num_host):
 #     # try:
 #     #     data_request = json.loads(request.body.decode("utf-8"))
@@ -498,6 +561,8 @@ class SetRequestToControllerAPIView(APIView):
 #     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
 
 
+# class GetConfigurationControllerManagementAPIView
+
 def get_configuration_controller_management_axios(request):
     print(f'get_configuration_controller_management_ax')
     # print(f'test_body1: {json.loads(request.body.decode("utf-8"))}')
@@ -524,16 +589,17 @@ def get_configuration_controller_management_axios(request):
     else:
         data = {'result': False}
 
+    print(f'final_data {data}')
     return JsonResponse(data)
 
 
-def get_names_configuration_controller_management_axios(request):
-    first_option = 'Выбор конфигурации'
-    names = {k: v if k > 0 else first_option
-             for k, v in enumerate([el.name for el in ControllerManagement.objects.all()])}
-    print(f'nameees --> {names}')
-
-    return JsonResponse(names)
+# def get_names_configuration_controller_management_axios(request):
+#     first_option = 'Выбор конфигурации'
+#     names = {k: v if k > 0 else first_option
+#              for k, v in enumerate([el.name for el in ControllerManagement.objects.all()])}
+#     print(f'nameees --> {names}')
+#
+#     return JsonResponse(names)
 
 
 # def save_configuration_snmp(request):

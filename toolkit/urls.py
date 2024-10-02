@@ -5,10 +5,11 @@ from rest_framework.routers import SimpleRouter
 from engineering_tools import settings
 from . import views
 from . import converters
-from .views import ControllersViewSet, TrafficLightsAPIVeiw, GetDataFromControllerAPIView, SetRequestToControllerAPIView
+from .views import ControllersViewSet, TrafficLightsAPIVeiw, GetDataFromControllerAPIView, \
+    SetRequestToControllerAPIView, GetNamesConfigurationControllerManagementAPIView
 
-router = SimpleRouter()
-router.register(r'api', ControllersViewSet)
+# router = SimpleRouter()
+# router.register(r'api', ControllersViewSet)
 
 register_converter(converters.FourDigitYearConverter, "year4")
 
@@ -51,15 +52,28 @@ urlpatterns = [
     path(r"api/v1/get-configuration-controller-management-ax/",
          views.get_configuration_controller_management_axios,
          name='get_configuration_controller_management_ax'),
-    path(r"api/v1/get-names-configuration-controller-management-ax/",
-         views.get_names_configuration_controller_management_axios,
-         name='get_names_configuration_controller_management_ax'),
+
+    path(r"api/v1/get-configuration-controller-management/",
+         ControllersViewSet.as_view(),
+         name='get_configuration_controller_management'),
+
+
+    # path(r"api/v1/get-names-configuration-controller-management-ax/",
+    #      views.get_names_configuration_controller_management_axios,
+    #      name='get_names_configuration_controller_management_ax'),
 
 
 
 
 
-    path('api/v1/traffilight_objects/', TrafficLightsAPIVeiw.as_view())
+
+    path(r"api/v1/get-names-configuration-controller-management/",
+         GetNamesConfigurationControllerManagementAPIView.as_view()),
+
+
+
+    path('api/v1/traffilight-objects/', TrafficLightsAPIVeiw.as_view()),
+    path('api/v1/controller-management-settings/', ControllersViewSet.as_view())
 
 
     # path('toolkit/', views.index, name='toolkit'),
@@ -69,7 +83,7 @@ urlpatterns = [
 
 ]
 
-urlpatterns += router.urls
+# urlpatterns += router.urls
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

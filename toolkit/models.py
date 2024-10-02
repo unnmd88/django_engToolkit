@@ -44,12 +44,14 @@ class SaveConflictsTXT(models.Model):
 
 class ControllerManagement(models.Model):
     name = models.CharField(max_length=30, blank=False, null=False, unique=True)
-    num_visible_hosts = models.CharField(max_length=2, blank=False, null=False, default='1')
+    # num_visible_hosts = models.CharField(max_length=2, blank=False, null=False, default='1')
+    num_visible_hosts = models.IntegerField(default=1, blank=True)
     data = models.TextField(unique=True)
     # data = models.JSONField(unique=True)
     time_create = models.DateTimeField(auto_now_add=True)
     time_update = models.DateTimeField(auto_now=True)
     category = models.IntegerField()
+    user_name = models.CharField(max_length=20)
 
     def __str__(self):
         return self.name

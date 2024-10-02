@@ -273,7 +273,7 @@ $("#get_data_from_db").click( function() {
 async function get_name_configs() {
     // let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
     try {
-        const response = await axios.get(`/api/v1/get-names-configuration-controller-management-ax/`);
+        const response = await axios.get(`/api/v1/get-names-configuration-controller-management/`);
 
         console.log('response.data');
         console.log(response.data);
@@ -304,7 +304,7 @@ async function get_data_from_db_ax() {
     let name = $(`#configuration_from_db option:selected`).text();
     try {
         const response = await axios.get(            
-            `/api/v1/get-configuration-controller-management-ax/`,
+            `/api/v1/get-configuration-controller-management/`,
             {
                 params: {
                     name_configuration: name,
@@ -313,7 +313,7 @@ async function get_data_from_db_ax() {
 
         );
         console.log('response.data');
-        console.log(response.data);
+
         // get_name_configs();
         
         let resp_data = response.data;
@@ -323,7 +323,7 @@ async function get_data_from_db_ax() {
         console.log(resp_data['data']);
 
         write_data_from_db_to_all_hosts(resp_data['num_visible_hosts'], resp_data['data']);
-        if (resp_data.result) {
+        if (name === resp_data.name) {
             alert(`Конфигурация "${name}" загружена из БД`); 
         }
         else {
