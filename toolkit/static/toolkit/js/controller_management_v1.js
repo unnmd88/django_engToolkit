@@ -864,8 +864,6 @@ async function search_host_get_data(event) {
 
         const data = response.data;
         if (!(typeof data[converted_option_name] === 'undefined')) {
-            console.log('data');
-            console.log(data);
             const ip_adress = data['ip_adress'];
             const protocol = data['type_controller'];
 
@@ -884,16 +882,6 @@ async function search_host_get_data(event) {
         //     make_commands(num_host, protocol);
 
         // }
-
-
-
-
-        // let data_to_write = response.data;
-
-        // for (const [num_host, write_data] of Object.entries(response.data)) {
-        //     $(`#datahost_${num_host}`).text(write_data);
-        //   }
-
 
       } catch (error) {
         if (error.response) { // get response with a status code not in range 2xx
