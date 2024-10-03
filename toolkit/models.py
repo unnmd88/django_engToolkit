@@ -8,6 +8,7 @@ class TrafficLightObjects(models.Model):
     number = models.IntegerField(default=0000, unique=True)
     description = models.CharField(max_length=30)
     type_controller = models.CharField(max_length=10)
+    group = models.IntegerField(default=0)
     ip_adress = models.CharField(max_length=12, unique=True)
     adress = models.TextField(blank=True)
     time_create = models.DateTimeField(auto_now_add=True)
