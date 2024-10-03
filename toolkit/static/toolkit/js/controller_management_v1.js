@@ -39,7 +39,18 @@ $(document).ready(function(){
 ------------------------------------------------------------------------*/
 
 const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
+const SELECT_PROTOCOL = {'Swarco': 0, 'Поток (S)': 1, 'Поток (P)': 2, 'Peek': 3};
 const TYPE_COMMAND = ['']
+const SEARCH_OPTIONS = ['По номеру СО', 'Названию СО']
+// const SEARCH_OPTIONS = {'По номеру СО': function (value) {
+//                                         return Number.isInteger(+value);
+//                                         }
+//                        }
+
+const CONVERT_OPTION_NAME = {'По номеру СО': 'number', 'Названию СО': 'description'};
+const CONVERT_OPTION_NAME2 = {'number': 'number', 'description': 'description'};
+
+
 
 
 // --------------GET REQUEST SNMP------------------
@@ -798,6 +809,171 @@ async function set_request_axios(num_host) {
 
       
 }
+
+
+ /*------------------------------------------------------------------------
+|                               SEARCH HOST                                |
+--------------------------------------------------------------------------*/
+
+
+let search_inputs = document.querySelectorAll('.search_host');
+
+search_inputs.forEach((item) => {
+    item.addEventListener('input', search_host_get_data);
+});
+
+// document.querySelectorAll('.search_host').addEventListener('input', function(event) {
+//     let num_host = $(this).attr('id').split('_')[1];
+//     search_host_get_data(event.target.value, num_host);
+//     console.log('SEARCH HOST');
+//     console.log(event.target.value);
+//     console.log(num_host);
+// });
+
+async function search_host_get_data(event) {
+
+    console.log('search_host_get_data');
+    // console.log(event.target.value);
+    // console.log(event.target);
+    // console.log(event.target.id);
+
+    
+    const value = event.target.value;
+    let num_host = event.target.id.split('_');
+    num_host = num_host.at(-1);
+    const val_option = document.querySelector(`#searchoptions_${num_host}`).value;
+    const converted_option_name = CONVERT_OPTION_NAME[val_option];
+
+    
+    if (val_option === SEARCH_OPTIONS[0] && !Number.isInteger(+value)) {
+        return false;
+    }
+
+    try {
+        const response = await axios.get(            
+            `/api/v1/search-controller/`,
+            {
+                params: {
+                    [converted_option_name]: value,
+                },
+            },
+
+        );
+        console.log('response.data');
+        console.log(response.data);
+
+        const data = response.data;
+        if (!(typeof data[converted_option_name] === 'undefined')) {
+            console.log('data');
+            console.log(data);
+            const ip_adress = data['ip_adress'];
+            const protocol = data['type_controller'];
+
+            document.querySelector(`#ip_${num_host}`).value = ip_adress;
+            document.querySelector(`#protocol_${num_host}`).value = protocol;
+            make_commands(num_host, protocol);
+        }
+
+        // if (Array.isArray(response.data)) {
+        //     const data = response.data.at(-1);
+        //     const ip_adress = data['ip_adress'];
+        //     const protocol = data['type_controller'];
+
+        //     document.querySelector(`#ip_${num_host}`).value = ip_adress;
+        //     document.querySelector(`#protocol_${num_host}`).value = protocol;
+        //     make_commands(num_host, protocol);
+
+        // }
+
+
+
+
+        // let data_to_write = response.data;
+
+        // for (const [num_host, write_data] of Object.entries(response.data)) {
+        //     $(`#datahost_${num_host}`).text(write_data);
+        //   }
+
+
+      } catch (error) {
+        if (error.response) { // get response with a status code not in range 2xx
+          console.log(error.response.data);
+          console.log(error.response.status);
+          console.log(error.response.headers);
+        } else if (error.request) { // no response
+          console.log(error.request);
+        } else { // Something wrong in setting up the request
+          console.log('Error', error.message);
+        }
+        console.log(error.config);
+      }
+    
+ }
+
+
+// async function search_host_get_data(value, num_host) {
+
+//     const val_option = document.querySelector(`#searchoptions_${num_host}`).value;
+//     const converted_option_name = CONVERT_OPTION_NAME[val_option];
+    
+//     console.log(val_option);
+//     console.log(converted_option_name);
+    
+//     if (val_option === SEARCH_OPTIONS[0] && !Number.isInteger(+value)) {
+//         return false;
+//     }
+
+//     console.log(`value = ${value}`);
+
+//     try {
+//         const response = await axios.get(            
+//             `/api/v1/search-controller/`,
+//             {
+//                 params: {
+//                     [converted_option_name]: value,
+//                 },
+//             },
+
+//         );
+//         console.log('response.data');
+//         console.log(response.data);
+
+//         if (Array.isArray(response.data)) {
+//             const data = response.data[0];
+//             const ip_adress = data['ip_adress'];
+//             const protocol = data['type_controller'];
+
+//             document.querySelector(`#ip_${num_host}`).value = ip_adress;
+//             document.querySelector(`#protocol_${num_host}`).value = protocol;
+//             make_commands(num_host, protocol);
+
+//         }
+
+
+
+
+//         // let data_to_write = response.data;
+
+//         // for (const [num_host, write_data] of Object.entries(response.data)) {
+//         //     $(`#datahost_${num_host}`).text(write_data);
+//         //   }
+
+
+//       } catch (error) {
+//         if (error.response) { // get response with a status code not in range 2xx
+//           console.log(error.response.data);
+//           console.log(error.response.status);
+//           console.log(error.response.headers);
+//         } else if (error.request) { // no response
+//           console.log(error.request);
+//         } else { // Something wrong in setting up the request
+//           console.log('Error', error.message);
+//         }
+//         console.log(error.config);
+//       }
+    
+//  }
+
 /*
 ------------------------------------------------
 *****               ARCHIVE                *****

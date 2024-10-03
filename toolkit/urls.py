@@ -6,7 +6,7 @@ from engineering_tools import settings
 from . import views
 from . import converters
 from .views import ControllersViewSet, TrafficLightsAPIVeiw, GetDataFromControllerAPIView, \
-    SetRequestToControllerAPIView, GetNamesConfigurationControllerManagementAPIView
+    SetRequestToControllerAPIView, GetNamesConfigurationControllerManagementAPIView, SearchControllerViewSet
 
 # router = SimpleRouter()
 # router.register(r'api', ControllersViewSet)
@@ -56,6 +56,10 @@ urlpatterns = [
     path(r"api/v1/get-configuration-controller-management/",
          ControllersViewSet.as_view(),
          name='get_configuration_controller_management'),
+
+    path(r"api/v1/search-controller/",
+         SearchControllerViewSet.as_view(),
+         name='search_controller'),
 
 
     # path(r"api/v1/get-names-configuration-controller-management-ax/",

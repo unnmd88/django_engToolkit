@@ -5,16 +5,17 @@ from django.utils import timezone
 
 
 class TrafficLightObjects(models.Model):
-    num_CO = models.CharField(max_length=20)
+    number = models.IntegerField(default=0000, unique=True)
+    description = models.CharField(max_length=30)
     type_controller = models.CharField(max_length=10)
-    ip_adress = models.CharField(max_length=12)
+    ip_adress = models.CharField(max_length=12, unique=True)
     adress = models.TextField(blank=True)
     time_create = models.DateTimeField(auto_now_add=True)
     time_update = models.DateTimeField(auto_now=True)
     connection = models.BooleanField(default=False)
 
     def __str__(self):
-        return f'{self.num_CO} + {self.type_controller}'
+        return f'{self.number} + {self.type_controller}'
 
     class Meta:
         ordering = ['-time_create']

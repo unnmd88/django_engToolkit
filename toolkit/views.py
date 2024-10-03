@@ -61,27 +61,6 @@ class ControllersViewSet(APIView):
         return Response({'Error': 'Имя конфигурации не определено'})
 
 
-        # queryset['data'] = json.dumps(queryset['data'])
-        # print(f'queryset_val: {queryset}')
-        # print(f'type queryset_val: {type(queryset)}')
-        # jsn = json.dumps(queryset[0])
-
-        # qs_json = JSONRenderer().render(queryset)
-        # print(f'queryset: {queryset}')
-        # print(f'type qs_json: {type(qs_json)}')
-        # qs_json2 = json.loads(qs_json)
-        # print(f'qs_json2: {qs_json2}')
-
-
-        return Response({'dask' : '1',
-                         'mask': 'erwe',
-                         'nested': eval("{'nested1' : 1,'nested2': 2}")
-                         })
-
-
-
-
-
     # serializer_class = ControllerHostsSerializer
     # print(f'serializer_class: {serializer_class}' )
     # def get_queryset(self):
@@ -95,10 +74,36 @@ class ControllersViewSet(APIView):
     #     return queryset
 
 
+class SearchControllerViewSet(APIView):
+    def get(self, request):
+        # allowed_options = ('number', 'description')
+        number_search = 'number'
+        description_search = 'description'
+        print(f'self.request.query_params: {self.request.query_params}')
+
+        if number_search in self.request.query_params and self.request.query_params.get(number_search).isdigit():
+            queryset = TrafficLightObjects.objects.filter(number=int(self.request.query_params.get(number_search)))
+            print(f'queryset from if SearchControllerViewSet: {queryset.values()}')
+            if queryset:
+                queryset = queryset.values()[0]
+            else:
+                queryset = {'error': 'Объект не найден', 'result': False}
+        elif description_search in self.request.query_params:
+            queryset = TrafficLightObjects.objects.filter(
+                description=self.request.query_params.get(description_search).lower())
+            print(f'queryset from elif SearchControllerViewSet: {queryset.values()}')
+            if queryset:
+                queryset = queryset.values()[0]
+            else:
+                queryset = {'error': 'Объект не найден', 'result': False}
+        else:
+            queryset = {'error': 'Неверный тип запроса', 'result': False}
+        return Response(queryset)
 
 class TrafficLightsAPIVeiw(generics.ListAPIView):
     queryset = TrafficLightObjects.objects.all()
     serializer_class = TrafficLightsSerializer
+
 
 
 
