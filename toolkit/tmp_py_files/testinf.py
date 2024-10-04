@@ -19,9 +19,35 @@ session.get(url='http://10.179.107.129/', headers=headers)
 session.get(url='http://10.179.107.129/hvi?file=dummy.hvi&uic=3333')
 resp1 = session.get(url='http://10.179.107.129/hvi?file=sysinfo.hvi&pos1=0&pos2=-1')
 print(f'resp1: {resp1.text}')
-resp2 = session.get(url='http://10.179.107.129/hvi?file=cell1020.hvi&pos1=0&pos2=24')
+resp2 = session.get(url='http://10.179.107.129/hvi?file=cell1020.hvi&pos1=0&pos2=40')
 
-print(f'resp2: {resp2.content.decode("utf-8")}')
+r = resp2.content.decode("utf-8")
+print(f'type(r): {r}')
+
+
+inps = (line.split(';') for line in r.splitlines() if line.startswith(':D'))
+print(f'inps: {inps}')
+
+def get_inputs(content):
+    inputs = (line.split(';')[1:] for line in content.splitlines() if line.startswith(':D'))
+    for inp in inputs:
+        yield inp
+
+for inps1 in get_inputs(resp2.content.decode("utf-8")):
+    ind, num, name, cur_val, time, actuator_val = inps1
+    print(f'inps1: {inps1}')
+    if name.startswith('MPP'):
+        session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
+                     data={'par_name': f'XIN.R20/14', 'par_value': '2'})
+        # session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
+        #              data={'par_name': f'XIN.R20/{ind}', 'par_value': '0'})
+        # if cur_val != '-':
+        #     session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
+        #                  data={'par_name': f'XIN.R20/{ind}', 'par_value': '0'})
+        # if cur_val == '1' and actuator_val == '-':
+        #     session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
+        #                                   data={'par_name': f'XIN.R20/{ind}', 'par_value': '0'})
+
 
 resp1 = session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell6710.hvi,',
                      data={'par_name': 'PARM.R1/2', 'par_value': '0'})
