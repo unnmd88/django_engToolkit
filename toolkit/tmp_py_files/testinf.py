@@ -37,8 +37,16 @@ for inps1 in get_inputs(resp2.content.decode("utf-8")):
     ind, num, name, cur_val, time, actuator_val = inps1
     print(f'inps1: {inps1}')
     if name.startswith('MPP'):
+        # session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
+        #              data={'par_name': f'XIN.R20/14', 'par_value': '2'},
+        #              )
         session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
-                     data={'par_name': f'XIN.R20/14', 'par_value': '2'})
+                     data=[('par_name', 'XIN.R20/10'), ('par_value', '2'),
+                           ('par_name', 'XIN.R20/11'), ('par_value', '2')]
+                     )
+
+
+
         # session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell1020.hvi,',
         #              data={'par_name': f'XIN.R20/{ind}', 'par_value': '0'})
         # if cur_val != '-':
