@@ -669,6 +669,7 @@ class SwarcoSTCIP(BaseSTCIP):
             ContextData(),
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
         )
+        print(errorIndication, errorStatus, errorIndex, varBinds)
         return self.get_val_stage.get(varBinds[0][1])
 
     """ SET REQUEST """
@@ -799,7 +800,11 @@ class PotokS(BaseSTCIP):
             ContextData(),
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
         )
-        return self.get_val_stage.get(varBinds[0][1])
+        print(errorIndication, errorStatus, errorIndex, varBinds)
+        print(f'VB: {varBinds[0][1]}')
+        print(f'VB2: {self.get_val_stage.get(varBinds[0][1])}')
+        print(f'VB3: {self.get_val_stage}')
+        return self.get_val_stage.get(str(varBinds[0][1]))
 
     async def get_swarcoUTCSetGetLocal(self, timeout=0, retries=0):
         """

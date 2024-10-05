@@ -1,11 +1,16 @@
 import asyncio
 import time
 
+from toolkit.sdp_lib import conflicts, controller_management
+
 import requests
 import aiohttp
 
 
 session = requests.Session()
+
+
+host1 = controller_management.PotokS('10.45.154.11', '1')
 
 
 
@@ -44,7 +49,11 @@ async def main():
 
     async with aiohttp.ClientSession(headers=headers, cookies=cookies) as session:
         tasks = [fetch_data(session, url) for url in urls]
+        print(f'tasks1: {tasks}')
+        tasks.append(host1.get_stage())
+        print(f'tasks2: {tasks}')
         results = await asyncio.gather(*tasks)
+        print(f'res: {results}')
 
 
 
