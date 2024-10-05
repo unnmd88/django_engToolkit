@@ -45,8 +45,7 @@ async def main():
     async with aiohttp.ClientSession(headers=headers, cookies=cookies) as session:
         tasks = [fetch_data(session, url) for url in urls]
         results = await asyncio.gather(*tasks)
-    # for res in results:
-    #     print(f'res: {res}')
+
 
 
 if __name__ == '__main__':
