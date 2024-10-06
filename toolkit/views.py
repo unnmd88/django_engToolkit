@@ -13,6 +13,7 @@ from io import StringIO, BytesIO
 from django import forms
 from django.core import serializers
 from django.views.generic import ListView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -75,6 +76,7 @@ class ControllersViewSet(APIView):
 
 
 class SearchControllerViewSet(APIView):
+    permission_classes = (IsAuthenticated,)
     def get(self, request):
         # allowed_options = ('number', 'description')
         number_search = 'number'
@@ -99,6 +101,8 @@ class SearchControllerViewSet(APIView):
         else:
             queryset = {'error': 'Неверный тип запроса', 'result': False}
         return Response(queryset)
+
+
 
 class TrafficLightsAPIVeiw(generics.ListAPIView):
     queryset = TrafficLightObjects.objects.all()
@@ -319,6 +323,7 @@ path_uploads = 'toolkit/uploads/'
 
 
 class GetDataFromControllerAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
     # def get(self, request):
     #
     #

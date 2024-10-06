@@ -10,3 +10,4 @@ venv
 .git
 db.sqlite3
 /data/db.sqlite3
+dev_diff.txt

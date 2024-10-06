@@ -6,6 +6,7 @@ from enum import Enum
 import asyncio
 import paramiko
 import aiohttp
+import requests
 from pysnmp.hlapi.asyncio import *
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -2195,6 +2196,16 @@ class PeekWeb:
     MAN_INPUTS_STAGES = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
                          'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
 
+    values = {'1': 'MPP_PH1', '2': 'MPP_PH2', '3': 'MPP_PH3', '4': 'MPP_PH4',
+              '5': 'MPP_PH5', '6': 'MPP_PH6', '7': 'MPP_PH7', '8': 'MPP_PH8'}
+
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+    }
+    # data = {'par_name': 'PARM.R1/1', 'par_value': '0'}
+    cookies = {'uic': '3333'}
+
     actuator_values = {
         'ВФ': '//*[@id="button_div"]/ul/li[1]/button',
         'ВЫКЛ': '//*[@id="button_div"]/ul/li[2]/button',
@@ -2206,451 +2217,52 @@ class PeekWeb:
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-    button_3_entrance = '//*[@id="buttonpad"]/form[1]/ul[1]/li[3]/button'
-    button_entrance = '//*[@id="buttonpad"]/form[1]/ul[4]/li/button'
-
-    span_refresh_change = '//*[@id="refresh_button"]'
-    span_start = '//*[@id="mainnav"]/li[1]/a'
-
     def __init__(self, ip_adress: str, num_host: str = None):
         self.ip_adress = ip_adress
-        self.driver = None
+        self.inputs = {}
+        self.url_inputs = f'http://{ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
 
-        self.short_pause = 0.5
-        self.middle_pause = 1
-        self.long_pause = 4
-        # print(f'timeout из init:')
-        # print(f'self.short_pause: {self.short_pause}')
-        # print(f'self.middle_pause: {self.middle_pause}')
-        # print(f'self.long_pause: {self.long_pause}')
+    async def set_stage(self, value):
 
-        # span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'   оригинал :)
-        ###########################################################################################
+        print(f'async def set_stage PEEK')
+        print(f'value: {value}')
+        flag_reset_man = True if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local') else False
+        flag_collect_inputs = True if not self.inputs else False
+        converted_val_to_input = self.values.get(value)
+        print(f'flag_reset_man: {flag_reset_man}')
+        print(f'flag_collect_inputs: {flag_collect_inputs}')
+        print(f'converted_val_to_input: {converted_val_to_input}')
 
-    @staticmethod
-    def _make_inputs_and_user_parameters(inputs, user_parameters):
-        set_stageMAN = reset_stageMAN = set_reset_dark = set_reset_flash = False
-        if inputs:
-            inps_dict = {}
-            for inp, val in (i.split('=') for i in inputs):
-                inps_dict[inp] = val
-                set_stageMAN = True if inp == 'MPP_MAN' and val == 'ВКЛ' else False
-                reset_stageMAN = True if inp == 'MPP_MAN' and val in ('ВЫКЛ, ВФ') else False
-                set_reset_flash = True if inp == 'MPP_FL' else False
-                set_reset_dark = True if inp == 'MPP_OFF' else False
-        else:
-            inps_dict = None
-        if user_parameters:
-            # user_parameters = (i.split('=') for i in user_parameters)
-            # user_parameters = {i[0]: i[1] for i in user_parameters}
-            user_parameters_dict = {inp: val for inp, val in (up.split('=') for up in user_parameters)}
-        else:
-            user_parameters_dict = None
-        return inps_dict, user_parameters_dict
 
-    def _start_and_login(self):
-        """ Метод, в котором производится нажатие в нужные элементы чтобы залогинится """
+        # url_inputs = f'http://{self.ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
+        # headers = {
+        #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+        # }
+        # data = {'par_name': 'PARM.R1/1', 'par_value': '0'}
+        # cookies = {'uic': '3333'}
 
-        time.sleep(self.middle_pause)
-        self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('menu_frame')
-
-        ### Пример поиска элемента
-        # content = driver.find_elements(By.TAG_NAME, "span")
-        # content = [el.text for el in content]
-        # print(content)
-
-        element = self.driver.find_element(By.TAG_NAME, 'ul')
-        element = element.find_elements(By.TAG_NAME, 'li')
-        main_page = [el.text for el in element]
-
-        if 'Рисунок перекрёстка' in main_page:
-            span_entrance = f'//*[@id="mainnav"]/li[3]/a'
-            span_user_inputs = '//*[@id="mainnav"]/li[7]/ul/li[10]/ul/li[4]/a/span'
-            span_user_parameters = '//*[@id="mainnav"]/li[6]/ul/li[3]/a/span'
-        else:
-            span_entrance = '//*[@id="mainnav"]/li[2]/a'
-            span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'
-            span_user_parameters = '//*[@id="mainnav"]/li[5]/ul/li[3]/a/span'
-        # Клик в Вход
-        element_input = self.driver.find_element(By.XPATH, span_entrance)
-        element_input.click()
-        time.sleep(self.middle_pause)
-        # Логинимся 3333
-        self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('content_frame')
-        element_input = self.driver.find_element(By.XPATH, self.button_3_entrance)
-        for i in range(4):
-            element_input.click()
-        element_input = self.driver.find_element(By.XPATH, self.button_entrance)
-        element_input.click()
-        time.sleep(self.middle_pause)
-
-        return span_user_inputs, span_user_parameters
-
-    def _detect_span_inputs_and_user_parameterts(self):
-        time.sleep(self.middle_pause)
-        self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('menu_frame')
-
-        element = self.driver.find_element(By.TAG_NAME, 'ul')
-        element = element.find_elements(By.TAG_NAME, 'li')
-        main_page = [el.text for el in element]
-        # print(main_page)
-        if 'Рисунок перекрёстка' in main_page:
-            span_entrance = f'//*[@id="mainnav"]/li[3]/a'
-            span_user_inputs = '//*[@id="mainnav"]/li[7]/ul/li[10]/ul/li[4]/a/span'
-            span_user_parameters = '//*[@id="mainnav"]/li[6]/ul/li[3]/a/span'
-        else:
-            span_entrance = '//*[@id="mainnav"]/li[2]/a'
-            span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'
-            span_user_parameters = '//*[@id="mainnav"]/li[5]/ul/li[3]/a/span'
-
-        return span_user_inputs, span_user_parameters
-
-    def _set_INPUTS(self, num_inp, actuator_val):
-        # Двойной клик в нужный вход в колонке АКТУАТОР:
-
-        WebDriverWait(self.driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, f'//*[@id="data"]/table/tbody/tr[{num_inp}]/td[5]')))
-        element_input = self.driver.find_element(By.XPATH,
-                                                 f'//*[@id="data"]/table/tbody/tr[{num_inp}]/td[5]')
-        action = ActionChains(self.driver)
-        action.double_click(element_input)
-        action.perform()
-        time.sleep(self.short_pause)
-        # Клик в АКТУАТОР(ВКЛ/ВЫКЛ/ВФ)
-        actuator_value = self.actuator_values.get(actuator_val)
-        element_input = self.driver.find_element(By.XPATH, actuator_value)
-        element_input.click()
-        time.sleep(self.middle_pause)
-
-    def _set_USER_PARAMETERS(self, id_user_parameter, value):
-        """ Метод, в котором осуществляется клик в нужное значение нужного параметра программы(юзер-параметра)
-            В цикле for на каждой итерации осуществляется клик в парметр программы(по индексу), который
-            является ключом словаря, затем клик в значение(значение словаря)
-            :param dict filtered_user_parameters_to_set: словарь с офтильтрованнами параметрами программы.
-        """
-
-        # button_1_UP = '//*[@id="buttonpad"]/ul[1]/li[1]/button'
-        # button_2_UP = '//*[@id="buttonpad"]/ul[1]/li[2]/button'
-        # button_3_UP = '//*[@id="buttonpad"]/ul[1]/li[3]/button'
-        # button_4_UP = '//*[@id="buttonpad"]/ul[2]/li[1]/button'
-        # button_5_UP = '//*[@id="buttonpad"]/ul[2]/li[2]/button'
-        # button_6_UP = '//*[@id="buttonpad"]/ul[2]/li[3]/button'
-        # button_7_UP = '//*[@id="buttonpad"]/ul[3]/li[1]/button'
-        # button_8_UP = '//*[@id="buttonpad"]/ul[3]/li[2]/button'
-        # button_9_UP = '//*[@id="buttonpad"]/ul[3]/li[3]/button'
-        # button_0_UP = '//*[@id="buttonpad"]/ul[4]/li[1]/button'
-        # button_OK_UP = '//*[@id="buttonpad"]/ul[4]/li[4]/button'
-
-        buttons = {'1': '//*[@id="buttonpad"]/ul[1]/li[1]/button', '2': '//*[@id="buttonpad"]/ul[1]/li[2]/button',
-                   '3': '//*[@id="buttonpad"]/ul[1]/li[3]/button', '4': '//*[@id="buttonpad"]/ul[2]/li[1]/button',
-                   '5': '//*[@id="buttonpad"]/ul[2]/li[2]/button', '6': '//*[@id="buttonpad"]/ul[2]/li[3]/button',
-                   '7': '//*[@id="buttonpad"]/ul[3]/li[1]/button', '8': '//*[@id="buttonpad"]/ul[3]/li[2]/button',
-                   '9': '//*[@id="buttonpad"]/ul[3]/li[3]/button', '0': '//*[@id="buttonpad"]/ul[4]/li[1]/button',
-                   'OK': '//*[@id="buttonpad"]/ul[4]/li[4]/button'
-                   }
-
-        up_index = f'//*[@id="data"]/table/tbody/tr[{id_user_parameter}]/td[3]'
-        element_input = self.driver.find_element(By.XPATH, up_index)
-        action = ActionChains(self.driver)
-        action.double_click(element_input)
-        action.perform()
-        time.sleep(self.short_pause)
-        for number in value:
-            self.driver.find_element(By.XPATH, buttons.get(number)).click()
-            time.sleep(self.short_pause)
-        # # Клик в OK
-        element_input = self.driver.find_element(By.XPATH, buttons.get('OK'))
-        element_input.click()
-        time.sleep(self.short_pause)
-
-    def _goto_content_frame(self, span_name):
-        self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('menu_frame')
-        # Клик во ВВОДЫ/Параметры программы(в зависимости что передано в span_name)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, span_name)))
-        element_input = self.driver.find_element(By.XPATH, span_name)
-        element_input.click()
-        time.sleep(self.middle_pause)
-        # Клик в обновить/изменить
-        self.driver.switch_to.parent_frame()
-        time.sleep(self.short_pause)
-        self.driver.switch_to.frame('inst_frame')
-        time.sleep(self.short_pause)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, self.span_refresh_change)))
-        element_input = self.driver.find_element(By.XPATH, self.span_refresh_change)
-        element_input.click()
-        time.sleep(self.middle_pause)
-        # Переход в content_frame чтобы далее устанавливать значения(для INPUTS или USER_PARAMETERS)
-        self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('content_frame')
-        time.sleep(self.short_pause)
-
-    def _click_to_span_refresh(self):
-        # Клик в обновить/изменить
-        self.driver.switch_to.parent_frame()
-        time.sleep(self.short_pause)
-        # self.driver.switch_to.parent_frame()
-        self.driver.switch_to.frame('inst_frame')
-        time.sleep(self.short_pause)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, self.span_refresh_change)))
-        element_input = self.driver.find_element(By.XPATH, self.span_refresh_change)
-        element_input.click()
-        time.sleep(self.middle_pause)
-
-    def _make_curr_inputs_and_states(self):
-
-        table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
-        table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
-
-        MPP_INPUTS = ('MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7',
-                      'MPP_PH8', 'MPP_FL', 'MPP_OFF')
-
-        INPS = {}
-        for num_row, row_content in enumerate([el.text.split() for el in table_INPUT_elements]):
-            if len(row_content) == 5 and num_row > 0:
-                num, name, state, time_state, actuator_val = row_content
-                if name in MPP_INPUTS and actuator_val == '-' and state == '1':
-                    INPS[name] = num, state, actuator_val
-                elif name == 'MPP_MAN':
-                    MPP_MAN = (num, state, actuator_val)
-            else:
-                continue
-        print('INPS:')
-        print(INPS)
-        return INPS
-
-    def _manage_set_inputs(self, inputs, set_man=False, reset_man=False):
-
-        table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
-        table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
 
         inputs_to_set = {}
 
-        print(f'set_man: {set_man}')
-        print(f'reset_man: {reset_man}')
+        for inp in self.make_INPUTS():
+            print(f'inpPP: {inp}')
+            index, num, name, cur_val, time, actuator_val = inp
+            if flag_collect_inputs and name in self.MAN_INPUTS:
+                self.inputs[name] = index
+        print(f'self.inputs = {self.inputs}')
 
-        print(inputs)
-        print('----!!!!--------')
-        for row in [el.text.split() for el in table_INPUT_elements]:
-            # if not inputs:
-            #     break
 
-            # Проверка корректности считанных данных
-            if len(row) == 5:
-                num, name, state, time_state, actuator_val = row
-            else:
-                continue
 
-            # Если необходимо установить фазу, добавляем в inputs_to_set
-            if name == 'MPP_MAN' and set_man:
-                if state != '1':
-                    print(*row)
-                    inputs_to_set[name] = num, 'ВКЛ'
-                continue
-            # Если необходимо установить фазу и у какого то ввода MPP_PHx значение 1, то его добавляем в inputs_to_set
-            if set_man and name in self.MAN_INPUTS_STAGES and name not in inputs and state == '1':
-                inputs_to_set[name] = num, 'ВЫКЛ'
-                continue
 
-            if name in inputs:
-                inputs_to_set[name] = num, inputs.get(name)
-                inputs.pop(name)
+    def make_INPUTS(self):
 
-        print(f'-- inputs_to_set 1 -- {inputs_to_set}')
-        if set_man and 'MPP_MAN' in inputs_to_set.keys():
-            inputs_to_set['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
-        elif reset_man:
-            tmp_inputs = {'MPP_MAN': inputs_to_set.pop('MPP_MAN')}
-            inputs_to_set = tmp_inputs | inputs_to_set
-            print(f'-- inputs_to_set -- {inputs_to_set}')
+        with requests.Session() as session:
+            response = session.get(url=self.url_inputs, headers=self.headers, cookies=self.cookies, timeout=1).text
+            print(f'responseXX: {response}')
 
-        print(f'-- inputs_to_set перед for -- {inputs_to_set}')
-        for num, val in inputs_to_set.values():
-            self._set_INPUTS(num, val)
-
-        time.sleep(self.long_pause)
-
-    def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
-        """ Метод создаёт web сессию, в которрй совершаются действия в зависимости от переданных аргументов:
-        :param bool increase_the_timeout: увеличивает таймаут с каждым новым вызовом метода у экземпляра
-        :param bool session_for_greenroad: если метод вызван для "Зелёной улицы" приложения Engineering_tool_kit,
-               то при наличии :arg: resetting_the_desired_values - не будет сбрасывать MPP_MAN
-        :param tuple inputs: словарь "Вводов", которые необходимо актировать. Ключ словаря - название Ввода, значение -
-               значение Актутора, которое необходимо установить
-        :param dict user_parameters: словарь "параметров программы", которые необходимо установить.
-               Ключ словаря - str, которая должна содердать ращзделитель "_". Всё, что до "_" -> произольно. После
-               "_" -> индекс параметра. Например: UP_2, UP->произвольная часть, 2->индекс параметра.
-               Значение словаря - str/int -> значение, которе будет утсановлено в поле "Значение".
-               Например: UP_2: 154 -> установить значение 154 для юзер параметра с индексом 2
-        :param dict resetting_the_desired_values: ключ - str Актуатор(ВФ, ВЫКЛ, ВКЛ), который будет установлен для
-               Вводов, текущее значение которых содержится в tuple значении словаря.
-               Например: {'ВЫКЛ: (ВКЛ, )'} - это значит ВЫКЛ будет установлено для всех Вводов, текущее сотсояние
-               которых 'ВКЛ'
-               Еще пример: {'ВФ: (ВКЛ, ВЫКЛ)'} - это значит ВФ будет установлено для всех Вводов, текущее сотсояние
-               которых 'ВКЛ' или 'ВЫКЛ'
-        :param kwargs: можно передавать Вводы или параметры программы вместо ipputs/user_parameters.
-               Например: MPP_MAN=ВКЛ, MPP_PH1=ВЫКЛ, CP_RED=ВКЛ, UP_1=154, UP_3=1 и т.д.
-        :param expected_state_for_greenroad: фаза, которую необходимо включить из Engineering_tool_kit_v1.0 "greenroad"
-        """
-
-        if inputs is None and user_parameters is None:
-            raise ValueError('inputs и user_parameters могут быть пустыми одновременно')
-        elif inputs and not isinstance(inputs, Iterable):
-            raise ValueError('inputs должен быть итерируемым объектом')
-        elif user_parameters and not isinstance(user_parameters, Iterable):
-            raise ValueError('user_parameters должен быть итерируемым объектом')
-
-        if increase_the_timeout:
-            self.short_pause += 1
-            self.middle_pause += 2
-            self.long_pause += 2
-
-        inputs, user_parameters = PeekWeb._make_inputs_and_user_parameters(inputs, user_parameters)
-
-        print(f'inputs = {inputs}, user_parameters = {user_parameters},')
-        # print(f'set_stageMAN = {set_stageMAN}, reset_stageMAN = {reset_stageMAN},')
-        # print(f'set_reset_flash = {set_reset_flash}, set_reset_dark = {set_reset_dark},')
-
-        ##############################################################
-
-        # Боевой вариант
-        options = Options()
-        # options.add_argument('--headless')
-        # options.add_argument('--disable-gpu')
-        self.driver = webdriver.Chrome(options=options)
-        self.driver.get('http://' + self.ip_adress)
-        time.sleep(self.short_pause)
-        self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
-        time.sleep(self.short_pause)
-        self.driver.get('http://' + self.ip_adress)
-
-        # Тест вариант
-        # self.driver = webdriver.Chrome()
-        # self.driver.get('http://localhost/')
-        # time.sleep(self.short_pause)
-        # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
-        # time.sleep(self.short_pause)
-        # self.driver.get('http://localhost/')
-        # time.sleep(self.middle_pause)
-
-        span_inputs, span_user_parameters = self._detect_span_inputs_and_user_parameterts()
-        time.sleep(self.middle_pause)
-
-        if inputs:
-            self.driver.refresh()
-            time.sleep(self.short_pause)
-            self._goto_content_frame(span_inputs)
-
-            self._manage_set_inputs(inputs)
-
-            # table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
-            # table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
-            #
-            # print(inputs)
-            # print('----!!!!--------')
-            # cnt, len_inputs, num_MPP_MAN = 0, len(inputs), None
-            # for row in [el.text.split() for el in table_INPUT_elements]:
-            #     if len(row) == 5:
-            #         num, name, state, time_state, actuator_val = row
-            #     else:
-            #         continue
-            #     # print(f'num: {num}, name: {name},state: {state},time_state: {time_state},actuator_val: {actuator_val}')
-            #     if name not in inputs and set_stage_MAN and name in self.MAN_INPUTS:
-            #         if name == 'MPP_MAN' and state == '0':
-            #             num_MPP_MAN = num
-            #         elif state == '1' and name != 'MPP_MAN':
-            #             self._set_INPUTS(num, 'ВЫКЛ')
-            #     elif name in inputs:
-            #         val_actuator_to_set = inputs.get(name)
-            #         val_actuator_to_curr = 'ВФ' if actuator_val == '-' else actuator_val
-            #         if val_actuator_to_set != val_actuator_to_curr:
-            #             self._set_INPUTS(num, inputs.get(name))
-            #             cnt += 1
-            # if num_MPP_MAN:
-            #     self._set_INPUTS(num_MPP_MAN, 'ВКЛ')
-            # Возврат в начало, если не будем далее работать с параметрами программы
-
-        if user_parameters:
-            self.driver.refresh()
-            self._goto_content_frame(span_user_parameters)
-
-            table_UP = self.driver.find_element(By.TAG_NAME, 'table')
-            table_UP_elements = table_UP.find_elements(By.TAG_NAME, 'tr')
-
-            print([el.text for el in table_UP_elements])
-
-            # Установка UP
-            cnt, len_inputs = 1, len(inputs)
-            for row in [el.text.split() for el in table_UP_elements]:
-                if len(row) == 5:
-                    num, name, val_cur, val_min, val_max = row
-                else:
-                    continue
-                if name in user_parameters:
-                    val_up_to_set = user_parameters.get(name)
-                    if val_up_to_set != val_cur:
-                        self._set_USER_PARAMETERS(num, val_up_to_set)
-                    cnt += 1
-                if cnt >= len_inputs:
-                    print(f'if cnt >= len_inputs:')
-                    break
-        self.driver.refresh()
-        time.sleep(self.middle_pause)
-        self.driver.close()
-
-    def set_stage(self, value, increase_the_timeout=False):
-        if increase_the_timeout:
-            self.short_pause += 1
-            self.middle_pause += 2
-            self.long_pause += 2
-
-        ##############################################################
-
-        # Боевой вариант
-        options = Options()
-        options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-
-        self.driver = webdriver.Chrome(options=options)
-        self.driver.get('http://' + self.ip_adress)
-        time.sleep(self.short_pause)
-        self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
-        time.sleep(self.short_pause)
-        self.driver.get('http://' + self.ip_adress)
-
-        # Тест вариант
-        # self.driver = webdriver.Chrome()
-        # self.driver.get('http://localhost/')
-        # time.sleep(self.short_pause)
-        # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
-        # time.sleep(self.short_pause)
-        # self.driver.get('http://localhost/')
-        # time.sleep(self.middle_pause)
-
-        time.sleep(self.middle_pause)
-
-        span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
-        time.sleep(self.middle_pause)
-
-        self.driver.refresh()
-        time.sleep(self.short_pause)
-        self._goto_content_frame(span_inputs)
-
-        if value.isdigit() and int(value) in range(1, 9):
-            inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
-            set_man, reset_man = True, False
-        elif value.lower() in ('0', 'false', 'reset', 'local', 'сброс', 'локал'):
-            inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВЫКЛ' if i == 0 else 'ВФ' for i in range(9)}
-            set_man, reset_man = False, True
-        else:
-            return
-
-        self._manage_set_inputs(inputs, set_man, reset_man)
+        inputs = (line.split(';')[1:] for line in response.splitlines() if line.startswith(':D'))
+        for inp in inputs:
+            yield inp
 
     def set_flash(self, value, increase_the_timeout=False):
         if increase_the_timeout:
@@ -2699,6 +2311,512 @@ class PeekWeb:
         self._manage_set_inputs(inputs, )
 
 
-
-
-
+""" Arhive """
+# class PeekWeb:
+#     MAN_INPUTS = {'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3',
+#                   'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
+#     MAN_INPUTS_STAGES = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
+#                          'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
+#
+#     actuator_values = {
+#         'ВФ': '//*[@id="button_div"]/ul/li[1]/button',
+#         'ВЫКЛ': '//*[@id="button_div"]/ul/li[2]/button',
+#         'ВКЛ': '//*[@id="button_div"]/ul/li[3]/button'
+#     }
+#
+#     allowed_inputs = {'MKEY1', 'MKEY2', 'MKEY3', 'MKEY4', 'MKEY5',
+#                       'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4', 'MPP_PH5',
+#                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
+#                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
+#
+#     button_3_entrance = '//*[@id="buttonpad"]/form[1]/ul[1]/li[3]/button'
+#     button_entrance = '//*[@id="buttonpad"]/form[1]/ul[4]/li/button'
+#
+#     span_refresh_change = '//*[@id="refresh_button"]'
+#     span_start = '//*[@id="mainnav"]/li[1]/a'
+#
+#     def __init__(self, ip_adress: str, num_host: str = None):
+#         self.ip_adress = ip_adress
+#         self.driver = None
+#
+#         self.short_pause = 0.5
+#         self.middle_pause = 1
+#         self.long_pause = 4
+#         # print(f'timeout из init:')
+#         # print(f'self.short_pause: {self.short_pause}')
+#         # print(f'self.middle_pause: {self.middle_pause}')
+#         # print(f'self.long_pause: {self.long_pause}')
+#
+#         # span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'   оригинал :)
+#         ###########################################################################################
+#
+#     @staticmethod
+#     def _make_inputs_and_user_parameters(inputs, user_parameters):
+#         set_stageMAN = reset_stageMAN = set_reset_dark = set_reset_flash = False
+#         if inputs:
+#             inps_dict = {}
+#             for inp, val in (i.split('=') for i in inputs):
+#                 inps_dict[inp] = val
+#                 set_stageMAN = True if inp == 'MPP_MAN' and val == 'ВКЛ' else False
+#                 reset_stageMAN = True if inp == 'MPP_MAN' and val in ('ВЫКЛ, ВФ') else False
+#                 set_reset_flash = True if inp == 'MPP_FL' else False
+#                 set_reset_dark = True if inp == 'MPP_OFF' else False
+#         else:
+#             inps_dict = None
+#         if user_parameters:
+#             # user_parameters = (i.split('=') for i in user_parameters)
+#             # user_parameters = {i[0]: i[1] for i in user_parameters}
+#             user_parameters_dict = {inp: val for inp, val in (up.split('=') for up in user_parameters)}
+#         else:
+#             user_parameters_dict = None
+#         return inps_dict, user_parameters_dict
+#
+#     def _start_and_login(self):
+#         """ Метод, в котором производится нажатие в нужные элементы чтобы залогинится """
+#
+#         time.sleep(self.middle_pause)
+#         self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('menu_frame')
+#
+#         ### Пример поиска элемента
+#         # content = driver.find_elements(By.TAG_NAME, "span")
+#         # content = [el.text for el in content]
+#         # print(content)
+#
+#         element = self.driver.find_element(By.TAG_NAME, 'ul')
+#         element = element.find_elements(By.TAG_NAME, 'li')
+#         main_page = [el.text for el in element]
+#
+#         if 'Рисунок перекрёстка' in main_page:
+#             span_entrance = f'//*[@id="mainnav"]/li[3]/a'
+#             span_user_inputs = '//*[@id="mainnav"]/li[7]/ul/li[10]/ul/li[4]/a/span'
+#             span_user_parameters = '//*[@id="mainnav"]/li[6]/ul/li[3]/a/span'
+#         else:
+#             span_entrance = '//*[@id="mainnav"]/li[2]/a'
+#             span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'
+#             span_user_parameters = '//*[@id="mainnav"]/li[5]/ul/li[3]/a/span'
+#         # Клик в Вход
+#         element_input = self.driver.find_element(By.XPATH, span_entrance)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#         # Логинимся 3333
+#         self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('content_frame')
+#         element_input = self.driver.find_element(By.XPATH, self.button_3_entrance)
+#         for i in range(4):
+#             element_input.click()
+#         element_input = self.driver.find_element(By.XPATH, self.button_entrance)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#
+#         return span_user_inputs, span_user_parameters
+#
+#     def _detect_span_inputs_and_user_parameterts(self):
+#         time.sleep(self.middle_pause)
+#         self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('menu_frame')
+#
+#         element = self.driver.find_element(By.TAG_NAME, 'ul')
+#         element = element.find_elements(By.TAG_NAME, 'li')
+#         main_page = [el.text for el in element]
+#         # print(main_page)
+#         if 'Рисунок перекрёстка' in main_page:
+#             span_entrance = f'//*[@id="mainnav"]/li[3]/a'
+#             span_user_inputs = '//*[@id="mainnav"]/li[7]/ul/li[10]/ul/li[4]/a/span'
+#             span_user_parameters = '//*[@id="mainnav"]/li[6]/ul/li[3]/a/span'
+#         else:
+#             span_entrance = '//*[@id="mainnav"]/li[2]/a'
+#             span_user_inputs = '//*[@id="mainnav"]/li[6]/ul/li[10]/ul/li[4]/a/span'
+#             span_user_parameters = '//*[@id="mainnav"]/li[5]/ul/li[3]/a/span'
+#
+#         return span_user_inputs, span_user_parameters
+#
+#     def _set_INPUTS(self, num_inp, actuator_val):
+#         # Двойной клик в нужный вход в колонке АКТУАТОР:
+#
+#         WebDriverWait(self.driver, 10).until(
+#             EC.presence_of_element_located((By.XPATH, f'//*[@id="data"]/table/tbody/tr[{num_inp}]/td[5]')))
+#         element_input = self.driver.find_element(By.XPATH,
+#                                                  f'//*[@id="data"]/table/tbody/tr[{num_inp}]/td[5]')
+#         action = ActionChains(self.driver)
+#         action.double_click(element_input)
+#         action.perform()
+#         time.sleep(self.short_pause)
+#         # Клик в АКТУАТОР(ВКЛ/ВЫКЛ/ВФ)
+#         actuator_value = self.actuator_values.get(actuator_val)
+#         element_input = self.driver.find_element(By.XPATH, actuator_value)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#
+#     def _set_USER_PARAMETERS(self, id_user_parameter, value):
+#         """ Метод, в котором осуществляется клик в нужное значение нужного параметра программы(юзер-параметра)
+#             В цикле for на каждой итерации осуществляется клик в парметр программы(по индексу), который
+#             является ключом словаря, затем клик в значение(значение словаря)
+#             :param dict filtered_user_parameters_to_set: словарь с офтильтрованнами параметрами программы.
+#         """
+#
+#         # button_1_UP = '//*[@id="buttonpad"]/ul[1]/li[1]/button'
+#         # button_2_UP = '//*[@id="buttonpad"]/ul[1]/li[2]/button'
+#         # button_3_UP = '//*[@id="buttonpad"]/ul[1]/li[3]/button'
+#         # button_4_UP = '//*[@id="buttonpad"]/ul[2]/li[1]/button'
+#         # button_5_UP = '//*[@id="buttonpad"]/ul[2]/li[2]/button'
+#         # button_6_UP = '//*[@id="buttonpad"]/ul[2]/li[3]/button'
+#         # button_7_UP = '//*[@id="buttonpad"]/ul[3]/li[1]/button'
+#         # button_8_UP = '//*[@id="buttonpad"]/ul[3]/li[2]/button'
+#         # button_9_UP = '//*[@id="buttonpad"]/ul[3]/li[3]/button'
+#         # button_0_UP = '//*[@id="buttonpad"]/ul[4]/li[1]/button'
+#         # button_OK_UP = '//*[@id="buttonpad"]/ul[4]/li[4]/button'
+#
+#         buttons = {'1': '//*[@id="buttonpad"]/ul[1]/li[1]/button', '2': '//*[@id="buttonpad"]/ul[1]/li[2]/button',
+#                    '3': '//*[@id="buttonpad"]/ul[1]/li[3]/button', '4': '//*[@id="buttonpad"]/ul[2]/li[1]/button',
+#                    '5': '//*[@id="buttonpad"]/ul[2]/li[2]/button', '6': '//*[@id="buttonpad"]/ul[2]/li[3]/button',
+#                    '7': '//*[@id="buttonpad"]/ul[3]/li[1]/button', '8': '//*[@id="buttonpad"]/ul[3]/li[2]/button',
+#                    '9': '//*[@id="buttonpad"]/ul[3]/li[3]/button', '0': '//*[@id="buttonpad"]/ul[4]/li[1]/button',
+#                    'OK': '//*[@id="buttonpad"]/ul[4]/li[4]/button'
+#                    }
+#
+#         up_index = f'//*[@id="data"]/table/tbody/tr[{id_user_parameter}]/td[3]'
+#         element_input = self.driver.find_element(By.XPATH, up_index)
+#         action = ActionChains(self.driver)
+#         action.double_click(element_input)
+#         action.perform()
+#         time.sleep(self.short_pause)
+#         for number in value:
+#             self.driver.find_element(By.XPATH, buttons.get(number)).click()
+#             time.sleep(self.short_pause)
+#         # # Клик в OK
+#         element_input = self.driver.find_element(By.XPATH, buttons.get('OK'))
+#         element_input.click()
+#         time.sleep(self.short_pause)
+#
+#     def _goto_content_frame(self, span_name):
+#         self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('menu_frame')
+#         # Клик во ВВОДЫ/Параметры программы(в зависимости что передано в span_name)
+#         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, span_name)))
+#         element_input = self.driver.find_element(By.XPATH, span_name)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#         # Клик в обновить/изменить
+#         self.driver.switch_to.parent_frame()
+#         time.sleep(self.short_pause)
+#         self.driver.switch_to.frame('inst_frame')
+#         time.sleep(self.short_pause)
+#         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, self.span_refresh_change)))
+#         element_input = self.driver.find_element(By.XPATH, self.span_refresh_change)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#         # Переход в content_frame чтобы далее устанавливать значения(для INPUTS или USER_PARAMETERS)
+#         self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('content_frame')
+#         time.sleep(self.short_pause)
+#
+#     def _click_to_span_refresh(self):
+#         # Клик в обновить/изменить
+#         self.driver.switch_to.parent_frame()
+#         time.sleep(self.short_pause)
+#         # self.driver.switch_to.parent_frame()
+#         self.driver.switch_to.frame('inst_frame')
+#         time.sleep(self.short_pause)
+#         WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.XPATH, self.span_refresh_change)))
+#         element_input = self.driver.find_element(By.XPATH, self.span_refresh_change)
+#         element_input.click()
+#         time.sleep(self.middle_pause)
+#
+#     def _make_curr_inputs_and_states(self):
+#
+#         table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
+#         table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
+#
+#         MPP_INPUTS = ('MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7',
+#                       'MPP_PH8', 'MPP_FL', 'MPP_OFF')
+#
+#         INPS = {}
+#         for num_row, row_content in enumerate([el.text.split() for el in table_INPUT_elements]):
+#             if len(row_content) == 5 and num_row > 0:
+#                 num, name, state, time_state, actuator_val = row_content
+#                 if name in MPP_INPUTS and actuator_val == '-' and state == '1':
+#                     INPS[name] = num, state, actuator_val
+#                 elif name == 'MPP_MAN':
+#                     MPP_MAN = (num, state, actuator_val)
+#             else:
+#                 continue
+#         print('INPS:')
+#         print(INPS)
+#         return INPS
+#
+#     def _manage_set_inputs(self, inputs, set_man=False, reset_man=False):
+#
+#         table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
+#         table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
+#
+#         inputs_to_set = {}
+#
+#         print(f'set_man: {set_man}')
+#         print(f'reset_man: {reset_man}')
+#
+#         print(inputs)
+#         print('----!!!!--------')
+#         for row in [el.text.split() for el in table_INPUT_elements]:
+#             # if not inputs:
+#             #     break
+#
+#             # Проверка корректности считанных данных
+#             if len(row) == 5:
+#                 num, name, state, time_state, actuator_val = row
+#             else:
+#                 continue
+#
+#             # Если необходимо установить фазу, добавляем в inputs_to_set
+#             if name == 'MPP_MAN' and set_man:
+#                 if state != '1':
+#                     print(*row)
+#                     inputs_to_set[name] = num, 'ВКЛ'
+#                 continue
+#             # Если необходимо установить фазу и у какого то ввода MPP_PHx значение 1, то его добавляем в inputs_to_set
+#             if set_man and name in self.MAN_INPUTS_STAGES and name not in inputs and state == '1':
+#                 inputs_to_set[name] = num, 'ВЫКЛ'
+#                 continue
+#
+#             if name in inputs:
+#                 inputs_to_set[name] = num, inputs.get(name)
+#                 inputs.pop(name)
+#
+#         print(f'-- inputs_to_set 1 -- {inputs_to_set}')
+#         if set_man and 'MPP_MAN' in inputs_to_set.keys():
+#             inputs_to_set['MPP_MAN'] = inputs_to_set.pop('MPP_MAN')
+#         elif reset_man:
+#             tmp_inputs = {'MPP_MAN': inputs_to_set.pop('MPP_MAN')}
+#             inputs_to_set = tmp_inputs | inputs_to_set
+#             print(f'-- inputs_to_set -- {inputs_to_set}')
+#
+#         print(f'-- inputs_to_set перед for -- {inputs_to_set}')
+#         for num, val in inputs_to_set.values():
+#             self._set_INPUTS(num, val)
+#
+#         time.sleep(self.long_pause)
+#
+#     def session_manager(self, increase_the_timeout=False, inputs=None, user_parameters=None):
+#         """ Метод создаёт web сессию, в которрй совершаются действия в зависимости от переданных аргументов:
+#         :param bool increase_the_timeout: увеличивает таймаут с каждым новым вызовом метода у экземпляра
+#         :param bool session_for_greenroad: если метод вызван для "Зелёной улицы" приложения Engineering_tool_kit,
+#                то при наличии :arg: resetting_the_desired_values - не будет сбрасывать MPP_MAN
+#         :param tuple inputs: словарь "Вводов", которые необходимо актировать. Ключ словаря - название Ввода, значение -
+#                значение Актутора, которое необходимо установить
+#         :param dict user_parameters: словарь "параметров программы", которые необходимо установить.
+#                Ключ словаря - str, которая должна содердать ращзделитель "_". Всё, что до "_" -> произольно. После
+#                "_" -> индекс параметра. Например: UP_2, UP->произвольная часть, 2->индекс параметра.
+#                Значение словаря - str/int -> значение, которе будет утсановлено в поле "Значение".
+#                Например: UP_2: 154 -> установить значение 154 для юзер параметра с индексом 2
+#         :param dict resetting_the_desired_values: ключ - str Актуатор(ВФ, ВЫКЛ, ВКЛ), который будет установлен для
+#                Вводов, текущее значение которых содержится в tuple значении словаря.
+#                Например: {'ВЫКЛ: (ВКЛ, )'} - это значит ВЫКЛ будет установлено для всех Вводов, текущее сотсояние
+#                которых 'ВКЛ'
+#                Еще пример: {'ВФ: (ВКЛ, ВЫКЛ)'} - это значит ВФ будет установлено для всех Вводов, текущее сотсояние
+#                которых 'ВКЛ' или 'ВЫКЛ'
+#         :param kwargs: можно передавать Вводы или параметры программы вместо ipputs/user_parameters.
+#                Например: MPP_MAN=ВКЛ, MPP_PH1=ВЫКЛ, CP_RED=ВКЛ, UP_1=154, UP_3=1 и т.д.
+#         :param expected_state_for_greenroad: фаза, которую необходимо включить из Engineering_tool_kit_v1.0 "greenroad"
+#         """
+#
+#         if inputs is None and user_parameters is None:
+#             raise ValueError('inputs и user_parameters могут быть пустыми одновременно')
+#         elif inputs and not isinstance(inputs, Iterable):
+#             raise ValueError('inputs должен быть итерируемым объектом')
+#         elif user_parameters and not isinstance(user_parameters, Iterable):
+#             raise ValueError('user_parameters должен быть итерируемым объектом')
+#
+#         if increase_the_timeout:
+#             self.short_pause += 1
+#             self.middle_pause += 2
+#             self.long_pause += 2
+#
+#         inputs, user_parameters = PeekWeb._make_inputs_and_user_parameters(inputs, user_parameters)
+#
+#         print(f'inputs = {inputs}, user_parameters = {user_parameters},')
+#         # print(f'set_stageMAN = {set_stageMAN}, reset_stageMAN = {reset_stageMAN},')
+#         # print(f'set_reset_flash = {set_reset_flash}, set_reset_dark = {set_reset_dark},')
+#
+#         ##############################################################
+#
+#         # Боевой вариант
+#         options = Options()
+#         # options.add_argument('--headless')
+#         # options.add_argument('--disable-gpu')
+#         self.driver = webdriver.Chrome(options=options)
+#         self.driver.get('http://' + self.ip_adress)
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress)
+#
+#         # Тест вариант
+#         # self.driver = webdriver.Chrome()
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.middle_pause)
+#
+#         span_inputs, span_user_parameters = self._detect_span_inputs_and_user_parameterts()
+#         time.sleep(self.middle_pause)
+#
+#         if inputs:
+#             self.driver.refresh()
+#             time.sleep(self.short_pause)
+#             self._goto_content_frame(span_inputs)
+#
+#             self._manage_set_inputs(inputs)
+#
+#             # table_INPUTS = self.driver.find_element(By.TAG_NAME, 'table')
+#             # table_INPUT_elements = table_INPUTS.find_elements(By.TAG_NAME, 'tr')
+#             #
+#             # print(inputs)
+#             # print('----!!!!--------')
+#             # cnt, len_inputs, num_MPP_MAN = 0, len(inputs), None
+#             # for row in [el.text.split() for el in table_INPUT_elements]:
+#             #     if len(row) == 5:
+#             #         num, name, state, time_state, actuator_val = row
+#             #     else:
+#             #         continue
+#             #     # print(f'num: {num}, name: {name},state: {state},time_state: {time_state},actuator_val: {actuator_val}')
+#             #     if name not in inputs and set_stage_MAN and name in self.MAN_INPUTS:
+#             #         if name == 'MPP_MAN' and state == '0':
+#             #             num_MPP_MAN = num
+#             #         elif state == '1' and name != 'MPP_MAN':
+#             #             self._set_INPUTS(num, 'ВЫКЛ')
+#             #     elif name in inputs:
+#             #         val_actuator_to_set = inputs.get(name)
+#             #         val_actuator_to_curr = 'ВФ' if actuator_val == '-' else actuator_val
+#             #         if val_actuator_to_set != val_actuator_to_curr:
+#             #             self._set_INPUTS(num, inputs.get(name))
+#             #             cnt += 1
+#             # if num_MPP_MAN:
+#             #     self._set_INPUTS(num_MPP_MAN, 'ВКЛ')
+#             # Возврат в начало, если не будем далее работать с параметрами программы
+#
+#         if user_parameters:
+#             self.driver.refresh()
+#             self._goto_content_frame(span_user_parameters)
+#
+#             table_UP = self.driver.find_element(By.TAG_NAME, 'table')
+#             table_UP_elements = table_UP.find_elements(By.TAG_NAME, 'tr')
+#
+#             print([el.text for el in table_UP_elements])
+#
+#             # Установка UP
+#             cnt, len_inputs = 1, len(inputs)
+#             for row in [el.text.split() for el in table_UP_elements]:
+#                 if len(row) == 5:
+#                     num, name, val_cur, val_min, val_max = row
+#                 else:
+#                     continue
+#                 if name in user_parameters:
+#                     val_up_to_set = user_parameters.get(name)
+#                     if val_up_to_set != val_cur:
+#                         self._set_USER_PARAMETERS(num, val_up_to_set)
+#                     cnt += 1
+#                 if cnt >= len_inputs:
+#                     print(f'if cnt >= len_inputs:')
+#                     break
+#         self.driver.refresh()
+#         time.sleep(self.middle_pause)
+#         self.driver.close()
+#
+#     def set_stage(self, value, increase_the_timeout=False):
+#         if increase_the_timeout:
+#             self.short_pause += 1
+#             self.middle_pause += 2
+#             self.long_pause += 2
+#
+#         ##############################################################
+#
+#         # Боевой вариант
+#         options = Options()
+#         options.add_argument('--headless')
+#         options.add_argument('--disable-gpu')
+#         options.add_argument('--no-sandbox')
+#         options.add_argument('--disable-dev-shm-usage')
+#
+#         self.driver = webdriver.Chrome(options=options)
+#         self.driver.get('http://' + self.ip_adress)
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress)
+#
+#         # Тест вариант
+#         # self.driver = webdriver.Chrome()
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.middle_pause)
+#
+#         time.sleep(self.middle_pause)
+#
+#         span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
+#         time.sleep(self.middle_pause)
+#
+#         self.driver.refresh()
+#         time.sleep(self.short_pause)
+#         self._goto_content_frame(span_inputs)
+#
+#         if value.isdigit() and int(value) in range(1, 9):
+#             inputs = {'MPP_MAN': 'ВКЛ', f'MPP_PH{value}': 'ВКЛ'}
+#             set_man, reset_man = True, False
+#         elif value.lower() in ('0', 'false', 'reset', 'local', 'сброс', 'локал'):
+#             inputs = {'MPP_MAN' if i == 0 else f'MPP_PH{i}': 'ВЫКЛ' if i == 0 else 'ВФ' for i in range(9)}
+#             set_man, reset_man = False, True
+#         else:
+#             return
+#
+#         self._manage_set_inputs(inputs, set_man, reset_man)
+#
+#     def set_flash(self, value, increase_the_timeout=False):
+#         if increase_the_timeout:
+#             self.short_pause += 1
+#             self.middle_pause += 2
+#             self.long_pause += 2
+#
+#         ##############################################################
+#
+#         # Боевой вариант
+#         options = Options()
+#         # options.add_argument('--headless')
+#         # options.add_argument('--disable-gpu')
+#         self.driver = webdriver.Chrome(options=options)
+#         self.driver.get('http://' + self.ip_adress)
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress + '/hvi?file=dummy.hvi&uic=3333')
+#         time.sleep(self.short_pause)
+#         self.driver.get('http://' + self.ip_adress)
+#
+#         # Тест вариант
+#         # self.driver = webdriver.Chrome()
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost' + '/hvi?file=dummy.hvi&uic=3333')
+#         # time.sleep(self.short_pause)
+#         # self.driver.get('http://localhost/')
+#         # time.sleep(self.middle_pause)
+#
+#         time.sleep(self.middle_pause)
+#
+#         span_inputs, _ = self._detect_span_inputs_and_user_parameterts()
+#         time.sleep(self.middle_pause)
+#
+#         self.driver.refresh()
+#         time.sleep(self.short_pause)
+#         self._goto_content_frame(span_inputs)
+#
+#         if value.lower() in ('1', 'true', 'set', 'on', 'установить'):
+#             inputs = {'MPP_FL': 'ВКЛ'}
+#         elif value.lower() in ('0', 'false', 'reset', 'off', 'сброс'):
+#             inputs = {'MPP_FL': 'ВЫКЛ'}
+#         else:
+#             return
+#
+#         self._manage_set_inputs(inputs, )

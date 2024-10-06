@@ -57,7 +57,7 @@ for inps1 in get_inputs(resp2.content.decode("utf-8")):
         #                                   data={'par_name': f'XIN.R20/{ind}', 'par_value': '0'})
 
 
-resp1 = session.post(url='http://10.179.107.129/hvi?file=data.hvi&page=cell6710.hvi,',
+resp1 = session.post(url='http://10.45.154.19/hvi?file=data.hvi&page=cell6710.hvi,',
                      data={'par_name': 'PARM.R1/2', 'par_value': '0'})
 
 
