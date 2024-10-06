@@ -1,5 +1,5 @@
 from django.conf.urls.static import static
-from django.urls import path, re_path, register_converter
+from django.urls import path, re_path, register_converter, include
 from rest_framework.routers import SimpleRouter
 
 from engineering_tools import settings
@@ -78,6 +78,9 @@ urlpatterns = [
 
     path('api/v1/traffilight-objects/', TrafficLightsAPIVeiw.as_view()),
     path('api/v1/controller-management-settings/', ControllersViewSet.as_view())
+
+    path(r'api/v/1auth/', include('djoser.urls')),
+    re_path(r'^auth/', include('djoser.urls.authtoken')),
 
 
     # path('toolkit/', views.index, name='toolkit'),
