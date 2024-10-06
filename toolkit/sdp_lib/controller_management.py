@@ -2221,6 +2221,65 @@ class PeekWeb:
         self.ip_adress = ip_adress
         self.inputs = {}
         self.url_inputs = f'http://{ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
+        self.set_inp_url = f'http://{ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
+
+    async def set_inp(self, session, data_params):
+        print(f'data_params: {data_params}')
+
+        # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
+        # {'par_name': 'PARM.R1/1', 'par_value': '0'}
+        index, value = data_params
+        params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
+        print(f'params: {params}')
+
+        async with session.post(self.set_inp_url, data=params) as response:
+            status = await response.text()
+            print(response)
+            return status
+
+    def make_inputs_to_reset_MAN(self, collect_inputs=False):
+
+        cnt = 0
+        inputs = {}
+        for line in self.get_INPUTS_from_web():
+            index, num, name, cur_val, time, actuator_val = line
+            if name == 'MPP_MAN':
+                cnt += 1
+                inputs[name] = index, '1'
+            elif 'MPP_PH' in name:
+                cnt += 1
+                inputs[name] = index, '0'
+            if cnt > 8:
+                break
+        return inputs
+
+    def make_inputs_to_set_stage(self, stage_to_set: str, collect_inputs=False):
+
+        cnt = 0
+        inputs = {}
+
+
+        for line in self.get_INPUTS_from_web():
+            index, num, name, cur_val, time, actuator_val = line
+            if collect_inputs:
+                self.inputs[name] = index
+
+            if 'MPP_PH' in name and name != stage_to_set:
+                cnt += 1
+                if cur_val != '0':
+                    inputs[name] = (index, '1')
+            elif name == stage_to_set:
+                cnt += 1
+                inputs[name] = (index, '2')
+            if name == 'MPP_MAN':
+                cnt += 1
+                if cur_val != '1':
+                    inputs[name] = (index, '2')
+
+            if cnt > 8:
+                break
+        print(f'inputs-->> {inputs}')
+        return inputs
 
     async def set_stage(self, value):
 
@@ -2234,6 +2293,8 @@ class PeekWeb:
         print(f'converted_val_to_input: {converted_val_to_input}')
 
 
+
+
         # url_inputs = f'http://{self.ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
         # headers = {
         #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
@@ -2241,23 +2302,32 @@ class PeekWeb:
         # data = {'par_name': 'PARM.R1/1', 'par_value': '0'}
         # cookies = {'uic': '3333'}
 
+        if not flag_reset_man:
+            inputs_to_set = self.make_inputs_to_set_stage(stage_to_set=converted_val_to_input,
+                                                      collect_inputs=flag_collect_inputs)
+        else:
+            print('else')
+            inputs_to_set = self.make_inputs_to_reset_MAN()
 
-        inputs_to_set = {}
-
-        for inp in self.make_INPUTS():
-            print(f'inpPP: {inp}')
-            index, num, name, cur_val, time, actuator_val = inp
-            if flag_collect_inputs and name in self.MAN_INPUTS:
-                self.inputs[name] = index
+        print(f'inputs_to_set.inputs = {inputs_to_set}')
         print(f'self.inputs = {self.inputs}')
 
 
+        timeout = aiohttp.ClientTimeout(2)
+        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+            tasks = [self.set_inp(session, data) for data in inputs_to_set.values()]
+            print(f'tasks: {tasks}')
+            result = await asyncio.gather(*tasks)
+        return result
 
 
-    def make_INPUTS(self):
+
+
+    def get_INPUTS_from_web(self):
 
         with requests.Session() as session:
-            response = session.get(url=self.url_inputs, headers=self.headers, cookies=self.cookies, timeout=1).text
+            response = session.get(
+                url=self.url_inputs, headers=self.headers, cookies=self.cookies, timeout=2).content.decode("utf-8")
             print(f'responseXX: {response}')
 
         inputs = (line.split(';')[1:] for line in response.splitlines() if line.startswith(':D'))
