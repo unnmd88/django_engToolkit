@@ -42,6 +42,7 @@ const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
 const SELECT_PROTOCOL = {'Swarco': 0, 'Поток (S)': 1, 'Поток (P)': 2, 'Peek': 3};
 const TYPE_COMMAND = ['']
 const SEARCH_OPTIONS = ['По номеру СО', 'Названию СО']
+const TOKEN = {'7174fa6f9d0f954a92d2a5852a7fc3bcaace7578'}
 // const SEARCH_OPTIONS = {'По номеру СО': function (value) {
 //                                         return Number.isInteger(+value);
 //                                         }
@@ -526,7 +527,8 @@ async function sendReqGetDataAxios() {
                 },
                   {  
                     headers: {
-                    "X-CSRFToken": csrfToken, 
+                    "X-CSRFToken": csrfToken,
+                    "Authorization": `Bearer ${TOKEN}`
                     // "content-type": "application/json"
                     }
                   }
@@ -768,7 +770,8 @@ async function set_request_axios(num_host) {
               headers: {
               "X-CSRFToken": csrfToken, 
             //   "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
-              "content-type": "application/json"
+            //   
+            // "Authorization": `Bearer ${TOKEN}`
               }
             }
         );

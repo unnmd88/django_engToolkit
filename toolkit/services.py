@@ -76,6 +76,7 @@ class SetRequestToController:
         set_stage = ('ФАЗА MAN', 'ФАЗА SNMP')
         set_flash = ('ЖМ MAN', 'ЖМ SNMP')
         set_dark = ('ОС MAN', 'ОС SNMP')
+        set_user_params_peek_web = 'ПАРАМЕТРЫ ПРОГРАММЫ'
 
         result = msg = num_host = None
 
@@ -110,6 +111,9 @@ class SetRequestToController:
                 print('command in host.set_dark(value)')
             elif command == 'ВВОДЫ':
                 result = host.session_manager(inputs=(inp for inp in value.split(',')))
+            elif command == set_user_params_peek_web:
+                isError = asyncio.run(host.set_user_parameters(params=value))
+                result, msg = self.get_result_command(isError, host)
 
         return num_host, result, msg
 
@@ -142,8 +146,10 @@ class SetRequestToController:
 
         messages = {
             'success': 'Команда успешно отправлена',
-            'No SNMP response received before timeout': 'Хост недоступен',
-            'common': 'Ошибка отправки команды'
+            'No SNMP response received before timeout': 'Ошибка отправки команды: хост недоступен',
+            'ConnectTimeoutError': 'Ошибка отправки команды: хост недоступен',
+            'common': 'Ошибка отправки команды',
+            'Invalid value': 'Ошибка отправки команды: недопустимое значение'
         }
 
         if isinstance(host, controller_management.SwarcoSSH):
@@ -157,6 +163,12 @@ class SetRequestToController:
                 result, msg = True, messages.get('success')
             else:
                 result, msg = False, messages.get(res.__str__(), messages.get('common'))
+
+        elif isinstance(host, controller_management.PeekWeb):
+            if res is None or not res:
+                result, msg = True, messages.get('success')
+            else:
+                result, msg = False, messages.get(res, messages.get('common'))
         else:
             result = msg = None
 
