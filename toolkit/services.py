@@ -99,13 +99,17 @@ class SetRequestToController:
                 print('command in set_stage')
             elif command in set_flash:
                 if inspect.iscoroutinefunction(host.set_flash):
-                    result = asyncio.run(host.set_flash(value))
+                    print('elif command in set_flash:')
+                    isError = asyncio.run(host.set_flash(value))
+                    result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_flash(value)
                 print('command in host.set_flash(value)')
             elif command in set_dark:
+                print('elif command in set_dark:')
                 if inspect.iscoroutinefunction(host.set_dark):
-                    result = asyncio.run(host.set_dark(value))
+                    isError = asyncio.run(host.set_dark(value))
+                    result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_dark(value)
                 print('command in host.set_dark(value)')
