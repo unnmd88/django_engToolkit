@@ -2204,15 +2204,11 @@ class PeekWeb:
 
     type_set_request_man_stage = 'type_set_request_man_stage'
     type_set_request_man_flash = 'type_set_request_man_flash'
-    type_set_request_man_flash_dark = 'type_set_request_man_flash_dark'
+    type_set_request_man_flash_dark_allred = 'type_set_request_man_flash_dark_allred'
+    type_set_request_cp_red = 'type_set_request_cp_red'
+
     type_set_request_user_parameter = 'type_set_request_user_parameter'
-
-
-
     reset_man = 'reset_man'
-    flag_set_man_flash_dark_allred = 'flag_set_man_flash_dark_allred'
-    flag_reset_man_flash_dark_allred = 'flag_reset_man_flash_dark_allred'
-
 
     url_inputs = '/hvi?file=cell1020.hvi&pos1=0&pos2=40'
     url_set_inp = '/hvi?file=data.hvi&page=cell6710.hvi'
@@ -2346,6 +2342,27 @@ class PeekWeb:
 
         return inputs
 
+    def make_inputs_to_set_reset_allred(self, collect_inputs, name_inp, actuator_val_to_set):
+
+        inputs_from_web = self.get_INPUTS_from_web()
+        if not isinstance(inputs_from_web, types.GeneratorType):
+            err_message = inputs_from_web
+            return err_message
+
+        inputs = {}
+
+        for line in inputs_from_web:
+            index, num, name, cur_val, time_state, actuator_val = line
+            if collect_inputs:
+                self.inputs[name] = index
+            if name == name_inp:
+                inputs[name] = (index, actuator_val_to_set)
+                continue
+            elif name in self.MAN_INPUTS and cur_val != '0':
+                inputs[name] = (index, self.ACTUATOR_RESET)
+
+        return inputs
+
     def make_user_parameters_to_set(self, params, collect_user_parameters=False):
 
         print(f'make_user_parameters_to_set')
@@ -2374,7 +2391,6 @@ class PeekWeb:
         synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
         synonyms_of_reset = ('0', 'false', 'reset', 'сброс', 'локал', 'local')
 
-
         if type_set_request == self.type_set_request_man_stage:
             if value.lower() in synonyms_of_reset:
                 return True, self.reset_man
@@ -2397,7 +2413,8 @@ class PeekWeb:
                 return False, 'Bad syntax'  # Неправильно уазаны параметры, должен быть разделитель "="
             print(f'params_for_set из проверки: {params_for_set}')
             return True, params_for_set
-        elif type_set_request == self.type_set_request_man_flash_dark:
+        elif (type_set_request == self.type_set_request_man_flash_dark_allred or
+              type_set_request == self.type_set_request_cp_red):
             if value.lower() in synonyms_of_reset:
                 return True, self.ACTUATOR_RESET
             elif value.lower() in synonyms_of_set:
@@ -2415,7 +2432,7 @@ class PeekWeb:
         elif type_set_request == self.type_set_request_user_parameter:
             url = f'http://{self.ip_adress}{self.url_set_user_parameters}'
             params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
-        elif type_set_request == self.type_set_request_man_flash_dark:
+        elif type_set_request == self.type_set_request_man_flash_dark_allred:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
             url = f'http://{self.ip_adress}{self.url_set_inp}'
         else:
@@ -2491,25 +2508,55 @@ class PeekWeb:
         return await self.main_async(inputs_to_set, self.type_set_request_man_stage)
 
     async def set_flash(self, value):
-        res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark)
-        if not res:
-            err_message = actuator_val
-            return err_message
-        inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_FL', actuator_val)
+        return await self.set_flash_dark_allred('MPP_FL', value)
 
-        return await self.main_async(inputs_to_set,
-                                     self.type_set_request_man_flash_dark,
-                                     True if actuator_val == self.ACTUATOR_RESET else False)
+        # res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
+        # if not res:
+        #     err_message = actuator_val
+        #     return err_message
+        # inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_FL', actuator_val)
+        #
+        # return await self.main_async(inputs_to_set,
+        #                              self.type_set_request_man_flash_dark_allred,
+        #                              True if actuator_val == self.ACTUATOR_RESET else False)
 
     async def set_dark(self, value):
-        res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark)
+        return await self.set_flash_dark_allred('MPP_OFF', value)
+
+        # res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
+        # if not res:
+        #     err_message = actuator_val
+        #     return err_message
+        # inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_OFF', actuator_val)
+        #
+        # return await self.main_async(inputs_to_set,
+        #                              self.type_set_request_man_flash_dark_allred,
+        #                              True if actuator_val == self.ACTUATOR_RESET else False)
+
+    async def set_red(self, value):
+
+        return await self.set_flash_dark_allred('CP_RED', value)
+        # res, actuator_val = self.validate_val(value, self.type_set_request_cp_red)
+        #
+        # if not res:
+        #     err_message = actuator_val
+        #     return err_message
+        # inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'CP_RED', actuator_val)
+        #
+        # return await self.main_async(inputs_to_set,
+        #                              self.type_set_request_man_flash_dark_allred,
+        #                              True if actuator_val == self.ACTUATOR_RESET else False)
+
+    async def set_flash_dark_allred(self, name_inp, value):
+        res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
+
         if not res:
             err_message = actuator_val
             return err_message
-        inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_OFF', actuator_val)
+        inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, name_inp, actuator_val)
 
         return await self.main_async(inputs_to_set,
-                                     self.type_set_request_man_flash_dark,
+                                     self.type_set_request_man_flash_dark_allred,
                                      True if actuator_val == self.ACTUATOR_RESET else False)
 
     async def set_user_parameters(self, params):
@@ -2551,8 +2598,6 @@ class PeekWeb:
                 print(f'pending if: {pending}')
                 print(f'self.inputs.get: {self.inputs.get("CP_AUTO")}')
 
-
-
                 done, pending = await asyncio.wait([asyncio.create_task(
                     self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_ON)))
                 ])
@@ -2586,18 +2631,12 @@ class PeekWeb:
                 result = await asyncio.gather(*tasks)
                 print(f'result: {result}')
 
-
         # if type_request == self.type_set_request_man_flash_dark_allred:
         #     await asyncio.gather(*tasks)
-
 
         # for res in result:
         #     if res != 200:
         #         return 'ConnectTimeoutError'
-
-
-
-
 
 
 """ Arhive """
