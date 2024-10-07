@@ -1,4 +1,5 @@
 import itertools
+import re
 import types
 from collections.abc import Iterable
 import time
@@ -2210,13 +2211,10 @@ class PeekWeb:
     url_user_parameters = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
     url_set_user_parameters = '/hvi?file=data.hvi&page=cell6710.hvi'
 
-
-
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
     }
     cookies = {'uic': '3333'}
-    # data = {'par_name': 'PARM.R1/1', 'par_value': '0'}
     allowed_inputs = {'MKEY1', 'MKEY2', 'MKEY3', 'MKEY4', 'MKEY5',
                       'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4', 'MPP_PH5',
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
@@ -2225,21 +2223,18 @@ class PeekWeb:
     def __init__(self, ip_adress: str, num_host: str = None):
         self.ip_adress = ip_adress
         self.inputs = {}
-        # self.url_inputs = f'http://{ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
-        # self.url_set_inp = f'http://{ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
-        # self.url_user_parameters = f'http://{ip_adress}/hvi?file=cell1020.hvi&pos1=0&pos2=40'
-        # self.url_set_user_parameters = f'http://{ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
+        self.user_parameters = {}
 
     def get_INPUTS_from_web(self):
 
         try:
             with requests.Session() as session:
                 response = session.get(
-                                        url=f'http://{self.ip_adress}{self.url_inputs}',
-                                        headers=self.headers,
-                                        cookies=self.cookies,
-                                        timeout=2
-                                    )
+                    url=f'http://{self.ip_adress}{self.url_inputs}',
+                    headers=self.headers,
+                    cookies=self.cookies,
+                    timeout=2
+                )
             inputs = (
                 line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
             )
@@ -2247,6 +2242,26 @@ class PeekWeb:
         except requests.exceptions.ConnectTimeout as err:
             return 'ConnectTimeoutError'
         except Exception as err:
+            return 'common'
+
+    def get_USER_PARAMETERS_from_web(self):
+
+        try:
+            with requests.Session() as session:
+                response = session.get(
+                    url=f'http://{self.ip_adress}{self.url_user_parameters}',
+                    headers=self.headers,
+                    cookies=self.cookies,
+                    timeout=2
+                )
+            inputs = (
+                line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
+            )
+            return inputs
+        except requests.exceptions.ConnectTimeout as err:
+            return 'ConnectTimeoutError'
+        except Exception as err:
+            print(f'Exception err: {err}')
             return 'common'
 
     def make_inputs_to_set_stage_MAN(self, stage_to_set: str, collect_inputs=False):
@@ -2302,6 +2317,29 @@ class PeekWeb:
                 break
         return inputs
 
+    def make_user_parameters_to_set(self, params, collect_user_parameters=False):
+
+        print(f'make_user_parameters_to_set')
+        print(f'params: {params}')
+
+        user_parameters_from_web = self.get_USER_PARAMETERS_from_web()
+        if not isinstance(user_parameters_from_web, types.GeneratorType):
+            err_message = user_parameters_from_web
+            return err_message
+
+        user_params = {}
+
+        for line in user_parameters_from_web:
+            index, num, name, cur_val, miv_val, max_val = line
+            if collect_user_parameters:
+                self.user_parameters[name] = index
+            if name in params:
+                val_to_set = params.get(name)
+                if val_to_set.isdigit() and int(val_to_set) > int(max_val):
+                    continue
+                user_params[name] = (index, params.get(name))
+        print(f'user_params_TOSETE: {user_params}')
+        return user_params
 
     def validate_val(self, value, type_set_request):
         if type_set_request == self.type_set_request_man_stage:
@@ -2311,8 +2349,23 @@ class PeekWeb:
                 return True, f'MPP_PH{value}'
             else:
                 return False, 'Invalid value'
+        elif type_set_request == self.type_set_request_user_parameter:
+            if not value:
+                return False, 'Invalid value'  # Передали пустой список. а должен быть напрмер ['MAN_ON=0'] или ['MAN_ON=0', '...']
+            params_for_set = {}
+            for name_val in value:
+                if not name_val:
+                    continue
+                name_val = re.sub(r'\D+$', '', name_val).replace(" ", '').split('=')
+                if len(name_val) == 2:
+                    params_for_set[name_val[0]] = name_val[1]
 
-    async def set_val_to_web(self, type_set_request, session, data_params,):
+            if not params_for_set:
+                return False, 'Bad syntax'  # Неправильно уазаны параметры, должен быть разделитель "="
+            print(f'params_for_set из проверки: {params_for_set}')
+            return True, params_for_set
+
+    async def set_val_to_web(self, type_set_request, session, data_params, ):
         print(f'data_params: {data_params}')
 
         # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
@@ -2333,15 +2386,50 @@ class PeekWeb:
             await response.text()
             return response.status
 
+    # async def set_stage(self, value):
+    #     """
+    #
+    #     :param value: Номер фазы или синоним, если требуется сбросить MAN
+    #     :return: None если запрос успешен, иначе текст ошибки
+    #     """
+    #
+    #     print(f'async def set_stage PEEK')
+    #
+    #     res, inp_name = self.validate_val(value, self.type_set_request_man_stage)
+    #     if not res:
+    #         err_message = inp_name
+    #         return err_message
+    #
+    #     if inp_name == self.reset_man:
+    #         inputs_to_set = self.make_inputs_to_reset_MAN()
+    #     else:
+    #         print('else')
+    #         inputs_to_set = self.make_inputs_to_set_stage_MAN(stage_to_set=inp_name, collect_inputs=False)
+    #
+    #     if not isinstance(inputs_to_set, dict):
+    #         err_message = inputs_to_set
+    #         return err_message
+    #
+    #     print(f'inputs_to_set.inputs = {inputs_to_set}')
+    #     print(f'self.inputs = {self.inputs}')
+    #
+    #     timeout = aiohttp.ClientTimeout(3)
+    #     async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+    #         tasks = [self.set_val_to_web(self.type_set_request_man_stage, session, data)
+    #                  for data in inputs_to_set.values()]
+    #         print(f'tasks: {tasks}')
+    #         result = await asyncio.gather(*tasks)
+    #     for res in result:
+    #         if res != 200:
+    #             return 'ConnectTimeoutError'
+
     async def set_stage(self, value):
         """
 
         :param value: Номер фазы или синоним, если требуется сбросить MAN
         :return: None если запрос успешен, иначе текст ошибки
         """
-
         print(f'async def set_stage PEEK')
-
         res, inp_name = self.validate_val(value, self.type_set_request_man_stage)
         if not res:
             err_message = inp_name
@@ -2350,7 +2438,6 @@ class PeekWeb:
         if inp_name == self.reset_man:
             inputs_to_set = self.make_inputs_to_reset_MAN()
         else:
-            print('else')
             inputs_to_set = self.make_inputs_to_set_stage_MAN(stage_to_set=inp_name, collect_inputs=False)
 
         if not isinstance(inputs_to_set, dict):
@@ -2360,19 +2447,39 @@ class PeekWeb:
         print(f'inputs_to_set.inputs = {inputs_to_set}')
         print(f'self.inputs = {self.inputs}')
 
+        return await self.main_async(inputs_to_set, self.type_set_request_man_stage)
+
+    async def set_user_parameters(self, params):
+
+        res, params = self.validate_val(params.split(','), self.type_set_request_user_parameter)
+        if not res:
+            err_message = params
+            return err_message
+
+        params_to_set = self.make_user_parameters_to_set(params)
+
+        if not isinstance(params_to_set, dict):
+            err_message = params_to_set
+            return err_message
+
+        if not params_to_set:
+            return 'Not params to set'
+
+        return await self.main_async(params_to_set, self.type_set_request_user_parameter)
+
+    async def main_async(self, params, type_request):
         timeout = aiohttp.ClientTimeout(3)
         async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            tasks = [self.set_val_to_web(self.type_set_request_man_stage, session, data)
-                     for data in inputs_to_set.values()]
+            tasks = [self.set_val_to_web(type_request, session, data)
+                     for data in params.values()]
             print(f'tasks: {tasks}')
             result = await asyncio.gather(*tasks)
+
+        print("FINAL")
         for res in result:
             if res != 200:
                 return 'ConnectTimeoutError'
 
-    async def set_user_parameters(self, params):
-
-        pass
 
     def set_flash(self, value, increase_the_timeout=False):
         if increase_the_timeout:

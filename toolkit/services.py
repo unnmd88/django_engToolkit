@@ -122,6 +122,7 @@ class SetRequestToController:
         SNMP = 'SNMP'
         MAN = 'MAN'
         INPUTS = 'ВВОДЫ'
+        USER_PARAMETERS = 'ПАРАМЕТРЫ ПРОГРАММЫ'
 
         command = command.upper()
 
@@ -141,15 +142,20 @@ class SetRequestToController:
                 return controller_management.AvailableProtocolsManagement.PEEK_UG405.value
             elif MAN in command or INPUTS in command:
                 return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
+            elif command == USER_PARAMETERS:
+                return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
 
     def get_result_command(self, res, host):
+
+        print(f'get_result_command res: {res}')
 
         messages = {
             'success': 'Команда успешно отправлена',
             'No SNMP response received before timeout': 'Ошибка отправки команды: хост недоступен',
             'ConnectTimeoutError': 'Ошибка отправки команды: хост недоступен',
             'common': 'Ошибка отправки команды',
-            'Invalid value': 'Ошибка отправки команды: недопустимое значение'
+            'Invalid value': 'Ошибка отправки команды: недопустимое значение',
+            'Not params to set': 'Проверьте корректность название/значение устанавливаемого параметра'
         }
 
         if isinstance(host, controller_management.SwarcoSSH):
