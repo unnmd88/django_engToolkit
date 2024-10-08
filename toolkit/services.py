@@ -159,7 +159,8 @@ class SetRequestToController:
             'ConnectTimeoutError': 'Ошибка отправки команды: хост недоступен',
             'common': 'Ошибка отправки команды',
             'Invalid value': 'Ошибка отправки команды: недопустимое значение',
-            'Not params to set': 'Проверьте корректность название/значение устанавливаемого параметра'
+            'Not params to set': 'Проверьте корректность название/значение устанавливаемого параметра',
+            'No Such Object currently exists at this OID': 'Ошибка отправки команды: неверный тип дк по указаглму ip'
         }
 
         if isinstance(host, controller_management.SwarcoSSH):

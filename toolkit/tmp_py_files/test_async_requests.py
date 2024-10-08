@@ -1,5 +1,15 @@
-import re
+import asyncio
+import aiohttp
 
-name_val = '   D M    vssvdsdsd   vvA{=1 v  gggfg sssfsdfwgergre'
-name_val = re.sub(r'\D+$', '', name_val).replace(" ", '')
-print(name_val)
+from toolkit.sdp_lib import controller_management
+
+ip = '10.179.107.129'
+ip2 = '10.45.154.12'
+
+h1 = controller_management.PeekWeb(ip2)
+
+res = asyncio.run(h1.main_async2('USER_PARAMETERS',
+                                 None,
+                                 ))
+
+

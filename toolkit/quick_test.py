@@ -1,28 +1,11 @@
-# -*- coding: utf-8 -*-
-import json
-import ast
+import asyncio
 
-d1 = {'a': 1, 'b': True}
+from toolkit.sdp_lib import controller_management
 
-print(d1.get('v', 'leee'))
+ip = '10.179.107.129'
+ip2 = '10.45.154.11'
+ip3 = '10.45.154.19'
 
-a = d1.__str__()
-
-print(a)
-
-losss = "{'1': '10.45.154.16;;Swarco;false;Фаза SNMP;;false;', '2': '10.45.154.18;;Swarco;false;Фаза SNMP;;false;', " \
-    "'3': '10.45.154.19;;Peek;false;Фаза SNMP;;false;', '4': ';;-;false; Выберите протокол ;;false;', " \
-    "'5': ';;-;false; Выберите протокол ;;false;', '6': ';;-;false; Выберите протокол ;;false;', '7': ';;-;false; " \
-    "Выберите протокол ;;false;', '8': ';;-;false; Выберите протокол ;;false;', '9': ';;-;false; Выберите протокол " \
-    ";;false;', '10': ';;-;false; Выберите протокол ;;false;', '11': ';;-;false; Выберите протокол ;;false;', " \
-    "'12': ';;-;false; Выберите протокол ;;false;', '13': ';;-;false; Выберите протокол ;;false;', '14': ';;-;false; " \
-    "Выберите протокол ;;false;', '15': ';;-;false; Выберите протокол ;;false;', '16': ';;-;false; Выберите протокол " \
-    ";;false;', '17': ';;-;false; Выберите протокол ;;false;', '18': ';;-;false; Выберите протокол ;;false;', " \
-    "'19': ';;-;false; Выберите протокол ;;false;', '20': ';;-;false; Выберите протокол ;;false;', '21': ';;-;false; " \
-    "Выберите протокол ;;false;', '22': ';;-;false; Выберите протокол ;;false;', '23': ';;-;false; Выберите протокол " \
-    ";;false;', '24': ';;-;false; Выберите протокол ;;false;', '25': ';;-;false; Выберите протокол ;;false;', " \
-    "'26': ';;-;false; Выберите протокол ;;false;', '27': ';;-;false; Выберите протокол ;;false;', '28': ';;-;false; " \
-    "Выберите протокол ;;false;', '29': ';;-;false; Выберите протокол ;;false;', '30': ';;-;false; Выберите протокол " \
-    ";;false;'}    controller_management_v1.js"
-
-print(ast.literal_eval(losss))
+h1 = controller_management.PeekUG405(ip3)
+res = asyncio.run(h1.get_utcType2VendorID())
+print(res)

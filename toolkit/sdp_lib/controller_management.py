@@ -45,8 +45,94 @@ async def get_stage(ip_adress, community, oids):
 #     scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 #     return scn
 
+class BaseCommon:
 
-class BaseSTCIP:
+
+    async def get_request(self, ip_adress, community, oids, timeout=0, retries=0):
+        """
+        Возвращает значение swarcoUTCStatusEquipment -> текущего режима ДК
+        |----EquipmentStatus (INTEGER)
+        |----noInformation(0)
+        |----workingProperly(1)
+        |----powerUp(2)
+        |----dark(3)
+        |----flash(4)
+        |----partialFlash(5)
+        |----allRed(6)
+        :param timeout: таймаут подключения
+        :param retries: количество попыток подключения
+        :return: значение swarcoUTCStatusEquipment
+        """
+        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *oids
+        )
+        print(f'errorIndication: {errorIndication.__str__()}')
+        print(f'errorStatus: {errorStatus}')
+        print(f'errorIndex: {errorIndex}')
+        print(f'varBinds: {varBinds}')
+        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        print(f'res -> {res}')
+        if not errorIndication:
+            for oid, val in varBinds:
+                print(oid.prettyPrint() + '-->' + val.prettyPrint())
+        return varBinds
+
+        if not errorIndication:
+            print(f'varBinds: {varBinds}')
+
+            return varBinds[0][1]
+
+    async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
+        """
+        """
+        errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *oids
+        )
+        print(f'errorIndication: {errorIndication.__str__()}')
+        print(f'errorStatus: {errorStatus}')
+        print(f'errorIndex: {errorIndex}')
+        print(f'varBinds: {varBinds}')
+        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        print(f'res -> {res}')
+        # if not errorIndication:
+        #     for data in varBinds:
+        #         print(f'len(data): {len(data)}')
+                #
+                # print(oid.prettyPrint() + '-->' + val.prettyPrint())
+        return varBinds
+
+    async def getWalk_request(self, ip_adress, community, oids, timeout=0, retries=0):
+        """
+        """
+        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *oids
+        )
+        print(f'errorIndication: {errorIndication.__str__()}')
+        print(f'errorStatus: {errorStatus}')
+        print(f'errorIndex: {errorIndex}')
+        print(f'varBinds: {varBinds}')
+        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        print(f'res -> {res}')
+        # if not errorIndication:
+        #     for data in varBinds:
+        #         print(f'len(data): {len(data)}')
+                #
+                # print(oid.prettyPrint() + '-->' + val.prettyPrint())
+        return varBinds
+
+class BaseSTCIP(BaseCommon):
     community = 'private'
 
     swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
@@ -295,7 +381,7 @@ class BaseSTCIP:
         )
 
 
-class BaseUG405:
+class BaseUG405(BaseCommon):
     community = 'UTMC'
 
     # Ключи, прописанные вручную, рабочая версия
@@ -305,6 +391,11 @@ class BaseUG405:
     #                                '13': '0010', '14': '0020', '15': '0040', '16': '0080'}
 
     # oid для UG405 Peek
+    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
+    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
+    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2'
+    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
+    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
     utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
     utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
     utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
@@ -338,7 +429,7 @@ class BaseUG405:
         scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
         return scn
 
-    def __init__(self, ip_adress, scn, num_host=None):
+    def __init__(self, ip_adress, scn='', num_host=None):
         self.ip_adress = ip_adress
         self.scn = self.convert_scn(scn)
         self.num_host = num_host
@@ -360,6 +451,55 @@ class BaseUG405:
             ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), ),
         )
         return varBinds[0][1].prettyPrint()
+
+    async def get_utcType2VendorID(self, timeout=0, retries=0):
+        """
+        Возвращает значение OperationModeTimeout
+        :param timeout: Таймаут подключения
+        :param retries: Количетсво попыток подключения
+        :return Текущее значение utcType2OperationModeTimeout
+        """
+        print('-------')
+        print(self.ip_adress)
+        print(self.community)
+        print([self.utcType2VendorID])
+        print('*******')
+
+
+
+        oids = [ObjectType(ObjectIdentity(self.utcControlTO)),
+                ObjectType(ObjectIdentity(self.utcReplyGn)),
+                ObjectType(ObjectIdentity(self.utcType2Version)),
+                ObjectType(ObjectIdentity(self.utcControlFn)),
+                ]
+
+
+
+        # result = await self.get_request(self.ip_adress,
+        #                                 self.community,
+        #                                 oids
+        #                                 )
+        # ObjectType(ObjectIdentity(self.utcType2VendorID))
+        result2 = await self.getNext_request(self.ip_adress,
+                                            self.community,
+                                            oids
+                                            )
+
+        # result3 = await self.getWalk_request(self.ip_adress,
+        #                                     self.community,
+        #                                     [ObjectType(ObjectIdentity(self.utcType2VendorID))]
+        #                                     )
+        print(f'result2 async def get_utcType2VendorID: {result2}')
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcType2VendorID), ),
+        # )
+        if not errorIndication:
+            return varBinds[0][1].prettyPrint()
+        return errorIndication
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
         """
@@ -2202,6 +2342,9 @@ class PeekWeb:
     ACTUATOR_OFF = '1'
     ACTUATOR_ON = '2'
 
+    INPUTS = 'INPUTS'
+    USER_PARAMETERS = 'USER_PARAMETERS'
+
     type_set_request_man_stage = 'type_set_request_man_stage'
     type_set_request_man_flash = 'type_set_request_man_flash'
     type_set_request_man_flash_dark_allred = 'type_set_request_man_flash_dark_allred'
@@ -2210,10 +2353,10 @@ class PeekWeb:
     type_set_request_user_parameter = 'type_set_request_user_parameter'
     reset_man = 'reset_man'
 
-    url_inputs = '/hvi?file=cell1020.hvi&pos1=0&pos2=40'
-    url_set_inp = '/hvi?file=data.hvi&page=cell6710.hvi'
-    url_user_parameters = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
-    url_set_user_parameters = '/hvi?file=data.hvi&page=cell6710.hvi'
+    PATH_TO_HVI_FOR_GET_INPUTS = '/hvi?file=cell1020.hvi&pos1=0&pos2=40'
+    PATH_TO_HVI_FOR_SET_INPUTS = '/hvi?file=data.hvi&page=cell6710.hvi'
+    PATH_TO_HVI_FOR_GET_USER_PARAMETERS = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
+    PATH_TO_HVI_FOR_SET_USER_PARAMETERS = '/hvi?file=data.hvi&page=cell6710.hvi'
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
@@ -2234,7 +2377,7 @@ class PeekWeb:
         try:
             with requests.Session() as session:
                 response = session.get(
-                    url=f'http://{self.ip_adress}{self.url_inputs}',
+                    url=f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_INPUTS}',
                     headers=self.headers,
                     cookies=self.cookies,
                     timeout=2
@@ -2253,7 +2396,7 @@ class PeekWeb:
         try:
             with requests.Session() as session:
                 response = session.get(
-                    url=f'http://{self.ip_adress}{self.url_user_parameters}',
+                    url=f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_USER_PARAMETERS}',
                     headers=self.headers,
                     cookies=self.cookies,
                     timeout=2
@@ -2428,13 +2571,13 @@ class PeekWeb:
         index, value = data_params
         if type_set_request == self.type_set_request_man_stage:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-            url = f'http://{self.ip_adress}{self.url_set_inp}'
+            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_INPUTS}'
         elif type_set_request == self.type_set_request_user_parameter:
-            url = f'http://{self.ip_adress}{self.url_set_user_parameters}'
+            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_USER_PARAMETERS}'
             params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
         elif type_set_request == self.type_set_request_man_flash_dark_allred:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-            url = f'http://{self.ip_adress}{self.url_set_inp}'
+            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_INPUTS}'
         else:
             raise TypeError
 
@@ -2637,6 +2780,167 @@ class PeekWeb:
         # for res in result:
         #     if res != 200:
         #         return 'ConnectTimeoutError'
+
+    async def get_data_from_web2(self, path_to_hvi, type, session, data=None):
+        async def get_request(s):
+            url = f'http://{self.ip_adress}{path_to_hvi}'
+            elements = {}
+            async with s.get(url=url) as response:
+                resp_result = await response.text()
+
+                for line in (
+                        line.split(';')[1:] for line in resp_result.splitlines() if line.startswith(':D')
+                ):
+                    index, num, name, val1, val2, val3 = line
+                    # val1, val2 и val3 зависят от типа получаемых данных.
+                    # если получаем ВВОДЫ:
+                    # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
+                    # если Параметры программы:
+                    # val1 -> Значение, val2 -> Мин. val3 -> Макс
+                    elements[name] = index, val1, val2, val3
+
+                    print(f'ner_line = {line}')
+                print(f'elements = {elements}')
+                return elements
+
+        if session is None:
+            timeout = aiohttp.ClientTimeout(3)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                return await get_request(session)
+        else:
+            return await get_request(session)
+
+        # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
+        # {'par_name': 'PARM.R1/1', 'par_value': '0'}
+        # index, value = data_params
+        # if type == self.INPUTS:
+        #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
+        #     url = f'http://{self.ip_adress}{self.url_set_inp}'
+        # elif type_set_request == self.type_set_request_user_parameter:
+        #     url = f'http://{self.ip_adress}{self.url_set_user_parameters}'
+        #     params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
+        # elif type_set_request == self.type_set_request_man_flash_dark_allred:
+        #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
+        #     url = f'http://{self.ip_adress}{self.url_set_inp}'
+        # else:
+        #     raise TypeError
+        #
+        # print(f'params: {params}')
+
+        # return [
+        #     line.split(';')[1:] for line in data.splitlines() if line.startswith(':D')
+        # ]
+
+        # try:
+        #     with requests.Session() as session:
+        #         response = session.get(
+        #             url=f'http://{self.ip_adress}{self.url_inputs}',
+        #             headers=self.headers,
+        #             cookies=self.cookies,
+        #             timeout=2
+        #         )
+        #     inputs = (
+        #         line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
+        #     )
+        #     return inputs
+        # except requests.exceptions.ConnectTimeout as err:
+        #     return 'ConnectTimeoutError'
+        # except Exception as err:
+        #     return 'common'
+
+    async def main_async2(self,
+                          data_type,
+                          params,
+                          ):
+        host = PeekUG405(self.ip_adress)
+        res_ckeck_valid_controller_type = await host.get_utcType2VendorID()
+        if res_ckeck_valid_controller_type == 'No Such Object currently exists at this OID':
+            return False, res_ckeck_valid_controller_type
+        elif res_ckeck_valid_controller_type.__str__() == 'No SNMP response received before timeout':
+            print(f'elif res_ckeck_valid_controller_type.__str__(): {res_ckeck_valid_controller_type.__str__()}')
+            return False, res_ckeck_valid_controller_type.__str__()
+
+        print(f'controller_type: {res_ckeck_valid_controller_type.__str__()}')
+        print(f'type(controller_type): {type(res_ckeck_valid_controller_type)}')
+
+        if data_type == self.INPUTS:
+            path_to_hvi = self.PATH_TO_HVI_FOR_GET_INPUTS
+        elif data_type == self.USER_PARAMETERS:
+            path_to_hvi = self.PATH_TO_HVI_FOR_GET_USER_PARAMETERS
+        else:
+            raise TypeError
+
+        print(f'params main_async2 main2: {params}')
+        timeout = aiohttp.ClientTimeout(3)
+        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+            try:
+                done, pending = await asyncio.wait([asyncio.create_task(
+                    self.get_data_from_web2(path_to_hvi, type=data_type, session=session))
+                ])
+
+                print(f'new_done: {done}')
+                print(f'len new_done: {len(done)}')
+                print(f'done.: {next(iter(done)).result()}')
+
+                print(f'new_pending: {pending}')
+
+                for d in done:
+                    print(f'd: {d}')
+                    print(f'd type: {type(d)}')
+                return
+            except asyncio.TimeoutError:
+
+                print(f'err: ')
+                print(f'new_pending: {pending}')
+                print(f'done.: {next(iter(done))}')
+                print(f'd: ')
+            except aiohttp.client_exceptions.ClientConnectorCertificateError:
+                print(f'aiohttp.client_exceptions.ClientConnectorCertificateError')
+
+            return
+
+            if activate_inp_CP_AUTO:
+                tasks = [asyncio.create_task(self.set_val_to_web(type_request, session, data))
+                         for data in params.values()]
+                print(f'tasks if: {tasks}')
+                done, pending = await asyncio.wait(tasks)
+                print('done, pending 11111')
+                print(f'done if: {done}')
+                print(f'pending if: {pending}')
+                print(f'self.inputs.get: {self.inputs.get("CP_AUTO")}')
+
+                done, pending = await asyncio.wait([asyncio.create_task(
+                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_ON)))
+                ])
+
+                await asyncio.sleep(1)
+
+                print('done, pending 22222')
+                print(f'done if: {done}')
+                print(f'type done if: {type(done)}')
+                print(f'pending if: {pending}')
+
+                done, pending = await asyncio.wait([asyncio.create_task(
+                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_RESET)))
+                ])
+
+                print('done, pending 3333')
+                print(f'done if: {done}')
+                print(f'pending if: {pending}')
+
+                # await asyncio.gather(self.set_val_to_web(type_request,
+                #                                          session,
+                #                                          (self.inputs.get('MPP_FL'), self.ACTUATOR_ON)
+                #                                          )
+                #                      )
+
+            else:
+                print('else')
+                tasks = [self.set_val_to_web(type_request, session, data)
+                         for data in params.values()]
+                print(f'tasks: {tasks}')
+                result = await asyncio.gather(*tasks)
+                print(f'result: {result}')
 
 
 """ Arhive """
