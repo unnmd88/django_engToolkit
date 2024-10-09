@@ -2,7 +2,6 @@ import itertools
 import os
 import re
 import types
-from collections.abc import Iterable
 import time
 from datetime import datetime
 from enum import Enum
@@ -11,6 +10,7 @@ import paramiko
 import aiohttp
 import requests
 from pysnmp.hlapi.asyncio import *
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -23,8 +23,8 @@ from selenium.webdriver.chrome.options import Options
 **********************************************************************
 """
 
-from dotenv import load_dotenv
 load_dotenv()
+
 
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -49,10 +49,18 @@ async def get_stage(ip_adress, community, oids):
 #     return scn
 
 class BaseCommon:
+    error_no_varBinds = 'Ошибка получения данных при выполнении запроса'
 
-
-    async def get_request(self, ip_adress, community, oids, timeout=0, retries=0):
+    async def get_request(self, ip_adress: str, community: str, oids: list | tuple,
+                          timeout: int = 0, retries: int = 0) -> str | list:
         """
+        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
+        :param ip_adress: ip хоста
+        :param community: коммьюнити хоста
+        :param oids: List или Tuple оидов
+        :param timeout: таймаут запроса, в секундах
+        :param retries: количество попыток запроса
+        :return: list при успешном запросе, иначе str с текстом ошибки
         """
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
@@ -67,14 +75,16 @@ class BaseCommon:
         print(f'varBinds: {varBinds}')
 
         if not errorIndication and varBinds:
-            # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-            return True, [data[1].prettyPrint() for data in varBinds]
+            if varBinds:
+                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+                return [data[1].prettyPrint() for data in varBinds]
+            else:
+                return self.error_no_varBinds
             # print(f'(len(varBinds): {len(varBinds)}')
             # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
             # res = [data[1].prettyPrint() for data in varBinds]
             # print(f'res -> {res}')
-        return False, errorIndication.__str__()
-
+        return errorIndication.__str__()
 
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
@@ -90,14 +100,21 @@ class BaseCommon:
             return True, varBinds[0][0].prettyPrint()
         return False, errorIndication.__str__()
 
-
-    async def set_request(self, ip_adress, community, oids, timeout=0, retries=0):
+    async def set_request(self, ip_adress: str, community: str, oids: list | tuple,
+                          timeout: int = 0, retries: int = 0) -> str | list:
         """
+        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
+        :param ip_adress: ip хоста
+        :param community: коммьюнити хоста
+        :param oids: List или Tuple оидов
+        :param timeout: таймаут запроса, в секундах
+        :param retries: количество попыток запроса
+        :return: list при успешном запросе, иначе str с текстом ошибки
         """
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
             CommunityData(community),
-            UdpTransportTarget((ip_adress, 161), timeout=1, retries=2),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
             # ObjectType(ObjectIdentity(oid), value),
             *oids
@@ -110,14 +127,16 @@ class BaseCommon:
         res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
         print(f'res -> {res}')
         if not errorIndication and varBinds:
-            # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-            return True, [data[1].prettyPrint() for data in varBinds]
+            if varBinds:
+                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+                return [data[1].prettyPrint() for data in varBinds]
+            else:
+                return self.error_no_varBinds
             # print(f'(len(varBinds): {len(varBinds)}')
             # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
             # res = [data[1].prettyPrint() for data in varBinds]
             # print(f'res -> {res}')
-        return False, errorIndication.__str__()
-
+        return errorIndication.__str__()
 
 
 class BaseSTCIP(BaseCommon):
@@ -162,30 +181,42 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение swarcoUTCStatusEquipment
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment), ),
-        )
-        return varBinds[0][1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment))]
+        result, val = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        print(f'result = {result}, val = {val}')
+        return result, val
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
+        # )
+        # return varBinds[0][1]
 
     async def get_swarcoUTCTrafftechPhaseCommand(self, timeout=0, retries=0):
         """
-        Возвращает значение команды текущей фазы swarcoUTCTrafftechPhaseCommand ->
+        При успешном запросе возвращает кортеж в виде (Result: bool, [val swarcoUTCTrafftechPhaseCommand])
         :param timeout: таймаут подключения
         :param retries: количество попыток подключения
-        :return: значение команды swarcoUTCTrafftechPhaseCommand
+        :return: Кортеж в виде (Result: bool, [val swarcoUTCTrafftechPhaseCommand])
+                 Result True -> значениее было получено из get запроса
+                 Result False -> при выполении get запроса была ошибка.
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), ),
-        )
-        return varBinds[0][1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), ),
+        # )
+        # return varBinds[0][1]
 
     async def get_swarcoUTCTrafftechPhaseStatus(self, timeout=0, retries=0):
         """
@@ -194,14 +225,9 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение swarcoUTCTrafftechPhaseStatus
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
-        )
-        return varBinds[0][1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanCommand(self, timeout=0, retries=0):
         """
@@ -210,14 +236,9 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение команды текущего плана swarcoUTCTrafftechPlanCommand
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand), ),
-        )
-        return varBinds[0][1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanCurrent(self, timeout=0, retries=0):
         """
@@ -226,14 +247,8 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение номер текущего плана swarcoUTCTrafftechPlanCurrent
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanSource(self, timeout=0, retries=0):
         """
@@ -254,14 +269,8 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение источника текущего плана swarcoUTCTrafftechPlanSource
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanSource), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanSource))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoSoftIOStatus(self, num_inp=None, timeout=0, retries=0):
         """
@@ -271,16 +280,24 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение номер текущего плана swarcoUTCTrafftechPlanCurrent
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoSoftIOStatus), ),
-        )
-        if num_inp is None or num_inp.isdigit and int(num_inp) in range(0, 256):
-            return varBinds[0][1]
-        return varBinds[0][1][int(num_inp) + 1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoSoftIOStatus))]
+        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        if num_inp is not None and len(result[0]) > 254 and num_inp.isdigit() and int(num_inp) in range(1, 256):
+            return [result[0][int(num_inp) - 1]]
+        return result
+
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.swarcoSoftIOStatus), ),
+        # )
+        # if num_inp is None or num_inp.isdigit and int(num_inp) in range(0, 256):
+        #     return varBinds[0][1]
+        # return varBinds[0][1][int(num_inp) + 1]
 
     async def get_swarcoUTCDetectorQty(self, timeout=0, retries=0):
         """
@@ -289,14 +306,9 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: количество дет логик swarcoUTCDetectorQty
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty), ),
-        )
-        return varBinds[0][1]
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCSignalGroupState(self, timeout=0, retries=0):
         """
@@ -305,69 +317,43 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение текущих состояний групп в hex формате в виде строки swarcoUTCSignalGroupState
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCSignalGroupState), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCSignalGroupState))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
-    async def set_swarcoUTCTrafftechPlanCommand(self, value='0'):
+    async def set_swarcoUTCTrafftechPlanCommand(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает  текущий план.
         :param value:  1-16 обычный план, 17 -> ЖМ, 18 -> ОС, 100 -> КК,
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand), Unsigned32(value))
-        )
 
-    async def set_swarcoUTCTrafftechPhaseCommand(self, value=0):
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def set_swarcoUTCTrafftechPhaseCommand(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает  фазу.
         :param value:  Значение фазы (фаза 1 -> value=2, фаза 2 -> value=3 и т.д)
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))
-        )
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_swarcoUTCCommandFlash(self, value='0'):
+    async def set_swarcoUTCCommandFlash(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает ЖМ(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ЖМ
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCCommandFlash), Integer32(value))
-        )
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCCommandFlash), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_swarcoUTCCommandDark(self, value='0'):
+    async def set_swarcoUTCCommandDark(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCCommandDark), Integer32(value))
-        )
-
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCCommandDark), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
 class BaseUG405(BaseCommon):
     community = os.getenv('communityUG405')
@@ -429,9 +415,6 @@ class BaseUG405(BaseCommon):
         convert_to_ASCII = [str(ord(c)) for c in scn]
         return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
-
-
-
     def __init__(self, ip_adress, scn=None, num_host=None):
         self.ip_adress = ip_adress
         self.scn = asyncio.run(self.get_scn()) if scn is None else BaseUG405.convert_scn(scn)
@@ -448,7 +431,6 @@ class BaseUG405(BaseCommon):
                                                  )
         if result:
             return BaseUG405.convert_scn(val)
-
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -478,22 +460,18 @@ class BaseUG405(BaseCommon):
         print(self.community)
         print('*******')
 
-
-
         oids = [
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
-                ]
-
-
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
+        ]
 
         result, val = await self.get_request(self.ip_adress,
-                                        self.community,
-                                        oids
-                                        )
+                                             self.community,
+                                             oids
+                                             )
 
-    async def get_utcType2VendorID(self, timeout=0, retries=0):
+    async def get_utcType2VendorID(self):
         """
         Возвращает значение OperationModeTimeout
         :param timeout: Таймаут подключения
@@ -506,15 +484,15 @@ class BaseUG405(BaseCommon):
         print('*******')
 
         oids = [
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
-                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
-                ]
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
+            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
+        ]
 
         result, val = await self.get_request(self.ip_adress,
-                                        self.community,
-                                        oids
-                                        )
+                                             self.community,
+                                             oids
+                                             )
         return result, val
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
@@ -526,8 +504,8 @@ class BaseUG405(BaseCommon):
         """
 
         oids = [
-                ObjectType(ObjectIdentity(self.utcType2OperationMode)),
-                ]
+            ObjectType(ObjectIdentity(self.utcType2OperationMode)),
+        ]
 
         result, val = await self.get_request(
             self.ip_adress, self.community,
@@ -558,8 +536,8 @@ class BaseUG405(BaseCommon):
         """
 
         oids = [
-                ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
-                ]
+            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+        ]
 
         result, val = await self.get_request(
             self.ip_adress, self.community,
@@ -807,7 +785,6 @@ class BaseUG405(BaseCommon):
         )
 
     async def set_utcType2OperationModeTimeout(self, value=90):
-
 
         await setCmd(
             SnmpEngine(),
@@ -1593,7 +1570,7 @@ class PeekUG405(BaseUG405):
                 result, val = await self.set_request(
                     self.ip_adress, self.community,
                     [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2))],
+                     ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2))],
                 )
                 print(f'result, val 1: {result} === {val}')
             async with lock:
@@ -1623,7 +1600,6 @@ class PeekUG405(BaseUG405):
             )
             print(f'result, val установить фазу: {result} === {val}')
         return result, val
-
 
     async def set_flash(self, value=0, timeout=1, retries=1):
         """
@@ -2226,13 +2202,11 @@ class GetDataControllerManagement:
 
 
 class ConnectionSSH:
-
     access_levels = {
         'swarco_itc': (os.getenv('swarco_itc_login'), os.getenv('swarco_itc_password')),
         'swarco_r': (os.getenv('swarco_r_login'), os.getenv('swarco_r_password')),
         'peek_r': (os.getenv('peek_r_login'), os.getenv('peek_r_password')),
     }
-
 
     @classmethod
     def create_ssh_session(cls, ip_adress, access_level):
