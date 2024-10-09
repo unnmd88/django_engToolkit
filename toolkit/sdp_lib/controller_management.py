@@ -711,7 +711,7 @@ class SwarcoSTCIP(BaseSTCIP):
         """"
         Устанавливает  фазу.
         :param value:  Номер фазы в десятичном виде
-        :return value:
+        :return value: Номер фазы в десятичном виде
         """
         converted_value_to_num_stage = self.set_val_stage.get(str(value))
         oids = [
@@ -721,48 +721,32 @@ class SwarcoSTCIP(BaseSTCIP):
         return [str(self.get_val_stage.get(result[0]))]
         # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
-    # def set_stage(self, value=0):
-    #     """"
-    #     Устанавливает  фазу.
-    #     :param value:  Номер фазы в десятичном виде
-    #     """
-    #     value = self.set_val_stage.get(str(value))
-    #
-    #     async def run(value):
-    #         print('async def run(value):')
-    #         await setCmd(
-    #             SnmpEngine(),
-    #             CommunityData(self.community),
-    #             UdpTransportTarget((self.ip_adress, 161)),
-    #             ContextData(),
-    #             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))
-    #         )
-    #     asyncio.run(run(value))
+    async def set_flash(self, value='0', timeout=0, retries=0):
+        """"
+        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
+        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
+               :return: Возвращает значение установленного swarcoUTCCommandFlash
+        """
+        value = self.converted_values_flash_dark.get(value)
+        return await self.set_swarcoUTCCommandFlash(value, timeout=timeout, retries=retries)
 
-    async def set_flash(self, value='0'):
+    async def set_dark(self, value='0', timeout=0, retries=0):
         """"
         Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
-        """
-        print(' async def set_flash(self, value):')
-        value = self.converted_values_flash_dark.get(value)
-        await self.set_swarcoUTCCommandFlash(value)
-
-    async def set_dark(self, value='0'):
-        """"
-        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
+        :return: Возвращает значение установленного swarcoUTCCommandDark
         """
         value = self.converted_values_flash_dark.get(value)
-        await self.set_swarcoUTCCommandDark(value)
+        await self.set_swarcoUTCCommandDark(value, timeout=timeout, retries=retries)
 
     async def set_allred(self, value='100'):
         """"
         Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
         :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
+        :return: Возвращает номер установленного плана
         """
         value = self.converted_values_all_red.get(value)
-        await self.set_swarcoUTCTrafftechPlanCommand(value)
+        return await self.set_swarcoUTCTrafftechPlanCommand(value)
 
 
 class PotokS(BaseSTCIP):
