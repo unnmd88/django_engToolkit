@@ -751,7 +751,7 @@ class SwarcoSTCIP(BaseSTCIP):
 
 class PotokS(BaseSTCIP):
     get_val_stage = {
-        str(k): str(v) for k, v in zip(range(2, 66), range(1, 65))
+        str(k) if k < 66 else str(0): str(v) if v < 65 else str(0) for k, v in zip(range(2, 67), range(1, 66))
     }
     # set_val_stage = {
     #     str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
@@ -765,28 +765,22 @@ class PotokS(BaseSTCIP):
     potokUTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
     potokUTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
     potokUTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
-    restart_programm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
+    potokUTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
     # Status
     potokUTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
 
     """ GET REQUEST """
 
     async def get_current_mode(self, timeout=0, retries=0):
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment), ),
-            ObjectType(ObjectIdentity(self.potokUTCStatusMode), ),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent), ),
-        )
-
-        if errorIndication is None and varBinds and len(varBinds) >= 4:
-            return self, self.num_host, varBinds
-        else:
-            return self, self.num_host, False
+        print(f'перед await get_current_mode')
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
+                ObjectType(ObjectIdentity(self.potokUTCStatusMode)),
+                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
+                ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty)),
+                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
+                ]
+        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return self, self.num_host, result
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """
@@ -800,14 +794,8 @@ class PotokS(BaseSTCIP):
         :param retries: количество попыток подключения
         :return Возвращает значение текущего статуса
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCStatusMode), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.potokUTCStatusMode))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -816,18 +804,10 @@ class PotokS(BaseSTCIP):
         :param retries: количество попыток подключения
         :return: номер фазы
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
-        )
-        print(errorIndication, errorStatus, errorIndex, varBinds)
-        print(f'VB: {varBinds[0][1]}')
-        print(f'VB2: {self.get_val_stage.get(varBinds[0][1])}')
-        print(f'VB3: {self.get_val_stage}')
-        return self.get_val_stage.get(str(varBinds[0][1]))
+
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
+        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return [self.get_val_stage.get(result[0])]
 
     async def get_swarcoUTCSetGetLocal(self, timeout=0, retries=0):
         """
@@ -836,14 +816,8 @@ class PotokS(BaseSTCIP):
         :param retries: количество попыток подключения
         :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCSetGetLocal), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.potokUTCSetGetLocal))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_potokUTCprohibitionManualPanel(self, timeout=0, retries=0):
         """
@@ -852,129 +826,84 @@ class PotokS(BaseSTCIP):
         :param retries: количество попыток подключения
         :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), ),
-        )
-        return varBinds[0][1]
+        oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
-    async def set_stage(self, value='0'):
+    async def set_stage(self, value='0', timeout=0, retries=0):
         """"
         Устанавливает  фазу.
         :param value:  Номер фазы в десятичном виде
         """
-        if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
-            value = '0'
-        else:
-            value = self.set_val_stage.get(str(value))
-        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))
-        )
-        return errorIndication
 
-    async def set_potokUTCCommandAllRed(self, value=0):
+        if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
+            converted_value_to_num_stage = '0'
+        else:
+            converted_value_to_num_stage = self.set_val_stage.get(str(value))
+
+        oids = [
+            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
+        ]
+        result = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return [str(self.get_val_stage.get(result[0]))]
+
+    async def set_potokUTCCommandAllRed(self, value=0, timeout=0, retries=0):
         """"
         Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
         :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCCommandAllRed), Unsigned32(value))
-        )
+        oids = [ObjectType(ObjectIdentity(self.potokUTCCommandAllRed), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_get_swarcoUTCSetGetLocal(self, value=0):
+    async def set_potokUTCSetGetLocal(self, value=0, timeout=0, retries=0):
         """"
         Устанавливает/сбрасывает локальный режим
         :param value: 1 -> устанавливает Устанавливает локальный режим, 0 -> сбрасывает установленный локальный режим
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.get_swarcoUTCSetGetLocal), Unsigned32(value))
-        )
+        oids = [ObjectType(ObjectIdentity(self.get_swarcoUTCSetGetLocal), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_potokUTCprohibitionManualPanel(self, value=0):
+    async def set_potokUTCprohibitionManualPanel(self, value=0, timeout=0, retries=0):
         """
         Устанавливает запрет использования ВПУ(1 -> ВКЛ, 0 -> ВЫКЛ) potokUTCprohibitionManualPanel
         :param timeout: таймаут подключения
         :param retries: количество попыток подключения
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), ),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value)),
-        )
+        oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_allred(self, value='0'):
+    async def set_allred(self, value=0, timeout=0, retries=0):
         """"
         Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
         :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
         """
-        value = self.converted_values_flash_dark.get(value)
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potokUTCCommandAllRed), Unsigned32(value))
-        )
+        return await self.set_potokUTCCommandAllRed(value, timeout=timeout, retries=retries)
 
-    async def set_flash(self, value='0'):
+    async def set_flash(self, value='0', timeout=0, retries=0):
         """"
         Устанавливает ЖМ(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ЖМ
         """
-        value = self.converted_values_flash_dark.get(value)
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCCommandFlash), Unsigned32(value))
-        )
+        converted_value = self.converted_values_flash_dark.get(value)
+        return await self.set_swarcoUTCCommandFlash(converted_value, timeout=timeout, retries=retries)
 
-    async def set_dark(self, value='0'):
+    async def set_dark(self, value='0', timeout=0, retries=0):
         """"
         Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
         """
-        value = self.converted_values_flash_dark.get(value)
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCCommandDark), Unsigned32(value))
-        )
 
-    async def set_restartProgramm(self, value=1):
+        converted_value = self.converted_values_flash_dark.get(value)
+        return await self.set_swarcoUTCCommandDark(converted_value, timeout=timeout, retries=retries)
+
+    async def set_restartProgramm(self, value=1, timeout=0, retries=0):
         """"
         Перезапускает рабочую программу
         :param value: 1 -> команда на перезапуск рабочей программы
         """
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161)),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.restart_programm), Unsigned32(value))
-        )
+        oids = [ObjectType(ObjectIdentity(self.potokUTCCommandRestartProgramm), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
 
 class PotokP(BaseUG405):
