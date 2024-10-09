@@ -287,7 +287,6 @@ class BaseSTCIP(BaseCommon):
             return [result[0][int(num_inp) - 1]]
         return result
 
-
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
         #     CommunityData(self.community),
@@ -355,6 +354,7 @@ class BaseSTCIP(BaseCommon):
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCCommandDark), Integer32(value))]
         return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
+
 class BaseUG405(BaseCommon):
     community = os.getenv('communityUG405')
 
@@ -367,7 +367,7 @@ class BaseUG405(BaseCommon):
     # oid для UG405 Peek
     utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
     utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
-    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2'
+    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
     utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
     utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
     utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
@@ -398,7 +398,7 @@ class BaseUG405(BaseCommon):
             для управления и мониторинга по протоколу UG405.
             Например: convert_scn(CO1111)
         """
-        print('scn :' + scn)
+        print(f'scn : P{scn}')
 
         if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
             try:
@@ -417,18 +417,25 @@ class BaseUG405(BaseCommon):
 
     def __init__(self, ip_adress, scn=None, num_host=None):
         self.ip_adress = ip_adress
-        self.scn = asyncio.run(self.get_scn()) if scn is None else BaseUG405.convert_scn(scn)
+        self.scn = asyncio.run(self.get_scn(self)) if scn is None else BaseUG405.convert_scn(scn)
         self.num_host = num_host
 
     """ GET REQUEST """
 
-    async def get_scn(self):
+    async def get_scn(self, obj):
+        if isinstance(obj, PeekUG405):
+            result, val = await self.getNext_request(self.ip_adress,
+                                                     self.community,
+                                                     [ObjectType(
+                                                         ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                     )
+        elif isinstance(obj, PotokP):
+            r = await self.get_utcReplySiteID()
+            val = r[0]
+            result = True if val else False
+        else:
+            raise TypeError
 
-        result, val = await self.getNext_request(self.ip_adress,
-                                                 self.community,
-                                                 [ObjectType(
-                                                     ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
-                                                 )
         if result:
             return BaseUG405.convert_scn(val)
 
@@ -474,6 +481,17 @@ class BaseUG405(BaseCommon):
         """
 
         oids = [ObjectType(ObjectIdentity(self.utcType2VendorID))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def get_utcReplySiteID(self, timeout=0, retries=0):
+        """
+        Возвращает значение OperationModeTimeout
+        :param timeout: Таймаут подключения
+        :param retries: Количетсво попыток подключения
+        :return Текущее значение utcType2OperationModeTimeout
+        """
+
+        oids = [ObjectType(ObjectIdentity(self.utcReplySiteID))]
         return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
@@ -671,6 +689,7 @@ class BaseUG405(BaseCommon):
     async def set_utcType2OperationModeTimeout(self, value=90, timeout=1, retries=1):
         oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(value))]
         return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
 
 class SwarcoSTCIP(BaseSTCIP):
     get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
@@ -999,7 +1018,16 @@ class PotokP(BaseUG405):
     potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
-
+    async def get_utcReplyFR(self, timeout=0, retries=0):
+        """
+        Возвращает значение utcReplyFR ( Condition '1' confirms that the controller signals are in flashing
+        amber mode. This bit is only specified for export (non-UK) applications.)
+        :param timeout: Таймаут подключения
+        :param retries: Количетсво попыток подключения
+        :return tuple: Возвращает значение utcReplyFR (1 или 0)
+        """
+        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
     async def get_current_mode(self, timeout=0, retries=0):
         """
         Возвращает значение oid, которые опреляют текущий режим работы контроллера
@@ -1326,6 +1354,7 @@ class PeekUG405(BaseUG405):
     """ archive methods(not usage) """
 
     """ SET REQUEST """
+
     async def set_utcControlFn(self, value: str, timeout=1, retries=1):
         """
             Устанавливает Fn бит(фаза).
@@ -1335,7 +1364,7 @@ class PeekUG405(BaseUG405):
         """
         converted_to_hex_val = self.val_stage_set_request.get(value)
         oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-                 ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))]
+                ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))]
         return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def set_stage(self, value: str):
