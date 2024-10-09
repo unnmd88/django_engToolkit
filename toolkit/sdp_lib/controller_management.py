@@ -1,4 +1,5 @@
 import itertools
+import os
 import re
 import types
 from collections.abc import Iterable
@@ -22,6 +23,8 @@ from selenium.webdriver.chrome.options import Options
 **********************************************************************
 """
 
+from dotenv import load_dotenv
+load_dotenv()
 
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -118,7 +121,7 @@ class BaseCommon:
 
 
 class BaseSTCIP(BaseCommon):
-    community = 'private'
+    community = os.getenv('communitySTCIP')
 
     swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
     swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
@@ -367,7 +370,7 @@ class BaseSTCIP(BaseCommon):
 
 
 class BaseUG405(BaseCommon):
-    community = 'UTMC'
+    community = os.getenv('communityUG405')
 
     # Ключи, прописанные вручную, рабочая версия
     # set_stage_UG405_peek_values = {'1': '01', '2': '02', '3': '04', '4': '08',
@@ -2223,11 +2226,13 @@ class GetDataControllerManagement:
 
 
 class ConnectionSSH:
+
     access_levels = {
-        'swarco_itc': ('itc', 'level1NN'),
-        'swarco_r': ('root', 'N1eZ4pC'),
-        'peek_r': ('root', 'peek'),
+        'swarco_itc': (os.getenv('swarco_itc_login'), os.getenv('swarco_itc_password')),
+        'swarco_r': (os.getenv('swarco_r_login'), os.getenv('swarco_r_password')),
+        'peek_r': (os.getenv('peek_r_login'), os.getenv('peek_r_password')),
     }
+
 
     @classmethod
     def create_ssh_session(cls, ip_adress, access_level):
