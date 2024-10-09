@@ -439,14 +439,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcType2OperationModeTimeout
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
@@ -471,29 +465,16 @@ class BaseUG405(BaseCommon):
                                              oids
                                              )
 
-    async def get_utcType2VendorID(self):
+    async def get_utcType2VendorID(self, timeout=0, retries=0):
         """
         Возвращает значение OperationModeTimeout
         :param timeout: Таймаут подключения
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcType2OperationModeTimeout
         """
-        print('-------')
-        print(self.ip_adress)
-        print(self.community)
-        print('*******')
 
-        oids = [
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
-        ]
-
-        result, val = await self.get_request(self.ip_adress,
-                                             self.community,
-                                             oids
-                                             )
-        return result, val
+        oids = [ObjectType(ObjectIdentity(self.utcType2VendorID))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
         """
@@ -502,59 +483,18 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcType2OperationMode
         """
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-        oids = [
-            ObjectType(ObjectIdentity(self.utcType2OperationMode)),
-        ]
-
-        result, val = await self.get_request(
-            self.ip_adress, self.community,
-            oids
-        )
-        print(f' get_utcType2OperationMode')
-        print(f' result,  {result}')
-        print(f'  val {val[0]}')
-        print(f' type val {type(val[0])}')
-
-        return result, val[0]
-
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
-
-    async def get_utcReplyGn(self):
+    async def get_utcReplyGn(self, timeout=0, retries=0):
         """
         Возвращает значение фазы utcReplyGn в стоке hex формата
         :param timeout: Таймаут подключения
         :param retries: Количетсво попыток подключения
         :return значение фазы utcReplyGn в стоке hex формата
         """
-
-        oids = [
-            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
-        ]
-
-        result, val = await self.get_request(
-            self.ip_adress, self.community,
-            oids
-        )
-
-        print(f' result,  {result}')
-        print(f'  val {val[0]}')
-
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcReplyGn), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlTO(self, timeout=0, retries=0):
         """
@@ -563,14 +503,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcControlTO
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlTO), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlLO(self, timeout=0, retries=0):
         """
@@ -579,14 +513,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcControlLO
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlLO), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcControlLO + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlFF(self, timeout=0, retries=0):
         """
@@ -595,14 +523,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcControlFF
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlFF), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcControlFF + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlFn(self, timeout=0, retries=0):
         """
@@ -611,14 +533,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return tuple: Возвращает текущее значение utcControlFn в виде "val: stage"
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlFn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcControlFn + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
@@ -628,14 +544,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return tuple: Возвращает значение utcReplyFR (1 или 0)
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyFR), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyDF(self, timeout=0, retries=0):
         """
@@ -645,14 +555,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return tuple: Возвращает значение utcReplyDF (1 или 0)
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyDF), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcReplyDF + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyMC(self, timeout=0, retries=0):
         """
@@ -663,14 +567,8 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyMC
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyMC + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcReplyMC + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     """ archive methods(not usage) """
 
@@ -725,23 +623,10 @@ class BaseUG405(BaseCommon):
 
     """ SET REQUEST """
 
-    async def set_utcControlTO(self, value=1):
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(value)),
-        )
+    async def set_utcControlTO(self, value=1, timeout=0, retries=0):
 
-    async def set_utcControlFn(self, value: str, timeout=1, retries=1):
-        """
-            Устанавливает Fn бит(фаза).
-            :param timeout: Таймаут подключения
-            :param retries: Количетсво попыток подключения
-            :param value -> str. В аргумент необходимо передавать номер фазы в десятичном виде.
-        """
-        pass
+        oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def set_utcControlLO(self, value=0, timeout=1, retries=1):
         """
@@ -751,13 +636,16 @@ class BaseUG405(BaseCommon):
             :param value -> В аргумент необходимо передавать значение 1 или 0.
         """
 
-        await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value)),
-        )
+        oids = [ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+        # await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value)),
+        # )
 
     async def set_utcControlFF(self, value=0, timeout=1, retries=1):
         """
@@ -766,37 +654,26 @@ class BaseUG405(BaseCommon):
             :param retries: Количетсво попыток подключения
             :param value -> В аргумент необходимо передавать значение 1 или 0.
         """
+        oids = [ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        # await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value)),
+        # )
 
-        await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value)),
-        )
+    async def set_utcType2OperationMode(self, value=1, timeout=1, retries=1):
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_utcType2OperationMode(self, value=1):
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcType2OperationMode + self.scn), Integer32(value)),
-        )
-
-    async def set_utcType2OperationModeTimeout(self, value=90):
-
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout + self.scn), Integer32(value)),
-        )
-
+    async def set_utcType2OperationModeTimeout(self, value=90, timeout=1, retries=1):
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
 class SwarcoSTCIP(BaseSTCIP):
-    get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8}
+    get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
     set_val_stage = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
 
     converted_values_all_red = {
@@ -808,19 +685,14 @@ class SwarcoSTCIP(BaseSTCIP):
 
     async def get_current_mode(self, timeout=0, retries=0):
         print(f'перед await get_current_mode')
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment), ),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent), ),
-            ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty), ),
-            ObjectType(ObjectIdentity(self.swarcoSoftIOStatus), ),
-        )
-
-        return self, self.num_host, varBinds
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
+                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
+                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
+                ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty)),
+                ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
+                ]
+        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return self, self.num_host, result
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -829,25 +701,25 @@ class SwarcoSTCIP(BaseSTCIP):
         :param retries: количество попыток подключения
         :return: номер фазы
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus), ),
-        )
-        print(errorIndication, errorStatus, errorIndex, varBinds)
-        return self.get_val_stage.get(varBinds[0][1])
+        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
+        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return [self.get_val_stage.get(result[0])]
 
     """ SET REQUEST """
 
-    async def set_stage(self, value='0'):
+    async def set_stage(self, value='0', timeout=0, retries=0):
         """"
         Устанавливает  фазу.
         :param value:  Номер фазы в десятичном виде
+        :return value:
         """
-
-        await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
+        converted_value_to_num_stage = self.set_val_stage.get(str(value))
+        oids = [
+            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
+        ]
+        result = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return [str(self.get_val_stage.get(result[0]))]
+        # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
     # def set_stage(self, value=0):
     #     """"
@@ -1541,6 +1413,17 @@ class PeekUG405(BaseUG405):
     """ archive methods(not usage) """
 
     """ SET REQUEST """
+    async def set_utcControlFn(self, value: str, timeout=1, retries=1):
+        """
+            Устанавливает Fn бит(фаза).
+            :param timeout: Таймаут подключения
+            :param retries: Количетсво попыток подключения
+            :param value -> str. В аргумент необходимо передавать номер фазы в десятичном виде.
+        """
+        converted_to_hex_val = self.val_stage_set_request.get(value)
+        oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                 ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def set_stage(self, value: str):
         """
