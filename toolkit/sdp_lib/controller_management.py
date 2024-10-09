@@ -50,18 +50,6 @@ class BaseCommon:
 
     async def get_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
-        Возвращает значение swarcoUTCStatusEquipment -> текущего режима ДК
-        |----EquipmentStatus (INTEGER)
-        |----noInformation(0)
-        |----workingProperly(1)
-        |----powerUp(2)
-        |----dark(3)
-        |----flash(4)
-        |----partialFlash(5)
-        |----allRed(6)
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return: значение swarcoUTCStatusEquipment
         """
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
@@ -74,17 +62,16 @@ class BaseCommon:
         print(f'errorStatus: {errorStatus}')
         print(f'errorIndex: {errorIndex}')
         print(f'varBinds: {varBinds}')
-        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-        print(f'res -> {res}')
-        if not errorIndication:
-            for oid, val in varBinds:
-                print(oid.prettyPrint() + '-->' + val.prettyPrint())
-        return varBinds
 
-        if not errorIndication:
-            print(f'varBinds: {varBinds}')
+        if not errorIndication and varBinds:
+            # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+            return True, [data[1].prettyPrint() for data in varBinds]
+            # print(f'(len(varBinds): {len(varBinds)}')
+            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+            # res = [data[1].prettyPrint() for data in varBinds]
+            # print(f'res -> {res}')
+        return False, errorIndication.__str__()
 
-            return varBinds[0][1]
 
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
@@ -96,41 +83,39 @@ class BaseCommon:
             ContextData(),
             *oids
         )
-        print(f'errorIndication: {errorIndication.__str__()}')
-        print(f'errorStatus: {errorStatus}')
-        print(f'errorIndex: {errorIndex}')
-        print(f'varBinds: {varBinds}')
-        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-        print(f'res -> {res}')
-        # if not errorIndication:
-        #     for data in varBinds:
-        #         print(f'len(data): {len(data)}')
-                #
-                # print(oid.prettyPrint() + '-->' + val.prettyPrint())
-        return varBinds
+        if not errorIndication:
+            return True, varBinds[0][0].prettyPrint()
+        return False, errorIndication.__str__()
 
-    async def getWalk_request(self, ip_adress, community, oids, timeout=0, retries=0):
+
+    async def set_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
             CommunityData(community),
-            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            UdpTransportTarget((ip_adress, 161), timeout=1, retries=2),
             ContextData(),
+            # ObjectType(ObjectIdentity(oid), value),
             *oids
         )
+
         print(f'errorIndication: {errorIndication.__str__()}')
         print(f'errorStatus: {errorStatus}')
         print(f'errorIndex: {errorIndex}')
         print(f'varBinds: {varBinds}')
         res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
         print(f'res -> {res}')
-        # if not errorIndication:
-        #     for data in varBinds:
-        #         print(f'len(data): {len(data)}')
-                #
-                # print(oid.prettyPrint() + '-->' + val.prettyPrint())
-        return varBinds
+        if not errorIndication and varBinds:
+            # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+            return True, [data[1].prettyPrint() for data in varBinds]
+            # print(f'(len(varBinds): {len(varBinds)}')
+            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+            # res = [data[1].prettyPrint() for data in varBinds]
+            # print(f'res -> {res}')
+        return False, errorIndication.__str__()
+
+
 
 class BaseSTCIP(BaseCommon):
     community = 'private'
@@ -424,17 +409,43 @@ class BaseUG405(BaseCommon):
             для управления и мониторинга по протоколу UG405.
             Например: convert_scn(CO1111)
         """
+        print('scn :' + scn)
+
+        if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
+            try:
+                scn = re.search('"(.+?)"', scn).group(1)
+                len_scn = str(len(scn)) + '.'
+                convert_to_ASCII = [str(ord(c)) for c in scn]
+                scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
+                return scn
+            except AttributeError:
+                scn = ''
+            return scn
+
         len_scn = str(len(scn)) + '.'
         convert_to_ASCII = [str(ord(c)) for c in scn]
-        scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-        return scn
+        return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
-    def __init__(self, ip_adress, scn='', num_host=None):
+
+
+
+    def __init__(self, ip_adress, scn=None, num_host=None):
         self.ip_adress = ip_adress
-        self.scn = self.convert_scn(scn)
+        self.scn = asyncio.run(self.get_scn()) if scn is None else BaseUG405.convert_scn(scn)
         self.num_host = num_host
 
     """ GET REQUEST """
+
+    async def get_scn(self):
+
+        result, val = await self.getNext_request(self.ip_adress,
+                                                 self.community,
+                                                 [ObjectType(
+                                                     ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                 )
+        if result:
+            return BaseUG405.convert_scn(val)
+
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -452,6 +463,33 @@ class BaseUG405(BaseCommon):
         )
         return varBinds[0][1].prettyPrint()
 
+    async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
+        """
+        Возвращает значение OperationModeTimeout
+        :param timeout: Таймаут подключения
+        :param retries: Количетсво попыток подключения
+        :return Текущее значение utcType2OperationModeTimeout
+        """
+        print('-------')
+        print(self.ip_adress)
+        print(self.community)
+        print('*******')
+
+
+
+        oids = [
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
+                ]
+
+
+
+        result, val = await self.get_request(self.ip_adress,
+                                        self.community,
+                                        oids
+                                        )
+
     async def get_utcType2VendorID(self, timeout=0, retries=0):
         """
         Возвращает значение OperationModeTimeout
@@ -462,44 +500,19 @@ class BaseUG405(BaseCommon):
         print('-------')
         print(self.ip_adress)
         print(self.community)
-        print([self.utcType2VendorID])
         print('*******')
 
-
-
-        oids = [ObjectType(ObjectIdentity(self.utcControlTO)),
-                ObjectType(ObjectIdentity(self.utcReplyGn)),
-                ObjectType(ObjectIdentity(self.utcType2Version)),
-                ObjectType(ObjectIdentity(self.utcControlFn)),
+        oids = [
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
+                ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
                 ]
 
-
-
-        # result = await self.get_request(self.ip_adress,
-        #                                 self.community,
-        #                                 oids
-        #                                 )
-        # ObjectType(ObjectIdentity(self.utcType2VendorID))
-        result2 = await self.getNext_request(self.ip_adress,
-                                            self.community,
-                                            oids
-                                            )
-
-        # result3 = await self.getWalk_request(self.ip_adress,
-        #                                     self.community,
-        #                                     [ObjectType(ObjectIdentity(self.utcType2VendorID))]
-        #                                     )
-        print(f'result2 async def get_utcType2VendorID: {result2}')
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcType2VendorID), ),
-        # )
-        if not errorIndication:
-            return varBinds[0][1].prettyPrint()
-        return errorIndication
+        result, val = await self.get_request(self.ip_adress,
+                                        self.community,
+                                        oids
+                                        )
+        return result, val
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
         """
@@ -508,30 +521,59 @@ class BaseUG405(BaseCommon):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcType2OperationMode
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), ),
-        )
-        return varBinds[0][1].prettyPrint()
 
-    async def get_utcReplyGn(self, timeout=0, retries=0):
+        oids = [
+                ObjectType(ObjectIdentity(self.utcType2OperationMode)),
+                ]
+
+        result, val = await self.get_request(
+            self.ip_adress, self.community,
+            oids
+        )
+        print(f' get_utcType2OperationMode')
+        print(f' result,  {result}')
+        print(f'  val {val[0]}')
+        print(f' type val {type(val[0])}')
+
+        return result, val[0]
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
+
+    async def get_utcReplyGn(self):
         """
         Возвращает значение фазы utcReplyGn в стоке hex формата
         :param timeout: Таймаут подключения
         :param retries: Количетсво попыток подключения
         :return значение фазы utcReplyGn в стоке hex формата
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyGn), ),
+
+        oids = [
+                ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+                ]
+
+        result, val = await self.get_request(
+            self.ip_adress, self.community,
+            oids
         )
-        return varBinds[0][1].prettyPrint()
+
+        print(f' result,  {result}')
+        print(f'  val {val[0]}')
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcReplyGn), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
 
     async def get_utcControlTO(self, timeout=0, retries=0):
         """
@@ -762,6 +804,8 @@ class BaseUG405(BaseCommon):
         )
 
     async def set_utcType2OperationModeTimeout(self, value=90):
+
+
         await setCmd(
             SnmpEngine(),
             CommunityData(self.community),
@@ -1518,75 +1562,65 @@ class PeekUG405(BaseUG405):
 
     """ SET REQUEST """
 
-    async def set_stage(self, value: str, timeout=1, retries=1):
+    async def set_stage(self, value: str):
         """
             Устанавливает фазу.
             :param timeout: Таймаут подключения
             :param retries: Количетсво попыток подключения
-            :param value -> В аргумент необходимо передавать значение 1 или 0.
+            :param converted_to_hex_val -> В аргумент необходимо передавать значение 1 или 0.
         """
         # print('set_stage_UG405_peek_values')
         # print(self.val_stage_set_request)
-        value = self.val_stage_set_request.get(value)
+
+        converted_to_hex_val = self.val_stage_set_request.get(value)
 
         lock = asyncio.Lock()
-        # print(f'value = {value}')
-        # print(f'OctetString(hexValue=value) = {OctetString(hexValue=value)}')
+
         async with lock:
-            errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-                SnmpEngine(),
-                CommunityData(self.community),
-                UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-                ContextData(),
-                ObjectType(ObjectIdentity(self.utcType2OperationMode), ),
-            )
-            val = varBinds[0][1].prettyPrint()
+            result, val = await self.get_utcType2OperationMode()
 
-        if str(val) == '1':
+            print(f' async with lock get_utcType2OperationMode')
+            print(f' result,  {result}')
+            print(f'  val {val[0]}')
+            print(f' type val {type(val[0])}')
+
+        if val == '1':
             async with lock:
-                errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-                    SnmpEngine(),
-                    CommunityData(self.community),
-                    UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-                    ContextData(),
-                    # ObjectType(ObjectIdentity(oid), value),
-                    ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2)),
-
+                print('async with lock 1')
+                result, val = await self.set_request(
+                    self.ip_adress, self.community,
+                    [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
+                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2))],
                 )
-            errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-                SnmpEngine(),
-                CommunityData(self.community),
-                UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-                ContextData(),
-                ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
-            )
-
-        elif str(val) in ('2', '3'):
+                print(f'result, val 1: {result} === {val}')
             async with lock:
-                errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-                    SnmpEngine(),
-                    CommunityData(self.community),
-                    UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-                    ContextData(),
-                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+                print('async with lock 2')
+                result, val = await self.set_request(
+                    self.ip_adress, self.community,
+                    [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))],
                 )
+                print(f'result, val 2: {result} === {val}')
+
+        elif val in ('2', '3'):
+            async with lock:
+                print('async with lock elif val in (...)')
+                result, val = await self.set_request(
+                    self.ip_adress, self.community,
+                    [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))],
+                )
+                print(f'result, val async with lock elif val in (...): {result} === {val}')
         else:
-            return
+            raise ValueError
+        async with lock:
+            print('async with lock установить фазу')
+            result, val = await self.set_request(
+                self.ip_adress, self.community,
+                [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                 ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))],
+            )
+            print(f'result, val установить фазу: {result} === {val}')
+        return result, val
 
-        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            # ObjectType(ObjectIdentity(oid), value),
-
-            ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-            ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=value)),
-        )
-        # print(errorIndication, errorStatus, errorIndex, varBinds)
-        # for oid, val in varBinds:
-        #     print(f'oid = {oid.prettyPrint()}, val = {val.prettyPrint()}')
 
     async def set_flash(self, value=0, timeout=1, retries=1):
         """
