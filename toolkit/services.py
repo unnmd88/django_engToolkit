@@ -24,13 +24,21 @@ class GetDataFromController:
     def create_objects_methods(self):
         objects_methods = []
 
-        for num_host, data_request in self.data_request.items():
-            if isinstance(data_request, int):
+        print('start--')
+        print(self.request.data.get('data'))
+        # print(self.data_request.items())
+
+        for ip_adress, data in self.request.data.get('data').items():
+            if not isinstance(data, dict):
                 continue
-            data_request = data_request.split(';')
-            if len(data_request) != 3:
-                continue
-            ip_adress, controller_type, scn = data_request
+            # print(f'ip_adress---- {ip_adress}')
+            # print(f'data---- {data}')
+            # print(data.get('num_host'))
+            # print(data.get('type_controller'))
+            # print(data.get('scn'))
+            num_host = data.get('num_host')
+            controller_type = data.get('type_controller')
+            scn = data.get('scn')
             controller_type_request = self.get_type_object_get_request(controller_type.upper())
             obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
             if obj is None:

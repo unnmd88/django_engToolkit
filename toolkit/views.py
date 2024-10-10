@@ -339,6 +339,8 @@ class GetDataFromControllerAPIView(APIView):
     def post(self, request):
 
         print(f'req_data = {request.data}')
+        print(f'req_data2 = {request.data.get("data")}')
+
 
         manager = GetDataFromController(request)
         objects_methods = manager.create_objects_methods()
