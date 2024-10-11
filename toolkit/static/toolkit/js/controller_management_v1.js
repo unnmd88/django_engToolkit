@@ -40,9 +40,9 @@ $(document).ready(function(){
 
 const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
 const SELECT_PROTOCOL = {'Swarco': 0, 'Поток (S)': 1, 'Поток (P)': 2, 'Peek': 3};
-const TYPE_COMMAND = ['']
-const SEARCH_OPTIONS = ['По номеру СО', 'Названию СО']
-const TOKEN = {'7174fa6f9d0f954a92d2a5852a7fc3bcaace7578'}
+const TYPE_COMMAND = [''];
+const SEARCH_OPTIONS = ['По номеру СО', 'Названию СО'];
+const TOKEN = '7174fa6f9d0f954a92d2a5852a7fc3bcaace7578';
 // const SEARCH_OPTIONS = {'По номеру СО': function (value) {
 //                                         return Number.isInteger(+value);
 //                                         }
@@ -496,15 +496,26 @@ function collect_data_from_hosts (){
     let num_visible_hosts = $(`#visible_hosts`).val();
     let data = {};
     let num_checked_checkbox = $('.receive_data:checked').length;
+    let all_hosts = 0;
     if (num_checked_checkbox > 0) {
-        for(let num_host = 1, all_hosts = 0; num_host <= num_visible_hosts; num_host++) {   
+        for(let num_host = 1; num_host <= num_visible_hosts; num_host++) {   
             if ($(`#getdatahost_${num_host}`).is(':checked')){
-                data[num_host] = `${$('#ip_' + num_host).val()};${$(`#protocol_${num_host} option:selected`).text()};${$(`#scn_${num_host}`).val()}`;
-                data.num_hosts_in_request = ++all_hosts;
+                console.log('Зашёл в if');
+                // data[num_host] = `${$('#ip_' + num_host).val()};` + 
+                //                  `${$(`#protocol_${num_host} option:selected`).text()};` + 
+                //                  `${$(`#scn_${num_host}`).val()};`
+                
+                data[`${$('#ip_' + num_host).val()}`] = {
+                    num_host: num_host,
+                    type_controller:  `${$(`#protocol_${num_host} option:selected`).text()}`,
+                    scn: `${$(`#scn_${num_host}`).val()}`
+                }                              
+                ++all_hosts;
             }           
         }
+        data.num_hosts_in_request = all_hosts;
     }
-        //  console.log(data);
+         console.log(data);
     return data;
     }
 

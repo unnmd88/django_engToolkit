@@ -62,6 +62,9 @@ class BaseCommon:
         :param retries: количество попыток запроса
         :return: list при успешном запросе, иначе str с текстом ошибки
         """
+        # print(f'get_request ')
+        # print(f'oids : {oids} ')
+
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
             CommunityData(community),
@@ -69,10 +72,10 @@ class BaseCommon:
             ContextData(),
             *oids
         )
-        print(f'errorIndication: {errorIndication.__str__()}')
-        print(f'errorStatus: {errorStatus}')
-        print(f'errorIndex: {errorIndex}')
-        print(f'varBinds: {varBinds}')
+        # print(f'errorIndication: {errorIndication.__str__()}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
 
         if not errorIndication and varBinds:
             if varBinds:
@@ -381,6 +384,7 @@ class BaseUG405(BaseCommon):
     utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
     utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
     utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
 
     # oid для UG405 Peek
     # oids_UG405_PEEK = {peek_utcReplyGn: '.1.3.6.1.4.1.13267.3.2.5.1.1.3',
@@ -398,7 +402,7 @@ class BaseUG405(BaseCommon):
             для управления и мониторинга по протоколу UG405.
             Например: convert_scn(CO1111)
         """
-        print(f'scn : P{scn}')
+        # print(f'scn : {scn}')
 
         if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
             try:
@@ -423,6 +427,7 @@ class BaseUG405(BaseCommon):
     """ GET REQUEST """
 
     async def get_scn(self, obj):
+
         if isinstance(obj, PeekUG405):
             result, val = await self.getNext_request(self.ip_adress,
                                                      self.community,
@@ -430,7 +435,9 @@ class BaseUG405(BaseCommon):
                                                          ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
         elif isinstance(obj, PotokP):
+            print(f'get_scn: {obj}')
             r = await self.get_utcReplySiteID()
+            print(f'res: {r}')
             val = r[0]
             result = True if val else False
         else:
@@ -587,6 +594,13 @@ class BaseUG405(BaseCommon):
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyMC + self.scn))]
         return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def get_utcReplyVSn(self, timeout=0, retries=0):
+        oids = [ObjectType(ObjectIdentity(self.utcReplyVSn + self.scn))]
+        # print('get_utcReplyVSn')
+        # print(f'scn: {self.scn}')
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
 
     """ archive methods(not usage) """
 
@@ -1028,6 +1042,7 @@ class PotokP(BaseUG405):
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
         return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
     async def get_current_mode(self, timeout=0, retries=0):
         """
         Возвращает значение oid, которые опреляют текущий режим работы контроллера
@@ -1060,14 +1075,17 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyPlanStatus
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+
+        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
 
     async def get_potok_utcReplyPlanSource(self, timeout=0, retries=0):
         """
@@ -1080,14 +1098,16 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyPlanSource
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
 
     async def get_potok_utcReplyElectricalCircuitErr(self, timeout=0, retries=0):
         """
