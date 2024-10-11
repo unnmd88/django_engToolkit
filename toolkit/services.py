@@ -4,8 +4,12 @@ import json
 from enum import Enum
 
 from toolkit.sdp_lib import controller_management
+import logging
 
 
+logger = logging.getLogger(__name__)
+def test_for_logger():
+    logger.debug('deeeee')
 
 class AvailableControllers(Enum):
     """ Доступные типы контроллера """

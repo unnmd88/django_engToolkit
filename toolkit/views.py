@@ -282,7 +282,7 @@ logger = logging.getLogger(__name__)
 
 def test_logger(request):
     logger.debug('TEst1')
-
+    print(logger)
     return JsonResponse({'Res': 'success'})
 
 
