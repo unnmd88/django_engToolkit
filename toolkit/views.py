@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -277,6 +278,12 @@ controllers_menu = [
 
 path_tmp = 'toolkit/tmp/'
 path_uploads = 'toolkit/uploads/'
+logger = logging.getLogger(__name__)
+
+def test_logger(request):
+    logger.debug('TEst1')
+
+    return JsonResponse({'Res': 'success'})
 
 
 # def get_mode_axios(request, num_host):

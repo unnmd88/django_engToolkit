@@ -22,6 +22,8 @@ urlpatterns = [
     path("options/", views.options, name='options'),
     path("about_controller/<int:post_id>/", views.show_tab, name='about_controller'),
 
+    path('test_logger/', views.test_logger),
+
     path("manage_snmp/", views.manage_snmp, name='manage_snmp'),
     path("calc_cyc/", views.calc_cyc, name='calc_cyc'),
 
