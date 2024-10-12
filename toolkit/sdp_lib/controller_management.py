@@ -998,7 +998,7 @@ class PotokP(BaseUG405):
     # Ключи oid UG405 Potok
 
     @staticmethod
-    def make_val_stages_for_get_stage_UG405_potok(option=None):
+    def make_val_stages_for_get_stage_UG405_potok(option):
         """ В зависимости от опции функция формирует словарь с номером и значением фазы
         """
         # print(f'option: {option}')
@@ -1035,7 +1035,7 @@ class PotokP(BaseUG405):
             # return set_val_stage_UG405_POTOK
 
     # Значения фаз для для UG405 Potok
-    val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
+    # val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
 
     # -- Control Bits --#
@@ -1175,23 +1175,9 @@ class PotokP(BaseUG405):
             return ['6']
         elif res == '@':
             return ['7']
+        else:
+            raise ValueError
 
-        print(f'res: {res}')
-        # print(f'self.val_stage_get_request: {self.val_stage_get_request}')
-
-        # print(f'smotri2: {int(Integer(res[0]))}')
-        res = [int(math.log2(int(res[0], 16))) + 1]
-
-        return res
-
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
-        # )
-        # return self.val_stage_get_request.get(varBinds[0][1].prettyPrint())
 
     async def get_dark(self, timeout=0, retries=0):
         """
@@ -1284,36 +1270,24 @@ class PotokP(BaseUG405):
         # for oid, val in varBinds:
         #     print(f'oid = {oid.prettyPrint()}, val = {val.prettyPrint()}')
 
-    async def set_dark(self, value=0):
+    async def set_dark(self, value='0', timeout=0, retries=0):
 
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value)),
-        )
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+                ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_flash(self, value=0):
+    async def set_flash(self, value='0', timeout=0, retries=0):
 
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value)),
-        )
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+                ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_restartProgramm(self, value=1):
+    async def set_restartProgramm(self, value='1', timeout=0, retries=0):
 
-        await setCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcControRestartProgramm + self.scn), Integer32(value)),
-        )
-
+        oids = [ObjectType(ObjectIdentity(self.potok_utcControRestartProgramm + self.scn), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
 class PeekUG405(BaseUG405):
 

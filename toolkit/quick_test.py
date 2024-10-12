@@ -34,13 +34,16 @@ logger = logging.getLogger(__name__)
 h6 = controller_management.PotokP(ip2)
 # asyncio.run(h6.get_utcControlFn())
 # print(h6.scn)
-res = asyncio.run(h6.set_stage(31))
+
 import math
 # for r in res:
 #     print(f'r: {r}')
+
+
+res = asyncio.run(h6.set_restartProgramm())
 print(res)
 
-res = asyncio.run(h6.get_stage())
+res = asyncio.run(h6.get_flash())
 print(f'eres2: {res}')
 
 
