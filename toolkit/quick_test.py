@@ -32,12 +32,15 @@ ip6 = '10.179.63.57'
 
 logger = logging.getLogger(__name__)
 h6 = controller_management.PotokP(ip2)
-asyncio.run(h6.set_stage('04'))
+# asyncio.run(h6.get_utcControlFn())
 # print(h6.scn)
-res = asyncio.run(h6.get_stage())
-
+res = asyncio.run(h6.set_stage(31))
+import math
 # for r in res:
 #     print(f'r: {r}')
 print(res)
+
+res = asyncio.run(h6.get_stage())
+print(f'res2: {res}')
 
 

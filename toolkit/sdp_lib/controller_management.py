@@ -1,4 +1,5 @@
 import itertools
+import math
 import os
 import re
 import types
@@ -27,6 +28,7 @@ from selenium.webdriver.chrome.options import Options
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+
 
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -81,10 +83,10 @@ class BaseCommon:
             f'errorIndex: {errorIndex}\n'
             f'varBinds: {varBinds}\n'
         )
-        # print('errorIndication: {errorIndication.__str__()}')
-        # print(f'errorStatus: {errorStatus}')
-        # print(f'errorIndex: {errorIndex}')
-        # print(f'varBinds: {varBinds}')
+        print(f'errorIndication: {errorIndication.__str__()}')
+        print(f'errorStatus: {errorStatus}')
+        print(f'errorIndex: {errorIndex}')
+        print(f'varBinds: {varBinds}')
 
         if not errorIndication and varBinds:
             if varBinds:
@@ -616,7 +618,6 @@ class BaseUG405(BaseCommon):
         # print(f'scn: {self.scn}')
         return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-
     """ archive methods(not usage) """
 
     # def get_mode(self):
@@ -1035,7 +1036,7 @@ class PotokP(BaseUG405):
 
     # Значения фаз для для UG405 Potok
     val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
-    val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
+    # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
 
     # -- Control Bits --#
     potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
@@ -1051,6 +1052,7 @@ class PotokP(BaseUG405):
     potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
+
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
         Возвращает значение utcReplyFR ( Condition '1' confirms that the controller signals are in flashing
@@ -1072,14 +1074,14 @@ class PotokP(BaseUG405):
         logging.debug(f'перед get_current_mode await PotokP')
 
         oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
-            ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
-            ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
-            ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
-            ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
-            ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
-            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
-            ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
-            ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
+                ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
+                ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
+                ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
+                ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
+                ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
+                ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+                ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
+                ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
                 ]
         res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         return self, res
@@ -1166,9 +1168,22 @@ class PotokP(BaseUG405):
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
         res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        res = res[0]
+        if res not in (' ', '@'):
+            return [int(math.log2(int(res, 16))) + 1]
+        elif res == ' ':
+            return ['6']
+        elif res == '@':
+            return ['7']
+
         print(f'res: {res}')
-        print(f'self.val_stage_get_request: {self.val_stage_get_request}')
-        return self.val_stage_get_request.get(res[0])
+        # print(f'self.val_stage_get_request: {self.val_stage_get_request}')
+
+        # print(f'smotri2: {int(Integer(res[0]))}')
+        res = [int(math.log2(int(res[0], 16))) + 1]
+
+        return res
+
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
         #     CommunityData(self.community),
@@ -1225,32 +1240,46 @@ class PotokP(BaseUG405):
     **********************************************************************
     """
 
-    async def set_stage(self, value='0'):
+    async def set_stage(self, value='0', timeout=0, retries=0):
 
         if str(value) != '0':
-            print(f'self.val_stage_set_request: {self.val_stage_set_request}')
-            # value = self.val_stage_set_request.get(value)
-            print(OctetString(hexValue=value))
-            await setCmd(
-                SnmpEngine(),
-                CommunityData(self.community),
-                UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-                ContextData(),
-                ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-                ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
-                ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-                ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=value)),
-            )
+            stages = self.make_val_stages_for_get_stage_UG405_potok('set')
+            val = stages.get(value)
+            oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
+                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                    ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=val))
+                    ]
         else:
+            oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
+                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0))
+                    ]
+        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-            await setCmd(
-                SnmpEngine(),
-                CommunityData(self.community),
-                UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-                ContextData(),
-                ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
-                ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0)),
-            )
+        # if str(value) != '0':
+        #     print(f'self.val_stage_set_request: {self.val_stage_set_request}')
+        #     # value = self.val_stage_set_request.get(value)
+        #     print(OctetString(hexValue=value))
+        #     await setCmd(
+        #         SnmpEngine(),
+        #         CommunityData(self.community),
+        #         UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
+        #         ContextData(),
+        #         ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
+        #         ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+        #         ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+        #         ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=value)),
+        #     )
+        # else:
+        #
+        #     await setCmd(
+        #         SnmpEngine(),
+        #         CommunityData(self.community),
+        #         UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
+        #         ContextData(),
+        #         ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
+        #         ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0)),
+        #     )
 
         # for oid, val in varBinds:
         #     print(f'oid = {oid.prettyPrint()}, val = {val.prettyPrint()}')
