@@ -41,6 +41,6 @@ import math
 print(res)
 
 res = asyncio.run(h6.get_stage())
-print(f'res2: {res}')
+print(f'eres2: {res}')
 
 
