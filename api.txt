@@ -1,0 +1,2 @@
+request = {'data': {'10.45.154.11': {'num_host': 1, 'type_controller': 'Поток (P)', 'scn': ''}, 'num_hosts_in_request': 1}}
+request.get('data') = {'10.45.154.11': {'num_host': 1, 'type_controller': 'Поток (P)', 'scn': ''}, 'num_hosts_in_request': 1}
