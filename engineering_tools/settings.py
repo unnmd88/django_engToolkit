@@ -42,10 +42,6 @@ LOGGING = {
             "handlers": ["console", 'file'],
             "propagate": True,
         },
-        # 'toolkit': {
-        #     "level": "DEBUG",
-        #     "handlers": ["console"],
-        # }
     },
     "formatters": {
         "verbose": {
@@ -59,7 +55,7 @@ LOGGING = {
         },
     },
 }
-logging.config.fileConfig(LOGGING, disable_existing_loggers=False)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

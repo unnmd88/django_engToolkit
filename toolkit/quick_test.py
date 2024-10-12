@@ -9,7 +9,7 @@ ip2 = '10.45.154.11'
 ip3 = '10.45.154.19'
 ip4 = '10.179.22.129'
 ip5 = '10.179.19.81'
-ip6 = '10.179.103.73'
+ip6 = '10.179.63.57'
 
 
 
@@ -31,14 +31,13 @@ ip6 = '10.179.103.73'
 
 
 logger = logging.getLogger(__name__)
-print(logger)
-h6 = controller_management.PotokP(ip6)
-logger.debug(f'scn: {h6.scn}')
-print(h6.scn)
-res = asyncio.run(h6.get_utcReplySiteID())
+h6 = controller_management.PotokP(ip2)
+asyncio.run(h6.set_stage('04'))
+# print(h6.scn)
+res = asyncio.run(h6.get_stage())
 
+# for r in res:
+#     print(f'r: {r}')
 print(res)
 
-def test():
-    logger.debug('func')
-test()
+

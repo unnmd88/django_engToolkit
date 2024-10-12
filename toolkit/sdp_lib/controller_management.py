@@ -11,6 +11,7 @@ import aiohttp
 import requests
 from pysnmp.hlapi.asyncio import *
 from dotenv import load_dotenv
+import logging
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -25,6 +26,7 @@ from selenium.webdriver.chrome.options import Options
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
 
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -72,7 +74,14 @@ class BaseCommon:
             ContextData(),
             *oids
         )
-        # print(f'errorIndication: {errorIndication.__str__()}')
+
+        logging.debug(
+            f'errorIndication: {errorIndication.__str__()}\n'
+            f'errorStatus: {errorStatus}\n'
+            f'errorIndex: {errorIndex}\n'
+            f'varBinds: {varBinds}\n'
+        )
+        # print('errorIndication: {errorIndication.__str__()}')
         # print(f'errorStatus: {errorStatus}')
         # print(f'errorIndex: {errorIndex}')
         # print(f'varBinds: {varBinds}')
@@ -122,13 +131,19 @@ class BaseCommon:
             # ObjectType(ObjectIdentity(oid), value),
             *oids
         )
+        logging.debug(
+            f'errorIndication: {errorIndication.__str__()}\n'
+            f'errorStatus: {errorStatus}\n'
+            f'errorIndex: {errorIndex}\n'
+            f'varBinds: {varBinds}\n'
+        )
 
-        print(f'errorIndication: {errorIndication.__str__()}')
-        print(f'errorStatus: {errorStatus}')
-        print(f'errorIndex: {errorIndex}')
-        print(f'varBinds: {varBinds}')
+        # print(f'errorIndication: {errorIndication.__str__()}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
         res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-        print(f'res -> {res}')
+        # print(f'res -> {res}')
         if not errorIndication and varBinds:
             if varBinds:
                 # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
@@ -435,9 +450,9 @@ class BaseUG405(BaseCommon):
                                                          ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
         elif isinstance(obj, PotokP):
-            print(f'get_scn: {obj}')
+            logging.debug(f'get_scn: {obj}')
             r = await self.get_utcReplySiteID()
-            print(f'res: {r}')
+            logging.debug(f'res: {r}')
             val = r[0]
             result = True if val else False
         else:
@@ -982,7 +997,7 @@ class PotokP(BaseUG405):
     # Ключи oid UG405 Potok
 
     @staticmethod
-    def val_stages_for_get_stage_UG405_potok(option=None):
+    def make_val_stages_for_get_stage_UG405_potok(option=None):
         """ В зависимости от опции функция формирует словарь с номером и значением фазы
         """
         # print(f'option: {option}')
@@ -1003,20 +1018,24 @@ class PotokP(BaseUG405):
             return get_val_stage_UG405_POTOK
             # print(get_val_stage_UG405_POTOK)
         elif option == 'set':
-            mask_after_8stages_set = ['0x01', '0x02', '0x04', '0x08', '0x10', '0x20', '0x40', '0x80']
-            stages = ['01', '02', '04', '08', '0x10', '0x20', '0x40', '0x80']
-            for i in range(7):
-                temp_lst = [
-                    f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set
-                ]
-                stages = stages + temp_lst
-            set_val_stage_UG405_POTOK = {str(k): v for k, v in enumerate(stages, 1)}
-            # print(set_val_stage_UG405_POTOK)
-            return set_val_stage_UG405_POTOK
+            stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
+            return {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
+            # mask_after_8stages_set = ['01', '02', '04', '08', '10', '20', '40', '80']
+            # # stgs = [f'{i}{j*"00"}' for i in mask_after_8stages_set for j in range(8)]
+            # stages = [f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set for i in range(7)]
+            #
+            # for i in range(7):
+            #     temp_lst = [
+            #         f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set
+            #     ]
+            #     stages = stages + temp_lst
+            # set_val_stage_UG405_POTOK = {str(k): v for k, v in enumerate(stages, 1)}
+            # # print(set_val_stage_UG405_POTOK)
+            # return set_val_stage_UG405_POTOK
 
     # Значения фаз для для UG405 Potok
-    val_stage_get_request = val_stages_for_get_stage_UG405_potok(option='get')
-    val_stage_set_request = val_stages_for_get_stage_UG405_potok(option='set')
+    val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
+    val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
 
     # -- Control Bits --#
     potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
@@ -1050,23 +1069,37 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return varBinds
         """
-        print(f'перед get_current_mode await')
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcType2OperationMode), ),
-            ObjectType(ObjectIdentity(self.utcReplyCF + self.scn), ),
-            ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
-            ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
-            ObjectType(ObjectIdentity(self.utcReplyMC + self.scn), ),
-            ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
-            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
-            ObjectType(ObjectIdentity(self.utcReplyDF + self.scn), ),
-            ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn), ),
-        )
-        return self, self.num_host, varBinds
+        logging.debug(f'перед get_current_mode await PotokP')
+
+        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
+            ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
+            ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
+            ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
+            ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
+            ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
+            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+            ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
+            ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
+                ]
+        res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return self, res
+
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcType2OperationMode), ),
+        #     ObjectType(ObjectIdentity(self.utcReplyCF + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.utcReplyMC + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.utcReplyDF + self.scn), ),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn), ),
+        # )
+        # return self, self.num_host, varBinds
 
     async def get_potok_utcReplyPlanStatus(self, timeout=0, retries=0):
         """
@@ -1100,14 +1133,6 @@ class PotokP(BaseUG405):
         """
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn))]
         return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
 
     async def get_potok_utcReplyElectricalCircuitErr(self, timeout=0, retries=0):
         """
@@ -1116,14 +1141,8 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyElectricalCircuitErr
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcReplyElectricalCircuitErr + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyElectricalCircuitErr + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_potok_utcReplyLocalAdaptiv(self, timeout=0, retries=0):
         """
@@ -1135,14 +1154,8 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyLocalAdaptiv
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1151,14 +1164,19 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Значение текущей фазы в десятичном виде
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
-        )
-        return self.val_stage_get_request.get(varBinds[0][1].prettyPrint())
+        oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
+        res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        print(f'res: {res}')
+        print(f'self.val_stage_get_request: {self.val_stage_get_request}')
+        return self.val_stage_get_request.get(res[0])
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
+        # )
+        # return self.val_stage_get_request.get(varBinds[0][1].prettyPrint())
 
     async def get_dark(self, timeout=0, retries=0):
         """
@@ -1167,14 +1185,16 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyDarkStatus
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
 
     async def get_flash(self, timeout=0, retries=0):
         """
@@ -1189,24 +1209,28 @@ class PotokP(BaseUG405):
         :param retries: Количетсво попыток подключения
         :return Текущее значение utcReplyFR
         """
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(self.community),
-            UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
-        )
-        return varBinds[0][1].prettyPrint()
+        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
+        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+        #     SnmpEngine(),
+        #     CommunityData(self.community),
+        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
+        #     ContextData(),
+        #     ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
+        # )
+        # return varBinds[0][1].prettyPrint()
 
     """*******************************************************************
     ***                          SET-REQUEST                          ****   
     **********************************************************************
     """
 
-    async def set_stage(self, value=0):
+    async def set_stage(self, value='0'):
 
         if str(value) != '0':
-            value = self.val_stage_set_request.get(value)
+            print(f'self.val_stage_set_request: {self.val_stage_set_request}')
+            # value = self.val_stage_set_request.get(value)
+            print(OctetString(hexValue=value))
             await setCmd(
                 SnmpEngine(),
                 CommunityData(self.community),
