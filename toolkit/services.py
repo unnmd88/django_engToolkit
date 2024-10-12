@@ -28,10 +28,8 @@ class GetDataFromController:
     def create_objects_methods(self):
         objects_methods = []
 
-        print('start--')
-        print(self.request.data.get('data'))
+        logger.debug(self.request.data.get('data'))
         # print(self.data_request.items())
-
         for ip_adress, data in self.request.data.get('data').items():
             if not isinstance(data, dict):
                 continue

@@ -420,6 +420,7 @@ class BaseUG405(BaseCommon):
             Например: convert_scn(CO1111)
         """
         # print(f'scn : {scn}')
+        logger.debug(f'def convert_scn(scn): {scn}')
 
         if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
             try:
@@ -1053,6 +1054,16 @@ class PotokP(BaseUG405):
 
     """ GET REQUEST """
 
+    def convert_val_stage_to_num_stage(self, value):
+        if value not in (' ', '@'):
+            return int(math.log2(int(value, 16))) + 1
+        elif value == ' ':
+            return '6'
+        elif value == '@':
+            return '7'
+        else:
+            raise ValueError
+
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
         Возвращает значение utcReplyFR ( Condition '1' confirms that the controller signals are in flashing
@@ -1168,16 +1179,7 @@ class PotokP(BaseUG405):
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
         res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        res = res[0]
-        if res not in (' ', '@'):
-            return [int(math.log2(int(res, 16))) + 1]
-        elif res == ' ':
-            return ['6']
-        elif res == '@':
-            return ['7']
-        else:
-            raise ValueError
-
+        return [self.convert_val_stage_to_num_stage(res[0])]
 
     async def get_dark(self, timeout=0, retries=0):
         """
@@ -1288,6 +1290,7 @@ class PotokP(BaseUG405):
 
         oids = [ObjectType(ObjectIdentity(self.potok_utcControRestartProgramm + self.scn), Integer32(value))]
         return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
 
 class PeekUG405(BaseUG405):
 
@@ -1414,7 +1417,7 @@ class PeekUG405(BaseUG405):
                 ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))]
         return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
-    async def set_stage(self, value: str):
+    async def set_stage(self, value: str, timeout=1, retries=1):
         """
             Устанавливает фазу.
             :param timeout: Таймаут подключения
@@ -1424,54 +1427,48 @@ class PeekUG405(BaseUG405):
         # print('set_stage_UG405_peek_values')
         # print(self.val_stage_set_request)
 
+        if value == '0':
+            oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
+                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0))]
+            return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
         converted_to_hex_val = self.val_stage_set_request.get(value)
 
         lock = asyncio.Lock()
-
         async with lock:
-            result, val = await self.get_utcType2OperationMode()
+            result = await self.get_utcType2OperationMode()
 
             print(f' async with lock get_utcType2OperationMode')
             print(f' result,  {result}')
-            print(f'  val {val[0]}')
-            print(f' type val {type(val[0])}')
 
-        if val == '1':
+        result = result[0]
+        if result == '1':
             async with lock:
                 print('async with lock 1')
-                result, val = await self.set_request(
-                    self.ip_adress, self.community,
-                    [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-                     ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2))],
-                )
-                print(f'result, val 1: {result} === {val}')
+                oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
+                        ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(2))]
+                res = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+                print(f'resval 1: {res}')
             async with lock:
                 print('async with lock 2')
-                result, val = await self.set_request(
-                    self.ip_adress, self.community,
-                    [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))],
-                )
-                print(f'result, val 2: {result} === {val}')
-
-        elif val in ('2', '3'):
+                oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))]
+                res = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+                print(f'res, val 2: {res}')
+        elif result in ('2', '3'):
             async with lock:
                 print('async with lock elif val in (...)')
-                result, val = await self.set_request(
-                    self.ip_adress, self.community,
-                    [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))],
-                )
-                print(f'result, val async with lock elif val in (...): {result} === {val}')
+                oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3))]
+                res = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+                print(f'result, val async with lock elif val in (...): {res}')
         else:
             raise ValueError
         async with lock:
             print('async with lock установить фазу')
-            result, val = await self.set_request(
-                self.ip_adress, self.community,
-                [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-                 ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=converted_to_hex_val))],
-            )
-            print(f'result, val установить фазу: {result} === {val}')
-        return result, val
+            oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+                    ObjectType(ObjectIdentity(self.utcControlFn + self.scn),
+                               OctetString(hexValue=converted_to_hex_val))]
+            return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def set_flash(self, value=0, timeout=1, retries=1):
         """
@@ -1617,7 +1614,7 @@ class Controller:
         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
             return PotokS(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-            return PotokP(ip_adress, scn, num_host)
+            return PotokP(ip_adress, num_host=num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
             return SwarcoSTCIP(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
@@ -1739,19 +1736,29 @@ class GetDataControllerManagement:
 
     def data_processing(self, raw_data):
 
+        logger.debug('data_processing')
+
         processed_data = {}
 
         for host_data in raw_data:
-            if not host_data and len(host_data) != 3:
+            logger.debug('for host_data in raw_data:')
+
+            if not host_data and len(host_data) != 2:
                 continue
-            obj, num_host, varBinds = host_data
-            if not varBinds:
-                processed_data[num_host] = 'Хост недоступен'
+
+            obj, varBinds = host_data
+            logger.debug(f'obj: {obj}')
+            logger.debug(f'obj.scn: {obj.scn}')
+            logger.debug(f'varBinds: {varBinds}')
+
+            # if not varBinds or not obj:
+            #     processed_data[num_host] = 'Хост недоступен'
             # print(f'host data --> {host_data}')
             if isinstance(obj, SwarcoSTCIP):
                 processed_data[num_host] = self.make_data_for_swarco(obj, varBinds)
             elif isinstance(obj, PotokP):
-                processed_data[num_host] = self.make_data_for_potokP(obj, varBinds)
+                processed_data[obj.ip_adress] = self.make_data_for_potokP(obj, varBinds)
+                logger.debug(processed_data)
             elif isinstance(obj, PotokS):
                 processed_data[num_host] = self.make_data_for_potokS(obj, varBinds)
             elif isinstance(obj, PeekUG405):
@@ -1990,30 +1997,42 @@ class GetDataControllerManagement:
         result_check_varBinds = self.validate_varBinds_potokP(varBinds)
 
         if not result_check_varBinds:
-            return f'Сбой получения данных. Проверьте ДК'
+            data = {
+                'num_host': obj.num_host,
+                'fault': 'Сбой получения данных. Проверьте ДК',
+            }
 
-        utcType2OperationMode = str(varBinds[0][1].prettyPrint())
-        hasErrors = str(varBinds[1][1].prettyPrint())
-        isFlash = str(varBinds[2][1].prettyPrint())
-        isDark = str(varBinds[3][1].prettyPrint())
-        isManual = str(varBinds[4][1].prettyPrint())
-        plan = str(varBinds[5][1].prettyPrint())
-        stage = obj.val_stage_get_request.get(str(varBinds[6][1].prettyPrint()).split('x')[-1])
-        hasDetErrors = str(varBinds[7][1].prettyPrint())
-        localAdaptiv = str(varBinds[8][1].prettyPrint())
+            return data
 
-        # print(f'isFlash: {isFlash}')
-        # print(f'hasDetErrors: {hasDetErrors}')
-        # print(f'localAdaptiv: {localAdaptiv}')
-        # print(f'plan: {plan}')
-        # print(f'utcType2OperationMode: {utcType2OperationMode}')
+        # utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, stage, hasDetErrors, localAdaptiv = varBinds
+
+        utcType2OperationMode = str(varBinds[0])
+        hasErrors = str(varBinds[1])
+        isFlash = str(varBinds[2])
+        isDark = str(varBinds[3])
+        isManual = str(varBinds[4])
+        plan = str(varBinds[5])
+        stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+        hasDetErrors = str(varBinds[7])
+        localAdaptiv = str(varBinds[8])
+
+        data = {
+            'num_host': obj.num_host,
+            'scn': obj.scn,
+            'current_plan': int(plan) if plan.isdigit() and not isinstance(plan, int) else plan,
+            'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
+            'current_det_errors': bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors
+        }
 
         if isFlash.isdigit() and int(isFlash) in range(1, 5):
-            return f'Режим={self.statusMode.get("4")}'
+            data['current_mode'] = self.statusMode.get("4")
+            return data
         if isDark == '1':
-            return f'Режим={self.statusMode.get("3")}'
+            data['current_mode'] = self.statusMode.get("3")
+            return data
         if isManual == '1':
-            return f'Режим={self.statusMode.get("10")}'
+            data['current_mode'] = self.statusMode.get("10")
+            return data
 
         if utcType2OperationMode == '3' and plan == '0':
             mode = self.statusMode.get('11')
@@ -2024,7 +2043,18 @@ class GetDataControllerManagement:
         else:
             mode = self.statusMode.get("--")
 
-        return f'Фаза={stage} План={plan} Режим={mode}'
+        logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
+
+        data.update(
+            {
+                'num_host': obj.num_host,
+                'scn': obj.scn,
+                'current_stage': stage,
+                'current_mode': mode,
+            }
+        )
+
+        return data
 
     def make_data_for_peek(self, obj, web_content):
         result_check_varBinds = self.validate_varBinds_potokP(web_content)

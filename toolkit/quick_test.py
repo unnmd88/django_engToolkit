@@ -4,21 +4,18 @@ from toolkit.sdp_lib import controller_management
 import logging
 
 
-ip = '10.179.107.129'
+ip = '10.179.65.89'
 ip2 = '10.45.154.11'
 ip3 = '10.45.154.19'
-ip4 = '10.179.22.129'
-ip5 = '10.179.19.81'
-ip6 = '10.179.63.57'
 
-
-
-
-# h1 = controller_management.PeekUG405(ip3)
+h1 = controller_management.PeekUG405(ip)
 # res = asyncio.run(h1.get_utcReplyGn())
-# res = asyncio.run(h1.get_utcReplyGn())
+# print(f'res : {res}')
 # res = asyncio.run(h1.get_utcType2OperationMode())
-# res = asyncio.run(h1.set_stage('2'))
+# print(f'res : {res}')
+res = asyncio.run(h1.set_stage('1'))
+
+print(f'res : {res}')
 
 
 
@@ -31,7 +28,7 @@ ip6 = '10.179.63.57'
 
 
 logger = logging.getLogger(__name__)
-h6 = controller_management.PotokP(ip2)
+# h6 = controller_management.PotokP(ip2)
 # asyncio.run(h6.get_utcControlFn())
 # print(h6.scn)
 
@@ -40,10 +37,12 @@ import math
 #     print(f'r: {r}')
 
 
-res = asyncio.run(h6.set_restartProgramm())
-print(res)
+# res = asyncio.run(h6.set_restartProgramm())
+# print(res)
 
-res = asyncio.run(h6.get_flash())
-print(f'eres2: {res}')
-
+# res = asyncio.run(h6.get_flash())
+# print(f'eres2: {res}')
+# print(controller_management.PeekUG405.val_stages_UG405_peek('set'))
+# print('-------------------')
+# print(controller_management.PotokP.make_val_stages_for_get_stage_UG405_potok('set'))
 

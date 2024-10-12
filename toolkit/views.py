@@ -104,12 +104,9 @@ class SearchControllerViewSet(APIView):
         return Response(queryset)
 
 
-
 class TrafficLightsAPIVeiw(generics.ListAPIView):
     queryset = TrafficLightObjects.objects.all()
     serializer_class = TrafficLightsSerializer
-
-
 
 
 
@@ -278,6 +275,7 @@ controllers_menu = [
 
 path_tmp = 'toolkit/tmp/'
 path_uploads = 'toolkit/uploads/'
+
 logger = logging.getLogger(__name__)
 
 def test_logger(request):
