@@ -346,39 +346,6 @@ def get_configuration_controller_management_axios(request):
     return JsonResponse(data)
 
 
-# def get_names_configuration_controller_management_axios(request):
-#     first_option = 'Выбор конфигурации'
-#     names = {k: v if k > 0 else first_option
-#              for k, v in enumerate([el.name for el in ControllerManagement.objects.all()])}
-#     print(f'nameees --> {names}')
-#
-#     return JsonResponse(names)
-
-
-# def save_configuration_snmp(request):
-#     if request.POST:
-#
-#         print('save_snmp_curr_configuration')
-#         post_dict = request.POST.dict()
-#         print(f'request.POST.dict(): {post_dict}')
-#
-#         name = post_dict.pop('name')
-#         num_visible_hosts = post_dict.pop('num_visible_hosts')
-#         configuration = ControllerManagement(name=name, data=post_dict,
-#                                              num_visible_hosts=num_visible_hosts,
-#                                              category=1)
-#         try:
-#             configuration.save()
-#             result = True
-#         except Exception as err:
-#             print('error ' + str(err))
-#             result = False
-#     else:
-#         result = False
-#
-#     data = {'result': result}
-#     return HttpResponse(json.dumps(data, ensure_ascii=False), content_type='text/html')
-
 
 def save_configuration_controller_management_axios(request):
     data_request = json.loads(request.body.decode("utf-8")).get('data')
