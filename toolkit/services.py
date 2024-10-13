@@ -11,6 +11,35 @@ logger = logging.getLogger(__name__)
 def test_for_logger():
     logger.debug('deeeee')
 
+class Controller:
+
+    def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
+        logger.debug('ya в new, type_object = %s', type_object)
+
+        if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
+            return controller_management.PotokS(ip_adress, num_host)
+        elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
+            return controller_management.PotokP(ip_adress, num_host=num_host)
+        elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
+            return controller_management.SwarcoSTCIP(ip_adress, num_host)
+        elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
+            return controller_management.SwarcoSSH(ip_adress, num_host)
+        elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
+            return controller_management.PeekUG405(ip_adress, scn, num_host)
+        elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
+            return controller_management.PeekWeb(ip_adress, num_host)
+
+
+class AvailableProtocolsManagement(Enum):
+    """ Протоколы управления """
+    POTOK_UG405 = 'POTOK_UG405'
+    POTOK_STCIP = 'POTOK_STCIP'
+    SWARCO_STCIP = 'SWARCO_STCIP'
+    SWARCO_SSH = 'SWARCO_SSH'
+    PEEK_UG405 = 'PEEK_UG405'
+    PEEK_WEB = 'PEEK_WEB'
+
+
 class AvailableControllers(Enum):
     """ Доступные типы контроллера """
     SWARCO = 'SWARCO'
@@ -42,7 +71,7 @@ class GetDataFromController:
             controller_type = data.get('type_controller')
             scn = data.get('scn')
             controller_type_request = self.get_type_object_get_request(controller_type.upper())
-            obj = controller_management.Controller(ip_adress, controller_type_request, scn, num_host)
+            obj = Controller(ip_adress, controller_type_request, scn, num_host)
             if obj is None:
                 self.processed_data[num_host] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
@@ -53,20 +82,20 @@ class GetDataFromController:
 
         get_data_manager = controller_management.GetDataControllerManagement()
 
-        raw_data_from_controllers = asyncio.run(get_data_manager.main(objects_methods, option='get'))
+        raw_data_from_controllers = asyncio.run(get_data_manager.collect_data_from_hosts(objects_methods, option='get'))
         processed_data = get_data_manager.data_processing(raw_data_from_controllers)
         return self.processed_data | processed_data
 
     def get_type_object_get_request(self, controller_type: str):
 
         if controller_type == AvailableControllers.POTOK_P.value:
-            return controller_management.AvailableProtocolsManagement.POTOK_UG405.value
+            return AvailableProtocolsManagement.POTOK_UG405.value
         elif controller_type == AvailableControllers.POTOK_S.value:
-            return controller_management.AvailableProtocolsManagement.POTOK_STCIP.value
+            return AvailableProtocolsManagement.POTOK_STCIP.value
         elif controller_type == AvailableControllers.SWARCO.value:
-            return controller_management.AvailableProtocolsManagement.SWARCO_STCIP.value
+            return AvailableProtocolsManagement.SWARCO_STCIP.value
         elif controller_type == AvailableControllers.PEEK.value:
-            return controller_management.AvailableProtocolsManagement.PEEK_UG405.value
+            return AvailableProtocolsManagement.PEEK_UG405.value
 
 
 class SetRequestToController:

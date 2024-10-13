@@ -548,9 +548,19 @@ async function sendReqGetDataAxios() {
             console.log(response.data);
             // let data_to_write = response.data;
 
-            for (const [num_host, write_data] of Object.entries(response.data)) {
-                $(`#datahost_${num_host}`).text(write_data);
-              }
+            // for (const [num_host, write_data] of Object.entries(response.data)) {
+            //     $(`#datahost_${num_host}`).text(write_data);
+            //   }
+
+            for (const ip_addr in response.data) {
+            
+            let cur_host = response.data[ip_addr]
+
+            document.querySelector(`#datahost_${cur_host['num_host']}`).textContent = `Фаза=${cur_host['current_stage']} ` + 
+                                                                                      `План=${cur_host['current_plan']} ` +
+                                                                                      `Режим=${cur_host['current_mode']}`
+            // $(`#datahost_${num_host}`).text(write_data);
+            }
    
     
           } catch (error) {

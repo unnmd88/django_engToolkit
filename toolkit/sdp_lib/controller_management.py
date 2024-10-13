@@ -1595,34 +1595,33 @@ class PeekUG405(BaseUG405):
         )
 
 
-class AvailableProtocolsManagement(Enum):
-    """ Протоколы управления """
-    POTOK_UG405 = 'POTOK_UG405'
-    POTOK_STCIP = 'POTOK_STCIP'
-    SWARCO_STCIP = 'SWARCO_STCIP'
-    SWARCO_SSH = 'SWARCO_SSH'
-    PEEK_UG405 = 'PEEK_UG405'
-    PEEK_WEB = 'PEEK_WEB'
-
-
-class Controller:
-
-    def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
-        print('ya в new')
-        print(type_object)
-
-        if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
-            return PotokS(ip_adress, num_host)
-        elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-            return PotokP(ip_adress, num_host=num_host)
-        elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-            return SwarcoSTCIP(ip_adress, num_host)
-        elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-            return SwarcoSSH(ip_adress, num_host)
-        elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-            return PeekUG405(ip_adress, scn, num_host)
-        elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
-            return PeekWeb(ip_adress, num_host)
+# class AvailableProtocolsManagement(Enum):
+#     """ Протоколы управления """
+#     POTOK_UG405 = 'POTOK_UG405'
+#     POTOK_STCIP = 'POTOK_STCIP'
+#     SWARCO_STCIP = 'SWARCO_STCIP'
+#     SWARCO_SSH = 'SWARCO_SSH'
+#     PEEK_UG405 = 'PEEK_UG405'
+#     PEEK_WEB = 'PEEK_WEB'
+#
+#
+# class Controller:
+#
+#     def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
+#         logger.debug('ya в new, type_object = %s', type_object)
+#
+#         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
+#             return PotokS(ip_adress, num_host)
+#         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
+#             return PotokP(ip_adress, num_host=num_host)
+#         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
+#             return SwarcoSTCIP(ip_adress, num_host)
+#         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
+#             return SwarcoSSH(ip_adress, num_host)
+#         elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
+#             return PeekUG405(ip_adress, scn, num_host)
+#         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
+#             return PeekWeb(ip_adress, num_host)
 
 
 class GetDataControllerManagement:
@@ -1640,81 +1639,10 @@ class GetDataControllerManagement:
         '--': 'Нет данных',
     }
 
-    protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
-    snmp_set_request = ('фаза snmp', 'ос', 'жм', 'кк')
-    swarco_ssh = ('фаза man',)
-
-    peek_web = ('фаза MAN',)
-
     def __init__(self, data=None):
         self.data = data
 
-    # def create_snmp_object_get_request(self, num_host, ip_adress, protocol, scn):
-    #     # protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
-    #     protocols = ('ПОТОК (P)', 'ПОТОК (S)', 'SWARCO', 'PEEK')
-    #     obj = None
-    #     protocol = protocol.upper()
-    #     if protocol == protocols[0]:
-    #         obj = PotokP(ip_adress, scn, num_host, )
-    #     elif protocol == protocols[1]:
-    #         obj = PotokS(ip_adress, num_host, )
-    #     elif protocol == protocols[2]:
-    #         obj = SwarcoSTCIP(ip_adress, num_host, )
-    #     elif protocol == protocols[3]:
-    #         obj = PeekUG405(ip_adress, scn, num_host, )
-    #     return obj
-
-    # def create_object_for_get_request(self, num_host: str, controller_type: str, ip_adress: str, scn: str = None):
-    #
-    #     if controller_type == AvailableControllers.POTOK_P.value:
-    #         return snmp_managemement_v3.PotokP(ip_adress, scn, num_host)
-    #     elif controller_type == AvailableControllers.POTOK_S.value:
-    #         return snmp_managemement_v3.PotokS(ip_adress, num_host)
-    #     elif controller_type == AvailableControllers.SWARCO.value:
-    #         return snmp_managemement_v3.SwarcoSTCIP(ip_adress, num_host)
-    #     elif controller_type == AvailableControllers.PEEK.value:
-    #         return snmp_managemement_v3.PeekUG405(ip_adress, scn, num_host)
-
-    # def create_set_request(self, num_host, ip_adress, protocol, scn, command, value):
-    #
-    #     obj = None
-    #
-    #     if protocol == self.protocols[0]:
-    #         obj = PotokP(ip_adress, scn)
-    #     elif protocol == self.protocols[1]:
-    #         obj = PotokS(ip_adress, num_host, )
-    #     elif protocol == self.protocols[2]:
-    #         if command in self.swarco_ssh:
-    #             obj = SwarcoSSH(ip_adress, )
-    #         elif command in self.snmp_set_request:
-    #             obj = SwarcoSTCIP(ip_adress, )
-    #     elif protocol == self.protocols[3]:
-    #         if command in self.snmp_set_request:
-    #             obj = PeekUG405(ip_adress, scn)
-    #         elif command in self.peek_web:
-    #             pass  # Тут необходимо создать экземпляр класса PeekWeb
-    #     return obj
-
-    # async def main(self):
-    #     tasks = []
-    #     for num_host, data in self.data.items():
-    #         data = data.split(';')
-    #         if len(data) != 3:
-    #             continue
-    #         ip_adress, protocol, scn = data
-    #         host = self.create_snmp_object_get_request(num_host, ip_adress, protocol, scn)
-    #         if host is None:
-    #             return
-    #         tasks.append(host.get_current_mode())
-    #
-    #     start_time = time.time()
-    #     result = await asyncio.gather(*tasks)
-    #     print(f'Время выполнения: {time.time() - start_time}')
-    #
-    #     print(result)
-    #     return result
-
-    async def main(self, tasks_inner, option):
+    async def collect_data_from_hosts(self, tasks_inner, option):
         print(tasks_inner)
 
         if tasks_inner is None or option is None:
@@ -1751,9 +1679,6 @@ class GetDataControllerManagement:
             # logger.debug(f'obj.scn: {obj.scn}')
             logger.debug(f'varBinds: {varBinds}')
 
-            # if not varBinds or not obj:
-            #     processed_data[num_host] = 'Хост недоступен'
-            # print(f'host data --> {host_data}')
             if isinstance(obj, SwarcoSTCIP):
                 processed_data[obj.ip_adress] = self.make_data_for_swarco(obj, varBinds)
                 logger.debug(processed_data)
@@ -1767,7 +1692,14 @@ class GetDataControllerManagement:
             elif isinstance(obj, PeekUG405):
                 processed_data[num_host] = self.make_data_for_peek(obj, web_content=varBinds)
             else:
-                raise ValueError
+                raise TypeError
+
+            processed_data.get(obj.ip_adress).update(
+                {
+                    'data_request_error': False if type(varBinds) == list else varBinds
+                }
+            )
+
         return processed_data
 
         #         num_host, protocol, varBinds = host_data
@@ -1927,11 +1859,14 @@ class GetDataControllerManagement:
         softstat180_181 = str(varBinds[4])[179:181] if len(varBinds[4]) > 180 else 'no_data'
 
         data = {
+            'controller_type': 'Swarco',
             'num_host': obj.num_host,
             'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
             'current_errors': None,
             'current_det_errors': None,
+
             'num_detLogics': int(num_logics) if not isinstance(num_logics, int) and num_logics.isdigit() else num_logics
+
         }
 
         if equipment_status != '1':
@@ -1947,16 +1882,19 @@ class GetDataControllerManagement:
         #         return f'Режим={self.statusMode.get("6")}'
         #     else:
         #         return f'Режим={self.statusMode.get("--")}'
-        val_mode = None
+
         if plan == '16':
             val_mode = '11'
         elif plan == '15':
             val_mode = '10'
         elif '1' in softstat180_181 or softstat180_181 == 'no_data' or num_logics == '0':
             val_mode = '12'
-        elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 2:
+        elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 0:
             val_mode = '8'
+        else:
+            val_mode = '--'
 
+        logger.debug(f'val_mode={val_mode}')
         mode = self.statusMode.get(val_mode)
         logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
 
@@ -1986,6 +1924,7 @@ class GetDataControllerManagement:
 
         if not result_check_varBinds:
             data = {
+                'controller_type': 'Поток (S)',
                 'num_host': obj.num_host,
                 'fault': 'Сбой получения данных. Проверьте ДК',
             }
@@ -2033,6 +1972,7 @@ class GetDataControllerManagement:
 
         if not result_check_varBinds:
             data = {
+                'controller_type': 'Поток (P)',
                 'num_host': obj.num_host,
                 'fault': 'Сбой получения данных. Проверьте ДК',
             }
