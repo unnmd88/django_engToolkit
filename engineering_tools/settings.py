@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 import logging.config
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,7 +26,7 @@ LOGGING = {
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
-            "filename": "logs/django.log",
+            "filename": BASE_DIR / "logs/django.log",
             "formatter": "verbose",
         },
         "console": {
@@ -55,6 +54,7 @@ LOGGING = {
         },
     },
 }
+logging.config.dictConfig(LOGGING)
 
 
 # Quick-start development settings - unsuitable for production

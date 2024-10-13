@@ -1384,23 +1384,6 @@ class PeekUG405(BaseUG405):
 
     """ GET REQUEST """
 
-    async def get_current_mode(self, timeout=1):
-
-        url = f'http://{self.ip_adress}/hvi?file=m001a.hvi&pos1=0&pos2=-1'
-        timeout = aiohttp.ClientTimeout(total=timeout)
-        try:
-            print(f'перед aiohttp.ClientSession() as session:')
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=timeout) as s:
-                    assert s.status == 200
-
-                    content = await s.text()
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            content = f'Нет соединения с хостом {e}'
-        except asyncio.TimeoutError as e:
-            content = f'Нет соединения с хостом-> {e}'
-        return self, self.num_host, content
-
     """ archive methods(not usage) """
 
     """ SET REQUEST """
@@ -2232,8 +2215,24 @@ class PeekWeb:
     ACTUATOR_OFF = '1'
     ACTUATOR_ON = '2'
 
+
     INPUTS = 'INPUTS'
     USER_PARAMETERS = 'USER_PARAMETERS'
+    CURRENT_STATE = 'STATE'
+
+    GET_INPUTS = 'GET_INPUTS'
+    SET_INPUTS = 'SET_INPUTS'
+    GET_USER_PARAMETERS = 'GET_USER_PARAMETERS'
+    SET_USER_PARAMETERS = 'SET_USER_PARAMETERS'
+    GET_CURRENT_MODE = 'GET_CURRENT_MODE'
+
+    routes_url = {
+        GET_INPUTS: '/hvi?file=cell1020.hvi&pos1=0&pos2=-1',
+        SET_INPUTS: '/hvi?file=data.hvi&page=cell1020.hvi',
+        GET_USER_PARAMETERS: '/hvi?file=cell6710.hvi&pos1=0&pos2=-1',
+        SET_USER_PARAMETERS: '/hvi?file=data.hvi&page=cell6710.hvi',
+        GET_CURRENT_MODE: '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
+    }
 
     type_set_request_man_stage = 'type_set_request_man_stage'
     type_set_request_man_flash = 'type_set_request_man_flash'
@@ -2243,8 +2242,9 @@ class PeekWeb:
     type_set_request_user_parameter = 'type_set_request_user_parameter'
     reset_man = 'reset_man'
 
+    PATH_TO_HVI_FOR_GET_CURRENT_MODE = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
     PATH_TO_HVI_FOR_GET_INPUTS = '/hvi?file=cell1020.hvi&pos1=0&pos2=40'
-    PATH_TO_HVI_FOR_SET_INPUTS = '/hvi?file=data.hvi&page=cell6710.hvi'
+    PATH_TO_HVI_FOR_SET_INPUTS = '/hvi?file=data.hvi&page=cell1020.hvi'
     PATH_TO_HVI_FOR_GET_USER_PARAMETERS = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
     PATH_TO_HVI_FOR_SET_USER_PARAMETERS = '/hvi?file=data.hvi&page=cell6710.hvi'
 
@@ -2261,6 +2261,76 @@ class PeekWeb:
         self.ip_adress = ip_adress
         self.inputs = {}
         self.user_parameters = {}
+
+    async def get_content_from_web(self, route_type):
+        url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
+        try:
+            timeout = aiohttp.ClientTimeout(3)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                async with session.get(url, timeout=timeout) as s:
+                    assert s.status == 200
+                    content = await s.text()
+            logger.debug('после content = await s.text()')
+            logger.debug(content)
+
+        except aiohttp.client_exceptions.ClientConnectorError as e:
+            content = f'Нет соединения с хостом {e}'
+        except asyncio.TimeoutError as e:
+            content = f'Нет соединения с хостом-> {e}'
+        return content
+
+    def parse_main_page_content(self, content):
+
+        content = [
+            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+        ]
+        mode, stage = content[6].split('(')
+        parsed_data = {
+            'current_plan': content[0].replace("-", ''),
+            'current_parameter_plan': content[1],
+            'current_time': content[2],
+            'current_errors': content[3] if content[3] else None,
+            'current_state': content[4],
+            'current_mode': mode,
+            'current_stage': stage.replace(')', '')
+        }
+        return parsed_data
+
+    def parse_inps_and_user_param_content(self, content):
+
+        parsed_data = {}
+
+        for line in (
+                line.split(';')[1:] for line in content.splitlines() if line.startswith(':D')
+        ):
+            index, num, name, val1, val2, val3 = line
+            # val1, val2 и val3 зависят от типа получаемых данных.
+            # если получаем ВВОДЫ:
+            # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
+            # если Параметры программы:
+            # val1 -> Значение, val2 -> Мин. val3 -> Макс
+            parsed_data[name] = index, val1, val2, val3
+
+        return parsed_data
+
+    async def get_current_mode(self, timeout=1):
+
+        url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_CURRENT_MODE}'
+        # timeout = aiohttp.ClientTimeout(total=timeout)
+        try:
+            timeout = aiohttp.ClientTimeout(3)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                async with session.get(url, timeout=timeout) as s:
+                    assert s.status == 200
+                    content = await s.text()
+            logger.debug('после content = await s.text()')
+            logger.debug(content)
+
+        except aiohttp.client_exceptions.ClientConnectorError as e:
+            content = f'Нет соединения с хостом {e}'
+        except asyncio.TimeoutError as e:
+            content = f'Нет соединения с хостом-> {e}'
+        return self, content
 
     def get_INPUTS_from_web(self):
 
