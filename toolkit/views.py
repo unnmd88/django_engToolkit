@@ -1,48 +1,24 @@
 import json
 import logging
-import os
-import subprocess
 import sys
 import ast
 from datetime import datetime as dt
-import time
 from enum import Enum
 import asyncio
 import inspect
-from io import StringIO, BytesIO
-
-from django import forms
-from django.core import serializers
-from django.views.generic import ListView
+from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.template.loader import render_to_string
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from engineering_tools.settings import SHARED_DESKTOP
-
-from pathlib import Path
-
-from django.core.files import File
-from django.http import HttpResponse, HttpResponseNotFound, Http404, HttpResponseRedirect, JsonResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import QueryDict
-from django.urls import reverse
-from django.template.loader import render_to_string
-from rest_framework.viewsets import ModelViewSet
 from rest_framework import generics
-
-from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR
+from engineering_tools.settings import MEDIA_ROOT, MEDIA_URL, BASE_DIR, SHARED_DESKTOP
 from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
-from toolkit.sdp_lib import conflicts, controller_management
+from toolkit.sdp_lib import conflicts
 from toolkit.serializers import ControllerHostsSerializer, TrafficLightsSerializer
-from toolkit.services import GetDataFromController, SetRequestToController
-
-from django.core.exceptions import ObjectDoesNotExist
-
-protocols = ('Поток_UG405', 'Поток_STCIP', 'Swarco_STCIP', 'Peek_UG405')
-
+import services
 
 class ControllersViewSet(APIView):
 
@@ -62,7 +38,6 @@ class ControllersViewSet(APIView):
                 return Response({'Fault': 'Ошибка получения конфигураии'})
         return Response({'Error': 'Имя конфигурации не определено'})
 
-
     # serializer_class = ControllerHostsSerializer
     # print(f'serializer_class: {serializer_class}' )
     # def get_queryset(self):
@@ -78,6 +53,7 @@ class ControllersViewSet(APIView):
 
 class SearchControllerViewSet(APIView):
     permission_classes = (IsAuthenticated,)
+
     def get(self, request):
         # allowed_options = ('number', 'description')
         number_search = 'number'
@@ -107,7 +83,6 @@ class SearchControllerViewSet(APIView):
 class TrafficLightsAPIVeiw(generics.ListAPIView):
     queryset = TrafficLightObjects.objects.all()
     serializer_class = TrafficLightsSerializer
-
 
 
 # class GetControllerData(View)
@@ -278,6 +253,7 @@ path_uploads = 'toolkit/uploads/'
 
 logger = logging.getLogger(__name__)
 
+
 def test_logger(request):
     logger.debug('TEst1')
     print(logger)
@@ -329,6 +305,7 @@ def test_logger(request):
 
 class GetDataFromControllerAPIView(APIView):
     permission_classes = (IsAuthenticated,)
+
     # def get(self, request):
     #
     #
@@ -343,11 +320,10 @@ class GetDataFromControllerAPIView(APIView):
     #     return Response(processed_data)
     def post(self, request):
 
-        print(f'req_data = {request.data}')
-        print(f'req_data2 = {request.data.get("data")}')
+        # print(f'req_data = {request.data}')
+        # print(f'req_data2 = {request.data.get("data")}')
 
-
-        manager = GetDataFromController(request)
+        manager = services.GetDataFromController(request)
         objects_methods = manager.create_objects_methods()
         if objects_methods:
             processed_data = manager.get_data_from_controllers(objects_methods)
@@ -360,9 +336,8 @@ class GetDataFromControllerAPIView(APIView):
 class SetRequestToControllerAPIView(APIView):
 
     def post(self, request):
-
         print(f'post-post')
-        manager = SetRequestToController(request)
+        manager = services.SetRequestToController(request)
         num_host, result, msg = manager.set_command_request()
 
         context = {
@@ -376,13 +351,14 @@ class SetRequestToControllerAPIView(APIView):
 
 class GetNamesConfigurationControllerManagementAPIView(APIView):
     def get(self, request):
-
         first_option = 'Выбор конфигурации'
         names = {k: v if k > 0 else first_option
                  for k, v in enumerate([el[0] for el in ControllerManagement.objects.values_list('name')])}
         print(f'nameees2 --> {names}')
 
         return Response(names)
+
+
 # def set_requset_axios(request, num_host):
 #     # try:
 #     #     data_request = json.loads(request.body.decode("utf-8"))
@@ -926,7 +902,6 @@ def controller_peek(request):
 def controller_potok(request):
     data = {'title': 'Поток', 'menu_header': menu_header}
     return render(request, 'toolkit/potok.html', context=data)
-
 
 # def get_type_object_set_request(controller_type, command):
 #     SNMP = 'SNMP'

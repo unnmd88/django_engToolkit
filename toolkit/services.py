@@ -15,11 +15,11 @@ class Controller:
 
     def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
         logger.debug('ya в new, type_object = %s', type_object)
-
+        scn = scn if scn else None
         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
             return controller_management.PotokS(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-            return controller_management.PotokP(ip_adress, num_host=num_host)
+            return controller_management.PotokP(ip_adress, num_host=num_host, scn=scn)
         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
             return controller_management.SwarcoSTCIP(ip_adress, num_host)
         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
