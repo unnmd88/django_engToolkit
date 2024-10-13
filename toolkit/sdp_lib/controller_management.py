@@ -1058,9 +1058,9 @@ class PotokP(BaseUG405):
         if value not in (' ', '@'):
             return int(math.log2(int(value, 16))) + 1
         elif value == ' ':
-            return '6'
+            return 6
         elif value == '@':
-            return '7'
+            return 7
         else:
             raise ValueError
 

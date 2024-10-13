@@ -10,7 +10,7 @@ from toolkit.models import TrafficLightObjects
 from toolkit.serializers import TrafficLightsSerializer
 
 
-# Create your tests here.
+# Create your tests_old here.
 
 
 class TrafficLightTestCase(APITestCase):
