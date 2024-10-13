@@ -2,6 +2,7 @@ from unittest import TestCase, main
 from toolkit.sdp_lib.controller_management import BaseUG405
 import asyncio
 
+
 class TestBaseUG405(TestCase):
     def setUp(self) -> None:
         self.host = BaseUG405('10.45.154.11', num_host=2, scn='CO1111')

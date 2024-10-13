@@ -734,7 +734,7 @@ class SwarcoSTCIP(BaseSTCIP):
     """ GET REQUEST """
 
     async def get_current_mode(self, timeout=0, retries=0):
-        print(f'перед await get_current_mode')
+        logger.debug(f'перед await get_current_mode')
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
                 ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
                 ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
@@ -742,7 +742,7 @@ class SwarcoSTCIP(BaseSTCIP):
                 ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
                 ]
         result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return self, self.num_host, result
+        return self, result
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -801,7 +801,7 @@ class SwarcoSTCIP(BaseSTCIP):
 
 class PotokS(BaseSTCIP):
     get_val_stage = {
-        str(k) if k < 66 else str(0): str(v) if v < 65 else str(0) for k, v in zip(range(2, 67), range(1, 66))
+        str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
     }
     # set_val_stage = {
     #     str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
@@ -822,7 +822,7 @@ class PotokS(BaseSTCIP):
     """ GET REQUEST """
 
     async def get_current_mode(self, timeout=0, retries=0):
-        print(f'перед await get_current_mode')
+        logger.debug('перед await get_current_mode')
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
                 ObjectType(ObjectIdentity(self.potokUTCStatusMode)),
                 ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
@@ -830,7 +830,7 @@ class PotokS(BaseSTCIP):
                 ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
                 ]
         result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return self, self.num_host, result
+        return self, result
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """
@@ -1748,19 +1748,22 @@ class GetDataControllerManagement:
 
             obj, varBinds = host_data
             logger.debug(f'obj: {obj}')
-            logger.debug(f'obj.scn: {obj.scn}')
+            # logger.debug(f'obj.scn: {obj.scn}')
             logger.debug(f'varBinds: {varBinds}')
 
             # if not varBinds or not obj:
             #     processed_data[num_host] = 'Хост недоступен'
             # print(f'host data --> {host_data}')
             if isinstance(obj, SwarcoSTCIP):
-                processed_data[num_host] = self.make_data_for_swarco(obj, varBinds)
+                processed_data[obj.ip_adress] = self.make_data_for_swarco(obj, varBinds)
+                logger.debug(processed_data)
             elif isinstance(obj, PotokP):
                 processed_data[obj.ip_adress] = self.make_data_for_potokP(obj, varBinds)
                 logger.debug(processed_data)
             elif isinstance(obj, PotokS):
-                processed_data[num_host] = self.make_data_for_potokS(obj, varBinds)
+                processed_data[obj.ip_adress] = self.make_data_for_potokS(obj, varBinds)
+                logger.debug(processed_data)
+                # processed_data[num_host] = self.make_data_for_potokS(obj, varBinds)
             elif isinstance(obj, PeekUG405):
                 processed_data[num_host] = self.make_data_for_peek(obj, web_content=varBinds)
             else:
@@ -1882,14 +1885,14 @@ class GetDataControllerManagement:
 
         if not varBinds:
             return False
-
-        for oid, val in varBinds:
-            if oid.prettyPrint().split('1618.')[-1] == swarcoSoftIOStatus:
-                print(f'oid -> {oid.prettyPrint()}, val:  {val.prettyPrint()}')
-                print(
-                    f'oid.prettyPrint().split("1618.")[-1] -> {oid.prettyPrint().split("1618.")[-1]}, val:  {val.prettyPrint()}')
-                if len(val.prettyPrint()) < 180:
-                    return False
+        #
+        # for oid, val in varBinds:
+        #     if oid.prettyPrint().split('1618.')[-1] == swarcoSoftIOStatus:
+        #         print(f'oid -> {oid.prettyPrint()}, val:  {val.prettyPrint()}')
+        #         print(
+        #             f'oid.prettyPrint().split("1618.")[-1] -> {oid.prettyPrint().split("1618.")[-1]}, val:  {val.prettyPrint()}')
+        #         if len(val.prettyPrint()) < 180:
+        #             return False
         return True
 
     def validate_varBinds_potokS(self, varBinds):
@@ -1917,34 +1920,54 @@ class GetDataControllerManagement:
         if not result_check_varBinds:
             return f'Сбой получения данных. Проверьте ДК'
 
-        equipment_status = str(varBinds[0][1].prettyPrint())
-        stage = obj.get_val_stage.get(varBinds[1][1].prettyPrint())
-        plan = varBinds[2][1].prettyPrint()
-        num_det_logics = varBinds[3][1].prettyPrint()
-        softstat180_181 = varBinds[4][1].prettyPrint()[179:181] if len(varBinds[4][1].prettyPrint()) > 180 else '01'
+        equipment_status = str(varBinds[0])
+        stage = obj.get_val_stage.get(str(varBinds[1]))
+        plan = str(varBinds[2])
+        num_logics = str(varBinds[3])
+        softstat180_181 = str(varBinds[4])[179:181] if len(varBinds[4]) > 180 else 'no_data'
+
+        data = {
+            'num_host': obj.num_host,
+            'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
+            'current_errors': None,
+            'current_det_errors': None,
+            'num_detLogics': int(num_logics) if not isinstance(num_logics, int) and num_logics.isdigit() else num_logics
+        }
 
         if equipment_status != '1':
-            if equipment_status == '3':
-                return f'Режим={self.statusMode.get("3")}'
-            elif equipment_status == '4':
-                return f'Режим={self.statusMode.get("4")}'
-            elif equipment_status == '6':
-                return f'Режим={self.statusMode.get("6")}'
-            else:
-                return f'Режим={self.statusMode.get("--")}'
+            data['current_mode'] = self.statusMode.get(equipment_status)
+            return data
 
+        # if equipment_status != '1':
+        #     if equipment_status == '3':
+        #         return f'Режим={self.statusMode.get("3")}'
+        #     elif equipment_status == '4':
+        #         return f'Режим={self.statusMode.get("4")}'
+        #     elif equipment_status == '6':
+        #         return f'Режим={self.statusMode.get("6")}'
+        #     else:
+        #         return f'Режим={self.statusMode.get("--")}'
+        val_mode = None
         if plan == '16':
-            mode = self.statusMode.get('11')
+            val_mode = '11'
         elif plan == '15':
-            mode = self.statusMode.get('10')
-        elif '1' in softstat180_181 or num_det_logics == '0':
-            mode = self.statusMode.get('12')
-        elif softstat180_181 == '00' and num_det_logics.isdigit() and int(num_det_logics) > 2:
-            mode = self.statusMode.get('8')
-        else:
-            mode = self.statusMode.get('--')
+            val_mode = '10'
+        elif '1' in softstat180_181 or softstat180_181 == 'no_data' or num_logics == '0':
+            val_mode = '12'
+        elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 2:
+            val_mode = '8'
 
-        return f'Фаза={stage} План={plan} Режим={mode}'
+        mode = self.statusMode.get(val_mode)
+        logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
+
+        data.update(
+            {
+                'current_stage': stage,
+                'current_mode': mode,
+            }
+        )
+        logger.debug('data %s', data)
+        return data
 
     def make_data_for_potokS(self, obj, varBinds):
         """
@@ -1962,35 +1985,47 @@ class GetDataControllerManagement:
         result_check_varBinds = self.validate_varBinds_potokS(varBinds)
 
         if not result_check_varBinds:
-            return f'Сбой получения данных. Проверьте ДК'
+            data = {
+                'num_host': obj.num_host,
+                'fault': 'Сбой получения данных. Проверьте ДК',
+            }
+            return data
 
-        equipment_status = str(varBinds[0][1].prettyPrint())
-        status_mode = str(varBinds[1][1].prettyPrint())
-        stage = obj.get_val_stage.get(varBinds[2][1].prettyPrint())
-        plan = varBinds[3][1].prettyPrint()
+        equipment_status = str(varBinds[0])
+        status_mode = str(varBinds[1])
+        stage = obj.get_val_stage.get(str(varBinds[2]))
+        det_count = str(varBinds[3])
+        plan = str(varBinds[4])
+
+        data = {
+            'num_host': obj.num_host,
+            'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
+            'current_errors': None,
+            'current_det_errors': None,
+            'num_detectors': int(det_count) if not isinstance(det_count, int) and det_count.isdigit() else det_count
+        }
 
         if equipment_status != '1':
-            if equipment_status == '3':
-                return f'Режим={self.statusMode.get("3")}'
-            elif equipment_status == '4':
-                return f'Режим={self.statusMode.get("4")}'
-            elif equipment_status == '6':
-                return f'Режим={self.statusMode.get("6")}'
-            else:
-                return f'Режим={self.statusMode.get("--")}'
+            data['current_mode'] = self.statusMode.get(equipment_status)
+            return data
 
         if status_mode == '11' and plan == '16':
-            mode = self.statusMode.get('11')
-        elif status_mode == '12':
-            mode = self.statusMode.get('12')
-        elif status_mode == '8':
-            mode = self.statusMode.get('8')
-        elif status_mode == '10':
-            mode = self.statusMode.get('10')
+            mode = self.statusMode.get(status_mode)
+        elif status_mode != '11' and status_mode in ('8', '10', '12'):
+            mode = self.statusMode.get(status_mode)
         else:
-            mode = self.statusMode.get('--')
+            mode = None
 
-        return f'Фаза={stage} План={plan} Режим={mode}'
+        logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
+
+        data.update(
+            {
+                'current_stage': stage,
+                'current_mode': mode,
+            }
+        )
+        logger.debug('data %s', data)
+        return data
 
     def make_data_for_potokP(self, obj, varBinds):
 
@@ -2019,7 +2054,7 @@ class GetDataControllerManagement:
         data = {
             'num_host': obj.num_host,
             'scn': obj.scn,
-            'current_plan': int(plan) if plan.isdigit() and not isinstance(plan, int) else plan,
+            'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
             'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
             'current_det_errors': bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors
         }

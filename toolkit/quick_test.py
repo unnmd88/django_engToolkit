@@ -4,16 +4,16 @@ from toolkit.sdp_lib import controller_management
 import logging
 
 
-ip = '10.179.65.89'
+ip = '10.179.42.121'
 ip2 = '10.45.154.11'
 ip3 = '10.45.154.19'
 
-h1 = controller_management.PeekUG405(ip)
+# h1 = controller_management.PeekUG405(ip)
 # res = asyncio.run(h1.get_utcReplyGn())
 # print(f'res : {res}')
 # res = asyncio.run(h1.get_utcType2OperationMode())
 # print(f'res : {res}')
-res = asyncio.run(h1.set_stage('1'))
+# res = asyncio.run(h1.set_stage('1'))
 
 print(f'res : {res}')
 

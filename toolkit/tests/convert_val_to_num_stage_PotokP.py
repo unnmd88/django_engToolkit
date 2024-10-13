@@ -2,6 +2,7 @@ from unittest import TestCase, main
 from toolkit.sdp_lib.controller_management import PotokP
 import asyncio
 
+
 class TestPotokP(TestCase):
     def setUp(self) -> None:
         self.host = PotokP('10.45.154.11', num_host=2)
