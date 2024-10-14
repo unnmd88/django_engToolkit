@@ -2260,6 +2260,12 @@ class PeekWeb:
     ACTUATOR_OFF = '1'
     ACTUATOR_ON = '2'
 
+    ACTUATOR_VALUES = {
+        'ВФ': ACTUATOR_RESET,
+        'ВЫКЛ': ACTUATOR_OFF,
+        'ВКЛ': ACTUATOR_ON
+    }
+
     INPUTS = 'INPUTS'
     USER_PARAMETERS = 'USER_PARAMETERS'
     CURRENT_STATE = 'STATE'
@@ -2278,19 +2284,13 @@ class PeekWeb:
         GET_CURRENT_MODE: '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
     }
 
-    type_set_request_man_stage = 'type_set_request_man_stage'
-    type_set_request_man_flash = 'type_set_request_man_flash'
-    type_set_request_man_flash_dark_allred = 'type_set_request_man_flash_dark_allred'
-    type_set_request_cp_red = 'type_set_request_cp_red'
-
-    type_set_request_user_parameter = 'type_set_request_user_parameter'
-    reset_man = 'reset_man'
-
-    PATH_TO_HVI_FOR_GET_CURRENT_MODE = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
-    PATH_TO_HVI_FOR_GET_INPUTS = '/hvi?file=cell1020.hvi&pos1=0&pos2=40'
-    PATH_TO_HVI_FOR_SET_INPUTS = '/hvi?file=data.hvi&page=cell1020.hvi'
-    PATH_TO_HVI_FOR_GET_USER_PARAMETERS = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
-    PATH_TO_HVI_FOR_SET_USER_PARAMETERS = '/hvi?file=data.hvi&page=cell6710.hvi'
+    # type_set_request_man_stage = 'type_set_request_man_stage'
+    # type_set_request_man_flash = 'type_set_request_man_flash'
+    # type_set_request_man_flash_dark_allred = 'type_set_request_man_flash_dark_allred'
+    # type_set_request_cp_red = 'type_set_request_cp_red'
+    #
+    # type_set_request_user_parameter = 'type_set_request_user_parameter'
+    # reset_man = 'reset_man'
 
     TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
     TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
@@ -2392,8 +2392,37 @@ class PeekWeb:
         inputs = self.parse_inps_and_user_param_content(inputs_web_content)
         timeout = aiohttp.ClientTimeout(timeout)
         async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+            set_CP_AUTO = False
+            async with asyncio.TaskGroup() as tg1:
+                logger.debug('tg1')
+                params_to_set = []
+                blocked_inps = [
+                    'MPP_FL', 'MPP_OFF', 'CP_OFF', 'CP_FLASH', 'CP_RED',
+                ]
+                for inp in blocked_inps:
+                    if inputs.get(inp)[1] == '1':
+                        set_CP_AUTO = True
+                        if inp.startswith('MPP_'):
+                            params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
+                        else:
+                            params_to_set.append(params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET)))
+                if params_to_set:
+                    tasks_res = [
+                        tg1.create_task(self.set_val_to_web(self.SET_INPUTS, session, params_to_set))
+                    ]
+
+            if set_CP_AUTO:
+                await self.set_val_to_web(self.SET_INPUTS, session,
+                                          (inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
+                await self.set_val_to_web(self.SET_INPUTS, session,
+                                          (inputs.get('CP_AUTO')[0], self.ACTUATOR_ON))
+
+
             async with asyncio.TaskGroup() as tg:
+                logger.debug('tg')
                 data_param_to_set = []
+                if set_CP_AUTO:
+                    data_param_to_set.append((inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
 
                 if input_name_to_set == 'reset_man':
                     data_param_to_set.append((inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF))
@@ -2407,7 +2436,7 @@ class PeekWeb:
                             data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
                         elif inp == input_name_to_set:
                             data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
-                tasks_res = [tg.create_task(self.set_val_to_web(self.type_set_request_man_stage, session, data_params))
+                tasks_res = [tg.create_task(self.set_val_to_web(self.SET_INPUTS, session, data_params))
                              for data_params in data_param_to_set]
         logger.info('tasks: %s', tasks_res)
 
@@ -2416,14 +2445,14 @@ class PeekWeb:
         else:
             text_message = 'Произошёл сбой при отправке команды'
 
-        data = {
+        part_of_resp = {
             ContentJsonResponce.RESULT.value: text_message,
             ContentJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
             ContentJsonResponce.TYPE_COMMAND.value: AvailableControllersAndCommands.SET_STAGE_MPP_MAN.value,
             ContentJsonResponce.VALUE.value: stage_to_set
         }
 
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=data)
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
 
         # if stage_to_set == input_name:
         #     pass
@@ -2458,111 +2487,56 @@ class PeekWeb:
         # print(f'inputs-->> {inputs}')
         # return inputs
 
-    async def set_user_parameters(self, params):
+    async def set_val_to_web_common(self, set_type, data, timeout=3):
 
-        res, params = self.validate_val(params.split(','), self.type_set_request_user_parameter)
-        if not res:
-            err_message = params
-            return err_message
+        if set_type == self.SET_USER_PARAMETERS:
+            part_url = self.GET_USER_PARAMETERS
+        elif set_type == self.SET_INPUTS:
+            part_url = self.GET_INPUTS
+        else:
+            raise TypeError
 
-        params_to_set = self.make_user_parameters_to_set(params)
+        web_content = await self.get_content_from_web(part_url)
+        if web_content == TimeoutError:
+            return self.TIMEOUT_ERROR_MSG
+        if web_content == TypeError:
+            return self.TYPE_CONTROLLER_ERROR_MSG
 
-        if not isinstance(params_to_set, dict):
-            err_message = params_to_set
-            return err_message
+        params_from_web = self.parse_inps_and_user_param_content(web_content)
+
+        params_to_set = {}
+        for param in data.split(';'):
+            param, val = param.split('=')
+            if param in params_from_web:
+                if set_type == 'inputs':
+                    val = self.ACTUATOR_VALUES.get(val)
+                params_to_set[params_from_web.get(param)[0]] = val
 
         if not params_to_set:
-            return 'Not params to set'
+            raise ValueError
 
-        return await self.main_async(params_to_set, self.type_set_request_user_parameter)
+        timeout = aiohttp.ClientTimeout(timeout)
+        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+            async with asyncio.TaskGroup() as tg:
+                logger.debug('params_to_set: %s', params_to_set)
+                logger.debug('params_to_set.items(): %s', params_to_set.items())
+                tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
+                             for data_params in params_to_set.items()]
+                logger.info('tasks: %s', tasks_res)
 
-    def make_inputs_to_reset_MAN(self, collect_inputs=False):
+        if all(res.result() == 200 for res in tasks_res):
+            text_message = 'Команда успешно отправлена'
+        else:
+            text_message = 'Произошёл сбой при отправке команды'
 
-        inputs_from_web = self.get_INPUTS_from_web()
-        if not isinstance(inputs_from_web, types.GeneratorType):
-            err_message = inputs_from_web
-            return err_message
+        part_of_resp = {
+            ContentJsonResponce.RESULT.value: text_message,
+            ContentJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
+            ContentJsonResponce.TYPE_COMMAND.value: set_type,
+            ContentJsonResponce.VALUE.value: data
+        }
 
-        cnt = 0
-        stopper = len(self.MAN_INPUTS)
-        inputs = {}
-
-        for line in inputs_from_web:
-            index, num, name, cur_val, time_state, actuator_val = line
-            if collect_inputs:
-                self.inputs[name] = index
-            if name in self.MAN_INPUTS:
-                cnt += 1
-                inputs[name] = index, self.ACTUATOR_RESET
-            if cnt > stopper:
-                break
-        return inputs
-
-    def make_inputs_to_set_reset_flash_dark(self, collect_inputs, name_inp, actuator_val_to_set):
-
-        inputs_from_web = self.get_INPUTS_from_web()
-        if not isinstance(inputs_from_web, types.GeneratorType):
-            err_message = inputs_from_web
-            return err_message
-
-        inputs = {}
-
-        for line in inputs_from_web:
-            index, num, name, cur_val, time_state, actuator_val = line
-            if collect_inputs:
-                self.inputs[name] = index
-            if name == name_inp:
-                inputs[name] = (index, actuator_val_to_set)
-                continue
-            elif name in self.MAN_INPUTS and cur_val != '0':
-                inputs[name] = (index, self.ACTUATOR_RESET)
-
-        return inputs
-
-    def make_inputs_to_set_reset_allred(self, collect_inputs, name_inp, actuator_val_to_set):
-
-        inputs_from_web = self.get_INPUTS_from_web()
-        if not isinstance(inputs_from_web, types.GeneratorType):
-            err_message = inputs_from_web
-            return err_message
-
-        inputs = {}
-
-        for line in inputs_from_web:
-            index, num, name, cur_val, time_state, actuator_val = line
-            if collect_inputs:
-                self.inputs[name] = index
-            if name == name_inp:
-                inputs[name] = (index, actuator_val_to_set)
-                continue
-            elif name in self.MAN_INPUTS and cur_val != '0':
-                inputs[name] = (index, self.ACTUATOR_RESET)
-
-        return inputs
-
-    def make_user_parameters_to_set(self, params, collect_user_parameters=False):
-
-        print(f'make_user_parameters_to_set')
-        print(f'params: {params}')
-
-        user_parameters_from_web = self.get_USER_PARAMETERS_from_web()
-        if not isinstance(user_parameters_from_web, types.GeneratorType):
-            err_message = user_parameters_from_web
-            return err_message
-
-        user_params = {}
-
-        for line in user_parameters_from_web:
-            index, num, name, cur_val, miv_val, max_val = line
-            if collect_user_parameters:
-                self.user_parameters[name] = index
-            if name in params:
-                val_to_set = params.get(name)
-                if val_to_set.isdigit() and int(val_to_set) > int(max_val):
-                    continue
-                user_params[name] = (index, params.get(name))
-        print(f'user_params_TOSETE: {user_params}')
-        return user_params
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
 
     def validate_val(self, value, type_set_request):
         synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
@@ -2604,10 +2578,10 @@ class PeekWeb:
         # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
         # {'par_name': 'PARM.R1/1', 'par_value': '0'}
         index, value = data_params
-        if type_set_request == self.type_set_request_man_stage:
+        if type_set_request == self.SET_INPUTS:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
             url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_INPUTS)}'
-        elif type_set_request == self.type_set_request_user_parameter:
+        elif type_set_request == self.SET_USER_PARAMETERS:
             url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_USER_PARAMETERS)}'
             params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
         elif type_set_request == self.type_set_request_man_flash_dark_allred:
@@ -2663,96 +2637,6 @@ class PeekWeb:
         #                              self.type_set_request_man_flash_dark_allred,
         #                              True if actuator_val == self.ACTUATOR_RESET else False)
 
-    async def set_flash_dark_allred(self, name_inp, value):
-        res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
-
-        if not res:
-            err_message = actuator_val
-            return err_message
-        inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, name_inp, actuator_val)
-
-        return await self.main_async(inputs_to_set,
-                                     self.type_set_request_man_flash_dark_allred,
-                                     True if actuator_val == self.ACTUATOR_RESET else False)
-
-    async def set_user_parameters(self, params):
-
-        res, params = self.validate_val(params.split(','), self.type_set_request_user_parameter)
-        if not res:
-            err_message = params
-            return err_message
-
-        params_to_set = self.make_user_parameters_to_set(params)
-
-        if not isinstance(params_to_set, dict):
-            err_message = params_to_set
-            return err_message
-
-        if not params_to_set:
-            return 'Not params to set'
-
-        return await self.main_async(params_to_set, self.type_set_request_user_parameter)
-
-    async def main_async(self, params, type_request, activate_inp_CP_AUTO=False):
-
-        print(f'params из main_async: {params}')
-        timeout = aiohttp.ClientTimeout(3)
-        # async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-        #     tasks = [self.set_val_to_web(type_request, session, data)
-        #              for data in params.values()]
-        #     print(f'tasks: {tasks}')
-        #     result = await asyncio.gather(*tasks)
-
-        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            if activate_inp_CP_AUTO:
-                tasks = [asyncio.create_task(self.set_val_to_web(type_request, session, data))
-                         for data in params.values()]
-                print(f'tasks if: {tasks}')
-                done, pending = await asyncio.wait(tasks)
-                print('done, pending 11111')
-                print(f'done if: {done}')
-                print(f'pending if: {pending}')
-                print(f'self.inputs.get: {self.inputs.get("CP_AUTO")}')
-
-                done, pending = await asyncio.wait([asyncio.create_task(
-                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_ON)))
-                ])
-
-                await asyncio.sleep(1)
-
-                print('done, pending 22222')
-                print(f'done if: {done}')
-                print(f'type done if: {type(done)}')
-                print(f'pending if: {pending}')
-
-                done, pending = await asyncio.wait([asyncio.create_task(
-                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_RESET)))
-                ])
-
-                print('done, pending 3333')
-                print(f'done if: {done}')
-                print(f'pending if: {pending}')
-
-                # await asyncio.gather(self.set_val_to_web(type_request,
-                #                                          session,
-                #                                          (self.inputs.get('MPP_FL'), self.ACTUATOR_ON)
-                #                                          )
-                #                      )
-
-            else:
-                print('else')
-                tasks = [self.set_val_to_web(type_request, session, data)
-                         for data in params.values()]
-                print(f'tasks: {tasks}')
-                result = await asyncio.gather(*tasks)
-                print(f'result: {result}')
-
-        # if type_request == self.type_set_request_man_flash_dark_allred:
-        #     await asyncio.gather(*tasks)
-
-        # for res in result:
-        #     if res != 200:
-        #         return 'ConnectTimeoutError'
 
     async def get_data_from_web2(self, path_to_hvi, type, session, data=None):
         async def get_request(s):
@@ -2821,99 +2705,6 @@ class PeekWeb:
         # except Exception as err:
         #     return 'common'
 
-    async def main_async2(self,
-                          data_type,
-                          params,
-                          ):
-        host = PeekUG405(self.ip_adress)
-        res_ckeck_valid_controller_type = await host.get_utcType2VendorID()
-        if res_ckeck_valid_controller_type == 'No Such Object currently exists at this OID':
-            return False, res_ckeck_valid_controller_type
-        elif res_ckeck_valid_controller_type.__str__() == 'No SNMP response received before timeout':
-            print(f'elif res_ckeck_valid_controller_type.__str__(): {res_ckeck_valid_controller_type.__str__()}')
-            return False, res_ckeck_valid_controller_type.__str__()
-
-        print(f'controller_type: {res_ckeck_valid_controller_type.__str__()}')
-        print(f'type(controller_type): {type(res_ckeck_valid_controller_type)}')
-
-        if data_type == self.INPUTS:
-            path_to_hvi = self.PATH_TO_HVI_FOR_GET_INPUTS
-        elif data_type == self.USER_PARAMETERS:
-            path_to_hvi = self.PATH_TO_HVI_FOR_GET_USER_PARAMETERS
-        else:
-            raise TypeError
-
-        print(f'params main_async2 main2: {params}')
-        timeout = aiohttp.ClientTimeout(3)
-        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            try:
-                done, pending = await asyncio.wait([asyncio.create_task(
-                    self.get_data_from_web2(path_to_hvi, type=data_type, session=session))
-                ])
-
-                print(f'new_done: {done}')
-                print(f'len new_done: {len(done)}')
-                print(f'done.: {next(iter(done)).result()}')
-
-                print(f'new_pending: {pending}')
-
-                for d in done:
-                    print(f'd: {d}')
-                    print(f'd type: {type(d)}')
-                return
-            except asyncio.TimeoutError:
-
-                print(f'err: ')
-                print(f'new_pending: {pending}')
-                print(f'done.: {next(iter(done))}')
-                print(f'd: ')
-            except aiohttp.client_exceptions.ClientConnectorCertificateError:
-                print(f'aiohttp.client_exceptions.ClientConnectorCertificateError')
-
-            return
-
-            if activate_inp_CP_AUTO:
-                tasks = [asyncio.create_task(self.set_val_to_web(type_request, session, data))
-                         for data in params.values()]
-                print(f'tasks if: {tasks}')
-                done, pending = await asyncio.wait(tasks)
-                print('done, pending 11111')
-                print(f'done if: {done}')
-                print(f'pending if: {pending}')
-                print(f'self.inputs.get: {self.inputs.get("CP_AUTO")}')
-
-                done, pending = await asyncio.wait([asyncio.create_task(
-                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_ON)))
-                ])
-
-                await asyncio.sleep(1)
-
-                print('done, pending 22222')
-                print(f'done if: {done}')
-                print(f'type done if: {type(done)}')
-                print(f'pending if: {pending}')
-
-                done, pending = await asyncio.wait([asyncio.create_task(
-                    self.set_val_to_web(type_request, session, (self.inputs.get('CP_AUTO'), self.ACTUATOR_RESET)))
-                ])
-
-                print('done, pending 3333')
-                print(f'done if: {done}')
-                print(f'pending if: {pending}')
-
-                # await asyncio.gather(self.set_val_to_web(type_request,
-                #                                          session,
-                #                                          (self.inputs.get('MPP_FL'), self.ACTUATOR_ON)
-                #                                          )
-                #                      )
-
-            else:
-                print('else')
-                tasks = [self.set_val_to_web(type_request, session, data)
-                         for data in params.values()]
-                print(f'tasks: {tasks}')
-                result = await asyncio.gather(*tasks)
-                print(f'result: {result}')
 
 
 """ Arhive """

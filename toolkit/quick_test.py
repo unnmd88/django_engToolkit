@@ -19,10 +19,9 @@ ip6 = '10.179.19.81'
 # print(f'res : {res}')
 
 h4 = controller_management.PeekWeb(ip4)
-res = asyncio.run(h4.set_stage('0'))
-
-
-
+# res = asyncio.run(h4.set_stage('2'))
+# res = asyncio.run(h4.set_val_to_web_common('SET_USER_PARAMETERS', data='UTC_ON=0;FIX_TIME=1'))
+res = asyncio.run(h4.set_val_to_web_common('SET_INPUTS', data=';'.join([f'MPP_PH{i}=ВФ' for i in range(1, 9)])))
 
 
 # print(f'res : {res}')
