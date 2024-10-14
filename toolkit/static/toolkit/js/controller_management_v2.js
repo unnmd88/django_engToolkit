@@ -771,15 +771,16 @@ async function set_request_axios(num_host) {
 
     let res_elem = document.querySelector(`#recieve_data_from_terminal_${num_host}`);
     let data_request = {};
-        data_request[num_host] = `${$('#ip_' + num_host).val()};` + 
-                                 `${$(`#protocol_${num_host} option:selected`).text()};` + 
-                                 `${$(`#scn_${num_host}`).val()};` + 
-                                 `${$(`#setCommand_${num_host} option:selected`).text()};` +
-                                 `${$('#setval_' + num_host).val()}`
+
+    data_request[`${$('#ip_' + num_host).val()}`] = {
+                                                    num_host: num_host,
+                                                    type_controller:  `${$(`#protocol_${num_host} option:selected`).text()}`,
+                                                    type_command: `${$(`#setCommand_${num_host} option:selected`).text()}`,
+                                                    set_val: `${$('#setval_' + num_host).val()}`,
+                                                    scn: `${$(`#scn_${num_host}`).val()}`
+    }  
 
     let csrfToken = $("input[name=csrfmiddlewaretoken]").val();
-    
-
     try {
         res_elem.textContent = ('Ожидаю ответа...')
         const response = await axios.post(            

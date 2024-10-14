@@ -18,7 +18,7 @@ from toolkit.forms_app import CreateConflictForm, ControllerManagementData
 from toolkit.models import TrafficLightObjects, SaveConfigFiles, SaveConflictsTXT, ControllerManagement
 from toolkit.sdp_lib import conflicts
 from toolkit.serializers import ControllerHostsSerializer, TrafficLightsSerializer
-import services
+from . import services
 
 class ControllersViewSet(APIView):
 

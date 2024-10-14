@@ -6,10 +6,12 @@ from enum import Enum
 from toolkit.sdp_lib import controller_management
 import logging
 
-
 logger = logging.getLogger(__name__)
+
+
 def test_for_logger():
     logger.debug('deeeee')
+
 
 class Controller:
 
@@ -109,6 +111,7 @@ class SetRequestToController:
 
         print(f'request.data = self.data_request: {self.data_request}')
         # self.data_request = request.POST.dict()
+        logger.debug(self.request.data.get('data'))
 
     def set_command_request(self):
 
@@ -171,22 +174,22 @@ class SetRequestToController:
 
         if controller_type == AvailableControllers.POTOK_P.value:
             if SNMP in command:
-                return controller_management.AvailableProtocolsManagement.POTOK_UG405.value
+                return AvailableProtocolsManagement.POTOK_UG405.value
         elif controller_type == AvailableControllers.POTOK_S.value:
             if SNMP in command:
-                return controller_management.AvailableProtocolsManagement.POTOK_STCIP.value
+                return AvailableProtocolsManagement.POTOK_STCIP.value
         elif controller_type == AvailableControllers.SWARCO.value:
             if SNMP in command:
-                return controller_management.AvailableProtocolsManagement.SWARCO_STCIP.value
+                return AvailableProtocolsManagement.SWARCO_STCIP.value
             elif MAN in command:
-                return controller_management.AvailableProtocolsManagement.SWARCO_SSH.value
+                return AvailableProtocolsManagement.SWARCO_SSH.value
         elif controller_type == AvailableControllers.PEEK.value:
             if SNMP in command:
-                return controller_management.AvailableProtocolsManagement.PEEK_UG405.value
+                return AvailableProtocolsManagement.PEEK_UG405.value
             elif MAN in command or INPUTS in command:
-                return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
+                return AvailableProtocolsManagement.PEEK_WEB.value
             elif command == USER_PARAMETERS:
-                return controller_management.AvailableProtocolsManagement.PEEK_WEB.value
+                return AvailableProtocolsManagement.PEEK_WEB.value
 
     def get_result_command(self, res, host):
 
@@ -209,7 +212,7 @@ class SetRequestToController:
             else:
                 result, msg = True, res
         elif isinstance(host, (controller_management.PotokS, controller_management.PotokP,
-                        controller_management.SwarcoSTCIP, controller_management.PeekUG405)):
+                               controller_management.SwarcoSTCIP, controller_management.PeekUG405)):
             if res is None or not res:
                 result, msg = True, messages.get('success')
             else:
