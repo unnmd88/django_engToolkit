@@ -17,7 +17,7 @@ ip5 = '10.179.65.89'
 # res = asyncio.run(h1.get_utcReplyGn())
 # print(f'res : {res}')
 
-h4 = controller_management.PeekWeb(ip4)
+h4 = controller_management.PeekWeb(ip3)
 res = asyncio.run(h4.set_stage('0'))
 
 

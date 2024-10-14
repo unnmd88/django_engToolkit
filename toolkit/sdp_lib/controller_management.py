@@ -2253,6 +2253,9 @@ class PeekWeb:
     PATH_TO_HVI_FOR_GET_USER_PARAMETERS = '/hvi?file=cell6710.hvi&pos1=0&pos2=100'
     PATH_TO_HVI_FOR_SET_USER_PARAMETERS = '/hvi?file=data.hvi&page=cell6710.hvi'
 
+    TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
+
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
     }
@@ -2267,10 +2270,10 @@ class PeekWeb:
         self.inputs = {}
         self.user_parameters = {}
 
-    async def get_content_from_web(self, route_type):
+    async def get_content_from_web(self, route_type, timeout=1):
         url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
         try:
-            timeout = aiohttp.ClientTimeout(3)
+            timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 async with session.get(url, timeout=timeout) as s:
                     assert s.status == 200
@@ -2278,10 +2281,10 @@ class PeekWeb:
             logger.debug('после content = await s.text()')
             logger.debug(content)
 
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            content = f'Нет соединения с хостом {e}'
-        except asyncio.TimeoutError as e:
-            content = f'Нет соединения с хостом-> {e}'
+        except aiohttp.client_exceptions.ClientConnectorError:
+            content = aiohttp.client_exceptions.ClientConnectorError
+        except asyncio.TimeoutError:
+            content = asyncio.TimeoutError
         return content
 
     async def get_current_mode(self, timeout=1):
@@ -2321,34 +2324,40 @@ class PeekWeb:
 
         return parsed_data
 
-    async def set_stage(self, stage_to_set: str):
+
+    async def set_stage(self, stage_to_set: str, timeout=3):
 
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
         inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
+        if inputs_web_content == TimeoutError:
+            return self.TIMEOUT_ERROR_MSG
+        logger.debug('inputs_web_content, %s', inputs_web_content)
+        logger.debug(TimeoutError == inputs_web_content)
+
         inputs = self.parse_inps_and_user_param_content(inputs_web_content)
-        timeout = aiohttp.ClientTimeout(3)
+        timeout = aiohttp.ClientTimeout(timeout)
         async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            if input_name_to_set == 'reset_man':
-                for inp in self.MAN_INPUTS_MPP_PH:
-                    data_params = inputs.get(inp)[0], self.ACTUATOR_RESET
-                    await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
-                data_params = inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF
-                await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
-            else:
-                for inp in inputs:
-                    if inp == 'MPP_MAN':
-                        data_params = inputs.get(inp)[0], self.ACTUATOR_ON
-                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
-                        logger.debug(f'res1: {res}')
-                    elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[1] == '1':
-                        data_params = inputs.get(inp)[0], self.ACTUATOR_OFF
-                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
-                        logger.debug(f'res2: {res}')
-                    elif inp == input_name_to_set:
-                        data_params = inputs.get(inp)[0], self.ACTUATOR_ON
-                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
-                        logger.debug(f'res3: {res}')
-        return 'Done'
+            async with asyncio.TaskGroup() as tg:
+                data_param_to_set = []
+
+                if input_name_to_set == 'reset_man':
+                    data_param_to_set.append((inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF))
+                    for inp in self.MAN_INPUTS_MPP_PH:
+                        data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET))
+                else:
+                    for inp in inputs:
+                        if inp == 'MPP_MAN':
+                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
+                        elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[1] == '1':
+                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
+                        elif inp == input_name_to_set:
+                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
+                tasks_res = [tg.create_task(self.set_val_to_web(self.type_set_request_man_stage, session, data_params))
+                             for data_params in data_param_to_set]
+        logger.info('tasks: %s', tasks_res)
+        for res in tasks_res:
+            logger.debug('res: %s', res)
+        return tasks_res
 
         # if stage_to_set == input_name:
         #     pass
@@ -2382,6 +2391,68 @@ class PeekWeb:
         #         break
         # print(f'inputs-->> {inputs}')
         # return inputs
+
+    # async def set_stage(self, stage_to_set: str):
+    #
+    #     input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
+    #     inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
+    #     inputs = self.parse_inps_and_user_param_content(inputs_web_content)
+    #     timeout = aiohttp.ClientTimeout(3)
+    #     async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+    #         if input_name_to_set == 'reset_man':
+    #             for inp in self.MAN_INPUTS_MPP_PH:
+    #                 data_params = inputs.get(inp)[0], self.ACTUATOR_RESET
+    #                 await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+    #             data_params = inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF
+    #             await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+    #         else:
+    #             for inp in inputs:
+    #                 if inp == 'MPP_MAN':
+    #                     data_params = inputs.get(inp)[0], self.ACTUATOR_ON
+    #                     res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+    #                     logger.debug(f'res1: {res}')
+    #                 elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[1] == '1':
+    #                     data_params = inputs.get(inp)[0], self.ACTUATOR_OFF
+    #                     res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+    #                     logger.debug(f'res2: {res}')
+    #                 elif inp == input_name_to_set:
+    #                     data_params = inputs.get(inp)[0], self.ACTUATOR_ON
+    #                     res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+    #                     logger.debug(f'res3: {res}')
+    #     return 'Done'
+    #
+    #     # if stage_to_set == input_name:
+    #     #     pass
+    #     # else:
+    #     #
+    #     # inputs_from_web = self.get_INPUTS_from_web()
+    #     # if not isinstance(inputs_from_web, types.GeneratorType):
+    #     #     err_message = inputs_from_web
+    #     #     return err_message
+    #     #
+    #     # cnt = 0
+    #     # inputs = {}
+    #     # stopper = len(self.MAN_INPUTS) - 2
+    #     #
+    #     # for line in inputs_from_web:
+    #     #     index, num, name, cur_val, time_state, actuator_val = line
+    #     #     if collect_inputs:
+    #     #         self.inputs[name] = index
+    #     #     if 'MPP_PH' in name and name != stage_to_set:
+    #     #         cnt += 1
+    #     #         if cur_val != '0':
+    #     #             inputs[name] = (index, self.ACTUATOR_OFF)
+    #     #     elif name == stage_to_set:
+    #     #         cnt += 1
+    #     #         inputs[name] = (index, self.ACTUATOR_ON)
+    #     #     if name == 'MPP_MAN':
+    #     #         cnt += 1
+    #     #         if cur_val != '1':
+    #     #             inputs[name] = (index, self.ACTUATOR_ON)
+    #     #     if cnt > stopper:
+    #     #         break
+    #     # print(f'inputs-->> {inputs}')
+    #     # return inputs
 
     def make_inputs_to_reset_MAN(self, collect_inputs=False):
 
@@ -2505,7 +2576,8 @@ class PeekWeb:
                 return True, self.ACTUATOR_ON
 
     async def set_val_to_web(self, type_set_request, session, data_params, ):
-        # print(f'data_params: {data_params}')
+        # logger.debug(f'data_params: {data_params}')
+        logger.debug(f'start set_val_to_web')
 
         # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
         # {'par_name': 'PARM.R1/1', 'par_value': '0'}
@@ -2524,8 +2596,10 @@ class PeekWeb:
 
         # print(f'params: {params}')
 
+
         async with session.post(url=url, data=params) as response:
             await response.text()
+            logger.debug(f'final set_val_to_web')
             return response.status
 
 
