@@ -126,7 +126,7 @@ class SetRequestToController:
             ip_adress, type_of_controller, scn, command, value = data_request
             command, type_of_controller = command.upper(), type_of_controller.upper()
             type_of_controller_management = self.get_type_object_set_request(type_of_controller, command)
-            host = controller_management.Controller(ip_adress, type_of_controller_management, scn)
+            host = Controller(ip_adress, type_of_controller_management, scn)
             print(f'host -> {host}')
 
             if command in set_stage:
@@ -193,6 +193,7 @@ class SetRequestToController:
         print(f'get_result_command res: {res}')
 
         messages = {
+            'type_controller_error': 'Ошибка: проверьте корректность типа контроллера',
             'success': 'Команда успешно отправлена',
             'No SNMP response received before timeout': 'Ошибка отправки команды: хост недоступен',
             'ConnectTimeoutError': 'Ошибка отправки команды: хост недоступен',

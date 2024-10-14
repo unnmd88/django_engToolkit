@@ -30,6 +30,9 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+
+
+
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         SnmpEngine(),
@@ -39,6 +42,25 @@ async def get_stage(ip_adress, community, oids):
         *oids
     )
     return varBinds
+
+
+class AvailableControllersAndCommands(Enum):
+    """ Доступные типы контроллера и команд"""
+    SWARCO = 'Swarco'
+    POTOK_P = 'Поток (P)'
+    POTOK_S = 'Поток (S)'
+    PEEK = 'Peek'
+
+    SET_STAGE_MPP_MAN = 'set stage mpp man'
+
+
+class ContentJsonResponce(Enum):
+    """ Доступные типы контроллера и команд"""
+
+    RESULT = 'result'
+    TYPE_CONTROLLER = 'type_controller'
+    TYPE_COMMAND = 'type_command'
+    VALUE = 'value'
 
 
 #
@@ -157,6 +179,25 @@ class BaseCommon:
             # res = [data[1].prettyPrint() for data in varBinds]
             # print(f'res -> {res}')
         return errorIndication.__str__()
+
+    @staticmethod
+    def make_json_responce(ip_adress, num_host=None, dict_data=None, **kwargs):
+
+        data_responce = {
+            ip_adress: {
+                'num_host': num_host
+            }
+        }
+
+        logger.debug(f'kwargs: {kwargs}')
+
+        if type(dict_data) == dict:
+            data_responce.get(ip_adress).update(dict_data)
+        if kwargs:
+            for k, v in kwargs.items():
+                data_responce.get(ip_adress)[k] = v
+        logger.debug(f'data_responce: {data_responce}')
+        return data_responce
 
 
 class BaseSTCIP(BaseCommon):
@@ -2215,11 +2256,9 @@ class PeekWeb:
                          '5': 'MPP_PH5', '6': 'MPP_PH6', '7': 'MPP_PH7', '8': 'MPP_PH8',
                          '0': 'reset_man'}
 
-
     ACTUATOR_RESET = '0'
     ACTUATOR_OFF = '1'
     ACTUATOR_ON = '2'
-
 
     INPUTS = 'INPUTS'
     USER_PARAMETERS = 'USER_PARAMETERS'
@@ -2254,7 +2293,8 @@ class PeekWeb:
     PATH_TO_HVI_FOR_SET_USER_PARAMETERS = '/hvi?file=data.hvi&page=cell6710.hvi'
 
     TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
-
+    TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
+    SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
@@ -2265,8 +2305,17 @@ class PeekWeb:
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
+    # def __new__(cls, ip_adress: str):
+    #     host = BaseUG405(ip_adress, scn=' ')
+    #     res = asyncio.run(host.get_utcReplySiteID())
+    #     logger.debug('__new__(cls, ip_adress: str): %s', res)
+    #     if res == 'Peek':
+    #         return super(PeekWeb, cls).__new__(cls)
+    #     return None
+
     def __init__(self, ip_adress: str, num_host: str = None):
         self.ip_adress = ip_adress
+        self.num_host = num_host
         self.inputs = {}
         self.user_parameters = {}
 
@@ -2276,7 +2325,9 @@ class PeekWeb:
             timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 async with session.get(url, timeout=timeout) as s:
-                    assert s.status == 200
+                    if s.status != 200:
+                        raise TypeError(self.TYPE_CONTROLLER_ERROR_MSG)
+                    logger.debug('s.status : %s', s.status)
                     content = await s.text()
             logger.debug('после content = await s.text()')
             logger.debug(content)
@@ -2285,6 +2336,9 @@ class PeekWeb:
             content = aiohttp.client_exceptions.ClientConnectorError
         except asyncio.TimeoutError:
             content = asyncio.TimeoutError
+        except TypeError:
+            content = TypeError
+
         return content
 
     async def get_current_mode(self, timeout=1):
@@ -2324,15 +2378,16 @@ class PeekWeb:
 
         return parsed_data
 
-
     async def set_stage(self, stage_to_set: str, timeout=3):
 
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
         inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
         if inputs_web_content == TimeoutError:
             return self.TIMEOUT_ERROR_MSG
+        if inputs_web_content == TypeError:
+            return self.TYPE_CONTROLLER_ERROR_MSG
+
         logger.debug('inputs_web_content, %s', inputs_web_content)
-        logger.debug(TimeoutError == inputs_web_content)
 
         inputs = self.parse_inps_and_user_param_content(inputs_web_content)
         timeout = aiohttp.ClientTimeout(timeout)
@@ -2355,9 +2410,20 @@ class PeekWeb:
                 tasks_res = [tg.create_task(self.set_val_to_web(self.type_set_request_man_stage, session, data_params))
                              for data_params in data_param_to_set]
         logger.info('tasks: %s', tasks_res)
-        for res in tasks_res:
-            logger.debug('res: %s', res)
-        return tasks_res
+
+        if all(res.result() == 200 for res in tasks_res):
+            text_message = 'Команда успешно отправлена'
+        else:
+            text_message = 'Произошёл сбой при отправке команды'
+
+        data = {
+            ContentJsonResponce.RESULT.value: text_message,
+            ContentJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
+            ContentJsonResponce.TYPE_COMMAND.value: AvailableControllersAndCommands.SET_STAGE_MPP_MAN.value,
+            ContentJsonResponce.VALUE.value: stage_to_set
+        }
+
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=data)
 
         # if stage_to_set == input_name:
         #     pass
@@ -2596,12 +2662,10 @@ class PeekWeb:
 
         # print(f'params: {params}')
 
-
         async with session.post(url=url, data=params) as response:
             await response.text()
             logger.debug(f'final set_val_to_web')
             return response.status
-
 
     async def set_flash(self, value):
         return await self.set_flash_dark_allred('MPP_FL', value)

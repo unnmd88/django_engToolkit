@@ -11,13 +11,14 @@ ip2 = '10.45.154.11'
 ip3 = '10.45.154.19'
 ip4 = '10.179.107.129'
 ip5 = '10.179.65.89'
+ip6 = '10.179.19.81'
 
 
 # h1 = controller_management.PeekUG405(ip)
 # res = asyncio.run(h1.get_utcReplyGn())
 # print(f'res : {res}')
 
-h4 = controller_management.PeekWeb(ip3)
+h4 = controller_management.PeekWeb(ip4)
 res = asyncio.run(h4.set_stage('0'))
 
 
