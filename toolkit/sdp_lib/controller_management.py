@@ -2206,10 +2206,15 @@ class SwarcoSSH(ConnectionSSH):
 
 
 class PeekWeb:
-    MAN_INPUTS = {'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3',
-                  'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
-    MAN_INPUTS_STAGES = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
+    # MAN_INPUTS = {'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3',
+    #               'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
+    MAN_INPUTS_MPP_PH = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
                          'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
+
+    MAN_INPUTS_STAGES = {'1': 'MPP_PH1', '2': 'MPP_PH2', '3': 'MPP_PH3', '4': 'MPP_PH4',
+                         '5': 'MPP_PH5', '6': 'MPP_PH6', '7': 'MPP_PH7', '8': 'MPP_PH8',
+                         '0': 'reset_man'}
+
 
     ACTUATOR_RESET = '0'
     ACTUATOR_OFF = '1'
@@ -2279,6 +2284,10 @@ class PeekWeb:
             content = f'Нет соединения с хостом-> {e}'
         return content
 
+    async def get_current_mode(self, timeout=1):
+        content = await self.get_content_from_web(self.GET_CURRENT_MODE)
+        return self.parse_main_page_content(content)
+
     def parse_main_page_content(self, content):
 
         content = [
@@ -2299,7 +2308,6 @@ class PeekWeb:
     def parse_inps_and_user_param_content(self, content):
 
         parsed_data = {}
-
         for line in (
                 line.split(';')[1:] for line in content.splitlines() if line.startswith(':D')
         ):
@@ -2313,94 +2321,67 @@ class PeekWeb:
 
         return parsed_data
 
-    async def get_current_mode(self, timeout=1):
+    async def set_stage(self, stage_to_set: str):
 
-        url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_CURRENT_MODE}'
-        # timeout = aiohttp.ClientTimeout(total=timeout)
-        try:
-            timeout = aiohttp.ClientTimeout(3)
-            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-                async with session.get(url, timeout=timeout) as s:
-                    assert s.status == 200
-                    content = await s.text()
-            logger.debug('после content = await s.text()')
-            logger.debug(content)
+        input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
+        inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
+        inputs = self.parse_inps_and_user_param_content(inputs_web_content)
+        timeout = aiohttp.ClientTimeout(3)
+        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+            if input_name_to_set == 'reset_man':
+                for inp in self.MAN_INPUTS_MPP_PH:
+                    data_params = inputs.get(inp)[0], self.ACTUATOR_RESET
+                    await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+                data_params = inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF
+                await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+            else:
+                for inp in inputs:
+                    if inp == 'MPP_MAN':
+                        data_params = inputs.get(inp)[0], self.ACTUATOR_ON
+                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+                        logger.debug(f'res1: {res}')
+                    elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[1] == '1':
+                        data_params = inputs.get(inp)[0], self.ACTUATOR_OFF
+                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+                        logger.debug(f'res2: {res}')
+                    elif inp == input_name_to_set:
+                        data_params = inputs.get(inp)[0], self.ACTUATOR_ON
+                        res = await self.set_val_to_web(self.type_set_request_man_stage, session, data_params)
+                        logger.debug(f'res3: {res}')
+        return 'Done'
 
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            content = f'Нет соединения с хостом {e}'
-        except asyncio.TimeoutError as e:
-            content = f'Нет соединения с хостом-> {e}'
-        return self, content
-
-    def get_INPUTS_from_web(self):
-
-        try:
-            with requests.Session() as session:
-                response = session.get(
-                    url=f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_INPUTS}',
-                    headers=self.headers,
-                    cookies=self.cookies,
-                    timeout=2
-                )
-            inputs = (
-                line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
-            )
-            return inputs
-        except requests.exceptions.ConnectTimeout as err:
-            return 'ConnectTimeoutError'
-        except Exception as err:
-            return 'common'
-
-    def get_USER_PARAMETERS_from_web(self):
-
-        try:
-            with requests.Session() as session:
-                response = session.get(
-                    url=f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_GET_USER_PARAMETERS}',
-                    headers=self.headers,
-                    cookies=self.cookies,
-                    timeout=2
-                )
-            inputs = (
-                line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
-            )
-            return inputs
-        except requests.exceptions.ConnectTimeout as err:
-            return 'ConnectTimeoutError'
-        except Exception as err:
-            print(f'Exception err: {err}')
-            return 'common'
-
-    def make_inputs_to_set_stage_MAN(self, stage_to_set: str, collect_inputs=False):
-
-        inputs_from_web = self.get_INPUTS_from_web()
-        if not isinstance(inputs_from_web, types.GeneratorType):
-            err_message = inputs_from_web
-            return err_message
-
-        cnt = 0
-        inputs = {}
-        stopper = len(self.MAN_INPUTS) - 2
-
-        for line in inputs_from_web:
-            index, num, name, cur_val, time_state, actuator_val = line
-            if collect_inputs:
-                self.inputs[name] = index
-            if 'MPP_PH' in name and name != stage_to_set:
-                cnt += 1
-                if cur_val != '0':
-                    inputs[name] = (index, self.ACTUATOR_OFF)
-            elif name == stage_to_set:
-                cnt += 1
-                inputs[name] = (index, self.ACTUATOR_ON)
-            if name == 'MPP_MAN':
-                cnt += 1
-                if cur_val != '1':
-                    inputs[name] = (index, self.ACTUATOR_ON)
-            if cnt > stopper:
-                break
-        print(f'inputs-->> {inputs}')
-        return inputs
+        # if stage_to_set == input_name:
+        #     pass
+        # else:
+        #
+        # inputs_from_web = self.get_INPUTS_from_web()
+        # if not isinstance(inputs_from_web, types.GeneratorType):
+        #     err_message = inputs_from_web
+        #     return err_message
+        #
+        # cnt = 0
+        # inputs = {}
+        # stopper = len(self.MAN_INPUTS) - 2
+        #
+        # for line in inputs_from_web:
+        #     index, num, name, cur_val, time_state, actuator_val = line
+        #     if collect_inputs:
+        #         self.inputs[name] = index
+        #     if 'MPP_PH' in name and name != stage_to_set:
+        #         cnt += 1
+        #         if cur_val != '0':
+        #             inputs[name] = (index, self.ACTUATOR_OFF)
+        #     elif name == stage_to_set:
+        #         cnt += 1
+        #         inputs[name] = (index, self.ACTUATOR_ON)
+        #     if name == 'MPP_MAN':
+        #         cnt += 1
+        #         if cur_val != '1':
+        #             inputs[name] = (index, self.ACTUATOR_ON)
+        #     if cnt > stopper:
+        #         break
+        # print(f'inputs-->> {inputs}')
+        # return inputs
 
     def make_inputs_to_reset_MAN(self, collect_inputs=False):
 
@@ -2524,91 +2505,29 @@ class PeekWeb:
                 return True, self.ACTUATOR_ON
 
     async def set_val_to_web(self, type_set_request, session, data_params, ):
-        print(f'data_params: {data_params}')
+        # print(f'data_params: {data_params}')
 
         # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
         # {'par_name': 'PARM.R1/1', 'par_value': '0'}
         index, value = data_params
         if type_set_request == self.type_set_request_man_stage:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_INPUTS}'
+            url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_INPUTS)}'
         elif type_set_request == self.type_set_request_user_parameter:
-            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_USER_PARAMETERS}'
+            url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_USER_PARAMETERS)}'
             params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
         elif type_set_request == self.type_set_request_man_flash_dark_allred:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-            url = f'http://{self.ip_adress}{self.PATH_TO_HVI_FOR_SET_INPUTS}'
+            url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_INPUTS)}'
         else:
             raise TypeError
 
-        print(f'params: {params}')
+        # print(f'params: {params}')
 
         async with session.post(url=url, data=params) as response:
             await response.text()
             return response.status
 
-    # async def set_stage(self, value):
-    #     """
-    #
-    #     :param value: Номер фазы или синоним, если требуется сбросить MAN
-    #     :return: None если запрос успешен, иначе текст ошибки
-    #     """
-    #
-    #     print(f'async def set_stage PEEK')
-    #
-    #     res, inp_name = self.validate_val(value, self.type_set_request_man_stage)
-    #     if not res:
-    #         err_message = inp_name
-    #         return err_message
-    #
-    #     if inp_name == self.reset_man:
-    #         inputs_to_set = self.make_inputs_to_reset_MAN()
-    #     else:
-    #         print('else')
-    #         inputs_to_set = self.make_inputs_to_set_stage_MAN(stage_to_set=inp_name, collect_inputs=False)
-    #
-    #     if not isinstance(inputs_to_set, dict):
-    #         err_message = inputs_to_set
-    #         return err_message
-    #
-    #     print(f'inputs_to_set.inputs = {inputs_to_set}')
-    #     print(f'self.inputs = {self.inputs}')
-    #
-    #     timeout = aiohttp.ClientTimeout(3)
-    #     async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-    #         tasks = [self.set_val_to_web(self.type_set_request_man_stage, session, data)
-    #                  for data in inputs_to_set.values()]
-    #         print(f'tasks: {tasks}')
-    #         result = await asyncio.gather(*tasks)
-    #     for res in result:
-    #         if res != 200:
-    #             return 'ConnectTimeoutError'
-
-    async def set_stage(self, value):
-        """
-
-        :param value: Номер фазы или синоним, если требуется сбросить MAN
-        :return: None если запрос успешен, иначе текст ошибки
-        """
-        print(f'async def set_stage PEEK')
-        res, inp_name = self.validate_val(value, self.type_set_request_man_stage)
-        if not res:
-            err_message = inp_name
-            return err_message
-
-        if inp_name == self.reset_man:
-            inputs_to_set = self.make_inputs_to_reset_MAN()
-        else:
-            inputs_to_set = self.make_inputs_to_set_stage_MAN(stage_to_set=inp_name, collect_inputs=False)
-
-        if not isinstance(inputs_to_set, dict):
-            err_message = inputs_to_set
-            return err_message
-
-        print(f'inputs_to_set.inputs = {inputs_to_set}')
-        print(f'self.inputs = {self.inputs}')
-
-        return await self.main_async(inputs_to_set, self.type_set_request_man_stage)
 
     async def set_flash(self, value):
         return await self.set_flash_dark_allred('MPP_FL', value)
