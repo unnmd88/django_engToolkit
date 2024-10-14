@@ -30,9 +30,6 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-
-
-
 async def get_stage(ip_adress, community, oids):
     errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         SnmpEngine(),
@@ -54,13 +51,43 @@ class AvailableControllersAndCommands(Enum):
     SET_STAGE_MPP_MAN = 'set stage mpp man'
 
 
-class ContentJsonResponce(Enum):
+class EntityJsonResponce(Enum):
     """ Доступные типы контроллера и команд"""
 
     RESULT = 'result'
     TYPE_CONTROLLER = 'type_controller'
     TYPE_COMMAND = 'type_command'
     VALUE = 'value'
+
+    NUM_HOST = 'num_host'
+    NUM_DET_LOGICS = 'num_detLogics'
+    CURRENT_PLAN = 'current_plan'
+    CURRENT_PARAM_PLAN = 'current_parameter_plan'
+    CURRENT_TIME = 'current_time'
+    CURRENT_ERRORS = 'current_errors'
+    CURRENT_DET_ERRORS = 'current_det_errors'
+    CURRENT_STATE = 'current_state'
+    CURRENT_MODE = 'current_mode'
+    CURRENT_STAGE = 'current_stage'
+
+    statusMode = {
+        '3': 'Сигналы выключены(ОС)',
+        '4': 'Жёлтое мигание',
+        '5': 'Заблокирован инспектором',
+        '6': 'Кругом Красный',
+        '8': 'Адаптивный',
+        '10': 'Ручное управление',
+        '11': 'Удалённое управление',
+        '12': 'Фиксированный',
+        '00': 'Ошибка электрической цепи',
+        '14': 'Жёлтое мигание по расписанию',
+        '--': 'Нет данных',
+        'FT': 'Фиксированный',
+        'VA': 'Адаптивный',
+        'MAN': 'Ручное управление',
+        'UTC': 'Удалённое управление',
+        'CLF': 'Беспентровая синхронизация',
+    }
 
 
 #
@@ -181,21 +208,20 @@ class BaseCommon:
         return errorIndication.__str__()
 
     @staticmethod
-    def make_json_responce(ip_adress, num_host=None, dict_data=None, **kwargs):
-
-        data_responce = {
-            ip_adress: {
-                'num_host': num_host
-            }
-        }
+    def make_json_responce(ip_adress, dict_data=None, **kwargs):
 
         logger.debug(f'kwargs: {kwargs}')
 
-        if type(dict_data) == dict:
-            data_responce.get(ip_adress).update(dict_data)
+        data_body = dict_data if type(dict_data) == dict else {}
+
         if kwargs:
             for k, v in kwargs.items():
-                data_responce.get(ip_adress)[k] = v
+                data_body[k] = v
+
+        data_responce = {
+            ip_adress: data_body
+        }
+
         logger.debug(f'data_responce: {data_responce}')
         return data_responce
 
@@ -774,7 +800,44 @@ class SwarcoSTCIP(BaseSTCIP):
 
     """ GET REQUEST """
 
-    async def get_current_mode(self, timeout=0, retries=0):
+    def determine_current_mode(self, varBinds):
+
+        equipment_status = varBinds[0]
+        stage = self.get_val_stage.get(varBinds[1])
+        plan = varBinds[2]
+        num_logics = varBinds[3]
+        softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+
+        if equipment_status != '1':
+            val_mode = equipment_status
+        elif plan == '16':
+            val_mode = '11'
+        elif plan == '15':
+            val_mode = '10'
+        elif '1' in softstat180_181 or softstat180_181 == 'no_data' or num_logics == '0':
+            val_mode = '12'
+        elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 0:
+            val_mode = '8'
+        else:
+            val_mode = '--'
+
+        data = {
+            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.SWARCO.value,
+            EntityJsonResponce.NUM_HOST.value: self.num_host,
+            EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(val_mode),
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
+            EntityJsonResponce.CURRENT_ERRORS.value: None,
+            EntityJsonResponce.CURRENT_DET_ERRORS.value: None,
+            EntityJsonResponce.NUM_DET_LOGICS.value:
+                int(num_logics) if not isinstance(num_logics, int) and num_logics.isdigit() else num_logics
+        }
+
+        return BaseCommon.make_json_responce(self.ip_adress, dict_data=data)
+
+
+    async def get_current_state(self, timeout=0, retries=0):
+
         logger.debug(f'перед await get_current_mode')
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
                 ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
@@ -783,7 +846,10 @@ class SwarcoSTCIP(BaseSTCIP):
                 ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
                 ]
         result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return self, result
+        json_responce = self.determine_current_mode(result)
+
+        return json_responce
+
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1686,150 +1752,150 @@ class GetDataControllerManagement:
         print(result)
         return result
 
-    def data_processing(self, raw_data):
-
-        logger.debug('data_processing')
-
-        processed_data = {}
-
-        for host_data in raw_data:
-            logger.debug('for host_data in raw_data:')
-
-            if not host_data and len(host_data) != 2:
-                continue
-
-            obj, varBinds = host_data
-            logger.debug(f'obj: {obj}')
-            # logger.debug(f'obj.scn: {obj.scn}')
-            logger.debug(f'varBinds: {varBinds}')
-
-            if isinstance(obj, SwarcoSTCIP):
-                processed_data[obj.ip_adress] = self.make_data_for_swarco(obj, varBinds)
-                logger.debug(processed_data)
-            elif isinstance(obj, PotokP):
-                processed_data[obj.ip_adress] = self.make_data_for_potokP(obj, varBinds)
-                logger.debug(processed_data)
-            elif isinstance(obj, PotokS):
-                processed_data[obj.ip_adress] = self.make_data_for_potokS(obj, varBinds)
-                logger.debug(processed_data)
-                # processed_data[num_host] = self.make_data_for_potokS(obj, varBinds)
-            elif isinstance(obj, PeekUG405):
-                processed_data[num_host] = self.make_data_for_peek(obj, web_content=varBinds)
-            else:
-                raise TypeError
-
-            processed_data.get(obj.ip_adress).update(
-                {
-                    'data_request_error': False if type(varBinds) == list else varBinds
-                }
-            )
-
-        return processed_data
-
-        #         num_host, protocol, varBinds = host_data
-        #         if protocol == protocols[0]:
-        #             stage = get_val_stage_UG405_POTOK.get(varBinds[0][1].prettyPrint())
-        #             # print(f'stage UG = {stage}')
-        #             # print(f'get_val_stage_UG405_POTOK = {get_val_stage_UG405_POTOK}')
-        #             plan = varBinds[1][1].prettyPrint()
-        #             plan_source = varBinds[2][1].prettyPrint()
-        #             det_err = varBinds[3][1].prettyPrint()
-        #             allowBitTO = varBinds[4][1].prettyPrint()
-        #             local_adaptiv = varBinds[5][1].prettyPrint()
-        #             manual = varBinds[6][1].prettyPrint()
-        #             electrics = varBinds[7][1].prettyPrint()
-        #             # operMode = varBinds[5][1].prettyPrint()
-        #             if plan != '0' and plan_source == '1':
-        #                 if det_err == '0' and local_adaptiv == '1':
-        #                     mode = statusMode.get('8')
-        #                 else:
-        #                     mode = statusMode.get('12')
-        #             elif plan == '0' and plan_source == '2' and allowBitTO == '1':
-        #                 mode = statusMode.get('11')
-        #             elif manual == '1':
-        #                 mode = statusMode.get('10')
-        #             elif electrics == '1':
-        #                 mode = statusMode.get('00')
-        #             else:
-        #                 mode = statusMode.get('--')
-        #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
-        #
-        #         elif protocol == protocols[1]:
-        #             stage = get_val_stage_STCIP_potok.get(varBinds[0][1].prettyPrint())
-        #             plan, control_state, status = (varBinds[1][1].prettyPrint(), varBinds[2][1].prettyPrint(),
-        #                                            varBinds[3][1].prettyPrint())
-        #             if control_state == '1':
-        #                 if status == '8' and plan not in ('0', '16'):
-        #                     mode = statusMode.get('8')
-        #                 elif status == '12' and plan not in ('0', '16'):
-        #                     mode = statusMode.get('12')
-        #                 elif status == '11':
-        #                     mode = statusMode.get('11')
-        #                 elif status == '10':
-        #                     mode = statusMode.get('10')
-        #                 else:
-        #                     mode = statusMode.get('--')
-        #                 processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
-        #
-        #         elif protocol == protocols[2]:
-        #             stage = get_val_stage.get(varBinds[0][1].prettyPrint())
-        #             plan, num_detlogics, softinp181 = (varBinds[1][1].prettyPrint(), varBinds[2][1].prettyPrint(),
-        #                                                varBinds[3][1].prettyPrint()[180])
-        #             if plan == '16':
-        #                 mode = statusMode.get('11')
-        #             elif plan == '15':
-        #                 mode = statusMode.get('10')
-        #             elif softinp181 == '1' or num_detlogics == '0':
-        #                 mode = statusMode.get('12')
-        #             elif softinp181 == '0' and num_detlogics.isdigit() and int(num_detlogics) > 2:
-        #                 mode = statusMode.get('8')
-        #             else:
-        #                 mode = statusMode.get('--')
-        #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
-        #         elif protocol == protocols[3]:
-        #             if 'Нет соединения с хостом' in varBinds:
-        #                 processed_data[num_host] = varBinds
-        #                 continue
-        #
-        #             state = mode = None
-        #             for line in varBinds.split('\n'):
-        #                 if 'T_PLAN' in line:
-        #                     plan = line.replace(':D;;##T_PLAN##;', '').replace('-', '').replace(' ', '')
-        #                 elif ':SUBTITLE' in line:
-        #                     adress = line.replace(':SUBTITLE;Moscow:', '')
-        #                 elif 'T_STATE' in line:
-        #                     state = line.replace(':D;;##T_STATE##;', '')
-        #
-        #                 elif 'T_MODE' in line:
-        #                     mode, stage = line.replace(':D;;##T_MODE## (##T_STAGE##);', '').split()
-        #                     stage = stage.replace('(', '').replace(')', '')
-        #                     break
-        #
-        #             print(f'state -> {state}')
-        #
-        #             if stage.isdigit() and int(stage) > 0 and state.strip() in state_CONTROL:
-        #                 if mode == modeVA:
-        #                     mode = statusMode.get('8')
-        #                 elif mode == modeFT:
-        #                     mode = statusMode.get('12')
-        #                 elif mode == modeMAN:
-        #                     mode = statusMode.get('10')
-        #                 elif mode == modeUTC:
-        #                     mode = statusMode.get('11')
-        #
-        #             elif state.strip() == state_FLASH:
-        #                 mode = statusMode.get('4')
-        #             elif state.strip() == state_OFF:
-        #                 mode = statusMode.get('3')
-        #             elif state.strip() == state_blocked_inspector:
-        #                 mode = statusMode.get('5')
-        #             else:
-        #                 mode = statusMode.get('--')
-        #
-        #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
-        #
-        #
-        # return processed_data
+    # def data_processing(self, raw_data):
+    #
+    #     logger.debug('data_processing')
+    #
+    #     processed_data = {}
+    #
+    #     for host_data in raw_data:
+    #         logger.debug('for host_data in raw_data:')
+    #
+    #         if not host_data and len(host_data) != 2:
+    #             continue
+    #
+    #         obj, varBinds = host_data
+    #         logger.debug(f'obj: {obj}')
+    #         # logger.debug(f'obj.scn: {obj.scn}')
+    #         logger.debug(f'varBinds: {varBinds}')
+    #
+    #         if isinstance(obj, SwarcoSTCIP):
+    #             processed_data[obj.ip_adress] = self.make_data_for_swarco(obj, varBinds)
+    #             logger.debug(processed_data)
+    #         elif isinstance(obj, PotokP):
+    #             processed_data[obj.ip_adress] = self.make_data_for_potokP(obj, varBinds)
+    #             logger.debug(processed_data)
+    #         elif isinstance(obj, PotokS):
+    #             processed_data[obj.ip_adress] = self.make_data_for_potokS(obj, varBinds)
+    #             logger.debug(processed_data)
+    #             # processed_data[num_host] = self.make_data_for_potokS(obj, varBinds)
+    #         elif isinstance(obj, PeekUG405):
+    #             processed_data[num_host] = self.make_data_for_peek(obj, web_content=varBinds)
+    #         else:
+    #             raise TypeError
+    #
+    #         processed_data.get(obj.ip_adress).update(
+    #             {
+    #                 'data_request_error': False if type(varBinds) == list else varBinds
+    #             }
+    #         )
+    #
+    #     return processed_data
+    #
+    #     #         num_host, protocol, varBinds = host_data
+    #     #         if protocol == protocols[0]:
+    #     #             stage = get_val_stage_UG405_POTOK.get(varBinds[0][1].prettyPrint())
+    #     #             # print(f'stage UG = {stage}')
+    #     #             # print(f'get_val_stage_UG405_POTOK = {get_val_stage_UG405_POTOK}')
+    #     #             plan = varBinds[1][1].prettyPrint()
+    #     #             plan_source = varBinds[2][1].prettyPrint()
+    #     #             det_err = varBinds[3][1].prettyPrint()
+    #     #             allowBitTO = varBinds[4][1].prettyPrint()
+    #     #             local_adaptiv = varBinds[5][1].prettyPrint()
+    #     #             manual = varBinds[6][1].prettyPrint()
+    #     #             electrics = varBinds[7][1].prettyPrint()
+    #     #             # operMode = varBinds[5][1].prettyPrint()
+    #     #             if plan != '0' and plan_source == '1':
+    #     #                 if det_err == '0' and local_adaptiv == '1':
+    #     #                     mode = statusMode.get('8')
+    #     #                 else:
+    #     #                     mode = statusMode.get('12')
+    #     #             elif plan == '0' and plan_source == '2' and allowBitTO == '1':
+    #     #                 mode = statusMode.get('11')
+    #     #             elif manual == '1':
+    #     #                 mode = statusMode.get('10')
+    #     #             elif electrics == '1':
+    #     #                 mode = statusMode.get('00')
+    #     #             else:
+    #     #                 mode = statusMode.get('--')
+    #     #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
+    #     #
+    #     #         elif protocol == protocols[1]:
+    #     #             stage = get_val_stage_STCIP_potok.get(varBinds[0][1].prettyPrint())
+    #     #             plan, control_state, status = (varBinds[1][1].prettyPrint(), varBinds[2][1].prettyPrint(),
+    #     #                                            varBinds[3][1].prettyPrint())
+    #     #             if control_state == '1':
+    #     #                 if status == '8' and plan not in ('0', '16'):
+    #     #                     mode = statusMode.get('8')
+    #     #                 elif status == '12' and plan not in ('0', '16'):
+    #     #                     mode = statusMode.get('12')
+    #     #                 elif status == '11':
+    #     #                     mode = statusMode.get('11')
+    #     #                 elif status == '10':
+    #     #                     mode = statusMode.get('10')
+    #     #                 else:
+    #     #                     mode = statusMode.get('--')
+    #     #                 processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
+    #     #
+    #     #         elif protocol == protocols[2]:
+    #     #             stage = get_val_stage.get(varBinds[0][1].prettyPrint())
+    #     #             plan, num_detlogics, softinp181 = (varBinds[1][1].prettyPrint(), varBinds[2][1].prettyPrint(),
+    #     #                                                varBinds[3][1].prettyPrint()[180])
+    #     #             if plan == '16':
+    #     #                 mode = statusMode.get('11')
+    #     #             elif plan == '15':
+    #     #                 mode = statusMode.get('10')
+    #     #             elif softinp181 == '1' or num_detlogics == '0':
+    #     #                 mode = statusMode.get('12')
+    #     #             elif softinp181 == '0' and num_detlogics.isdigit() and int(num_detlogics) > 2:
+    #     #                 mode = statusMode.get('8')
+    #     #             else:
+    #     #                 mode = statusMode.get('--')
+    #     #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
+    #     #         elif protocol == protocols[3]:
+    #     #             if 'Нет соединения с хостом' in varBinds:
+    #     #                 processed_data[num_host] = varBinds
+    #     #                 continue
+    #     #
+    #     #             state = mode = None
+    #     #             for line in varBinds.split('\n'):
+    #     #                 if 'T_PLAN' in line:
+    #     #                     plan = line.replace(':D;;##T_PLAN##;', '').replace('-', '').replace(' ', '')
+    #     #                 elif ':SUBTITLE' in line:
+    #     #                     adress = line.replace(':SUBTITLE;Moscow:', '')
+    #     #                 elif 'T_STATE' in line:
+    #     #                     state = line.replace(':D;;##T_STATE##;', '')
+    #     #
+    #     #                 elif 'T_MODE' in line:
+    #     #                     mode, stage = line.replace(':D;;##T_MODE## (##T_STAGE##);', '').split()
+    #     #                     stage = stage.replace('(', '').replace(')', '')
+    #     #                     break
+    #     #
+    #     #             print(f'state -> {state}')
+    #     #
+    #     #             if stage.isdigit() and int(stage) > 0 and state.strip() in state_CONTROL:
+    #     #                 if mode == modeVA:
+    #     #                     mode = statusMode.get('8')
+    #     #                 elif mode == modeFT:
+    #     #                     mode = statusMode.get('12')
+    #     #                 elif mode == modeMAN:
+    #     #                     mode = statusMode.get('10')
+    #     #                 elif mode == modeUTC:
+    #     #                     mode = statusMode.get('11')
+    #     #
+    #     #             elif state.strip() == state_FLASH:
+    #     #                 mode = statusMode.get('4')
+    #     #             elif state.strip() == state_OFF:
+    #     #                 mode = statusMode.get('3')
+    #     #             elif state.strip() == state_blocked_inspector:
+    #     #                 mode = statusMode.get('5')
+    #     #             else:
+    #     #                 mode = statusMode.get('--')
+    #     #
+    #     #             processed_data[num_host] = f'Фаза={stage} План={plan} Режим={mode}'
+    #     #
+    #     #
+    #     # return processed_data
 
     def validate_varBinds_swarco(self, varBinds):
 
@@ -2251,7 +2317,6 @@ class PeekWeb:
     #               'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
     MAN_INPUTS_MPP_PH = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
                          'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
-
     MAN_INPUTS_STAGES = {'1': 'MPP_PH1', '2': 'MPP_PH2', '3': 'MPP_PH3', '4': 'MPP_PH4',
                          '5': 'MPP_PH5', '6': 'MPP_PH6', '7': 'MPP_PH7', '8': 'MPP_PH8',
                          '0': 'reset_man'}
@@ -2259,7 +2324,6 @@ class PeekWeb:
     ACTUATOR_RESET = '0'
     ACTUATOR_OFF = '1'
     ACTUATOR_ON = '2'
-
     ACTUATOR_VALUES = {
         'ВФ': ACTUATOR_RESET,
         'ВЫКЛ': ACTUATOR_OFF,
@@ -2319,6 +2383,41 @@ class PeekWeb:
         self.inputs = {}
         self.user_parameters = {}
 
+    def parse_main_page_content(self, content):
+
+        content = [
+            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+        ]
+        mode, stage = content[6].split('(')
+        parsed_data = {
+            EntityJsonResponce.NUM_HOST.value: self.num_host,
+            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
+            EntityJsonResponce.CURRENT_PLAN.value: content[0].replace("-", ''),
+            EntityJsonResponce.CURRENT_PARAM_PLAN.value: content[1],
+            EntityJsonResponce.CURRENT_TIME.value: content[2],
+            EntityJsonResponce.CURRENT_ERRORS.value: content[3] if content[3] else None,
+            EntityJsonResponce.CURRENT_STATE.value: content[4],
+            EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(mode),
+            EntityJsonResponce.CURRENT_STAGE.value: stage.replace(')', '')
+        }
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, dict_data=parsed_data)
+
+    def parse_inps_and_user_param_content(self, content):
+
+        parsed_data = {}
+        for line in (
+                line.split(';')[1:] for line in content.splitlines() if line.startswith(':D')
+        ):
+            index, num, name, val1, val2, val3 = line
+            # val1, val2 и val3 зависят от типа получаемых данных.
+            # если получаем ВВОДЫ:
+            # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
+            # если Параметры программы:
+            # val1 -> Значение, val2 -> Мин. val3 -> Макс
+            parsed_data[name] = index, val1, val2, val3
+
+        return parsed_data
+
     async def get_content_from_web(self, route_type, timeout=1):
         url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
         try:
@@ -2341,42 +2440,51 @@ class PeekWeb:
 
         return content
 
-    async def get_current_mode(self, timeout=1):
-        content = await self.get_content_from_web(self.GET_CURRENT_MODE)
+    async def get_current_state(self, timeout=1):
+        content = await self.get_content_from_web(self.GET_CURRENT_MODE, timeout=timeout)
         return self.parse_main_page_content(content)
 
-    def parse_main_page_content(self, content):
-
-        content = [
-            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-        ]
-        mode, stage = content[6].split('(')
-        parsed_data = {
-            'current_plan': content[0].replace("-", ''),
-            'current_parameter_plan': content[1],
-            'current_time': content[2],
-            'current_errors': content[3] if content[3] else None,
-            'current_state': content[4],
-            'current_mode': mode,
-            'current_stage': stage.replace(')', '')
-        }
-        return parsed_data
-
-    def parse_inps_and_user_param_content(self, content):
-
-        parsed_data = {}
-        for line in (
-                line.split(';')[1:] for line in content.splitlines() if line.startswith(':D')
-        ):
-            index, num, name, val1, val2, val3 = line
-            # val1, val2 и val3 зависят от типа получаемых данных.
-            # если получаем ВВОДЫ:
-            # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
-            # если Параметры программы:
-            # val1 -> Значение, val2 -> Мин. val3 -> Макс
-            parsed_data[name] = index, val1, val2, val3
-
-        return parsed_data
+        # result_check_varBinds = self.validate_varBinds_potokP(web_content)
+        #
+        # if not result_check_varBinds:
+        #     return f'Сбой получения данных. Проверьте ДК'
+        #
+        # state = mode = stage = plan = None
+        # for line in web_content.split('\n'):
+        #     if 'T_PLAN' in line:
+        #         plan = line.replace(':D;;##T_PLAN##;', '').replace('-', '').replace(' ', '')
+        #     elif ':SUBTITLE' in line:
+        #         adress = line.replace(':SUBTITLE;Moscow:', '')
+        #     elif 'T_STATE' in line:
+        #         state = line.replace(':D;;##T_STATE##;', '')
+        #
+        #     elif 'T_MODE' in line:
+        #         mode, stage = line.replace(':D;;##T_MODE## (##T_STAGE##);', '').split()
+        #         stage = stage.replace('(', '').replace(')', '')
+        #         break
+        #
+        # print(f'state -> {state}')
+        #
+        # if stage is not None and stage.isdigit() and int(stage) > 0 and state.strip() in obj.state_CONTROL:
+        #     if mode == obj.modeVA:
+        #         mode = self.statusMode.get('8')
+        #     elif mode == obj.modeFT:
+        #         mode = self.statusMode.get('12')
+        #     elif mode == obj.modeMAN:
+        #         mode = self.statusMode.get('10')
+        #     elif mode == obj.modeUTC:
+        #         mode = self.statusMode.get('11')
+        #
+        # elif state is not None and state.strip() == obj.state_FLASH:
+        #     mode = self.statusMode.get('4')
+        # elif state is not None and state.strip() == obj.state_OFF:
+        #     mode = self.statusMode.get('3')
+        # elif state is not None and state.strip() == obj.state_blocked_inspector:
+        #     mode = self.statusMode.get('5')
+        # else:
+        #     mode = self.statusMode.get('--')
+        #
+        # return f'Фаза={stage} План={plan} Режим={mode}'
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
@@ -2417,7 +2525,6 @@ class PeekWeb:
                 await self.set_val_to_web(self.SET_INPUTS, session,
                                           (inputs.get('CP_AUTO')[0], self.ACTUATOR_ON))
 
-
             async with asyncio.TaskGroup() as tg:
                 logger.debug('tg')
                 data_param_to_set = []
@@ -2446,10 +2553,10 @@ class PeekWeb:
             text_message = 'Произошёл сбой при отправке команды'
 
         part_of_resp = {
-            ContentJsonResponce.RESULT.value: text_message,
-            ContentJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            ContentJsonResponce.TYPE_COMMAND.value: AvailableControllersAndCommands.SET_STAGE_MPP_MAN.value,
-            ContentJsonResponce.VALUE.value: stage_to_set
+            EntityJsonResponce.RESULT.value: text_message,
+            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
+            EntityJsonResponce.TYPE_COMMAND.value: AvailableControllersAndCommands.SET_STAGE_MPP_MAN.value,
+            EntityJsonResponce.VALUE.value: stage_to_set
         }
 
         return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
@@ -2530,53 +2637,51 @@ class PeekWeb:
             text_message = 'Произошёл сбой при отправке команды'
 
         part_of_resp = {
-            ContentJsonResponce.RESULT.value: text_message,
-            ContentJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            ContentJsonResponce.TYPE_COMMAND.value: set_type,
-            ContentJsonResponce.VALUE.value: data
+            EntityJsonResponce.RESULT.value: text_message,
+            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
+            EntityJsonResponce.TYPE_COMMAND.value: set_type,
+            EntityJsonResponce.VALUE.value: data
         }
 
         return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
 
-    def validate_val(self, value, type_set_request):
-        synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
-        synonyms_of_reset = ('0', 'false', 'reset', 'сброс', 'локал', 'local')
-
-        if type_set_request == self.type_set_request_man_stage:
-            if value.lower() in synonyms_of_reset:
-                return True, self.reset_man
-            elif value.isdigit() and int(value) in range(1, 9):
-                return True, f'MPP_PH{value}'
-            else:
-                return False, 'Invalid value'
-        elif type_set_request == self.type_set_request_user_parameter:
-            if not value:
-                return False, 'Invalid value'  # Передали пустой список. а должен быть напрмер ['MAN_ON=0'] или ['MAN_ON=0', '...']
-            params_for_set = {}
-            for name_val in value:
-                if not name_val:
-                    continue
-                name_val = re.sub(r'\D+$', '', name_val).replace(" ", '').split('=')
-                if len(name_val) == 2:
-                    params_for_set[name_val[0]] = name_val[1]
-
-            if not params_for_set:
-                return False, 'Bad syntax'  # Неправильно уазаны параметры, должен быть разделитель "="
-            print(f'params_for_set из проверки: {params_for_set}')
-            return True, params_for_set
-        elif (type_set_request == self.type_set_request_man_flash_dark_allred or
-              type_set_request == self.type_set_request_cp_red):
-            if value.lower() in synonyms_of_reset:
-                return True, self.ACTUATOR_RESET
-            elif value.lower() in synonyms_of_set:
-                return True, self.ACTUATOR_ON
+    # def validate_val(self, value, type_set_request):
+    #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
+    #     synonyms_of_reset = ('0', 'false', 'reset', 'сброс', 'локал', 'local')
+    #
+    #     if type_set_request == self.type_set_request_man_stage:
+    #         if value.lower() in synonyms_of_reset:
+    #             return True, self.reset_man
+    #         elif value.isdigit() and int(value) in range(1, 9):
+    #             return True, f'MPP_PH{value}'
+    #         else:
+    #             return False, 'Invalid value'
+    #     elif type_set_request == self.type_set_request_user_parameter:
+    #         if not value:
+    #             return False, 'Invalid value'  # Передали пустой список. а должен быть напрмер ['MAN_ON=0'] или ['MAN_ON=0', '...']
+    #         params_for_set = {}
+    #         for name_val in value:
+    #             if not name_val:
+    #                 continue
+    #             name_val = re.sub(r'\D+$', '', name_val).replace(" ", '').split('=')
+    #             if len(name_val) == 2:
+    #                 params_for_set[name_val[0]] = name_val[1]
+    #
+    #         if not params_for_set:
+    #             return False, 'Bad syntax'  # Неправильно уазаны параметры, должен быть разделитель "="
+    #         print(f'params_for_set из проверки: {params_for_set}')
+    #         return True, params_for_set
+    #     elif (type_set_request == self.type_set_request_man_flash_dark_allred or
+    #           type_set_request == self.type_set_request_cp_red):
+    #         if value.lower() in synonyms_of_reset:
+    #             return True, self.ACTUATOR_RESET
+    #         elif value.lower() in synonyms_of_set:
+    #             return True, self.ACTUATOR_ON
 
     async def set_val_to_web(self, type_set_request, session, data_params, ):
         # logger.debug(f'data_params: {data_params}')
         logger.debug(f'start set_val_to_web')
 
-        # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
-        # {'par_name': 'PARM.R1/1', 'par_value': '0'}
         index, value = data_params
         if type_set_request == self.SET_INPUTS:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
@@ -2584,9 +2689,6 @@ class PeekWeb:
         elif type_set_request == self.SET_USER_PARAMETERS:
             url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_USER_PARAMETERS)}'
             params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
-        elif type_set_request == self.type_set_request_man_flash_dark_allred:
-            params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-            url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_INPUTS)}'
         else:
             raise TypeError
 
@@ -2636,7 +2738,6 @@ class PeekWeb:
         # return await self.main_async(inputs_to_set,
         #                              self.type_set_request_man_flash_dark_allred,
         #                              True if actuator_val == self.ACTUATOR_RESET else False)
-
 
     async def get_data_from_web2(self, path_to_hvi, type, session, data=None):
         async def get_request(s):
@@ -2704,7 +2805,6 @@ class PeekWeb:
         #     return 'ConnectTimeoutError'
         # except Exception as err:
         #     return 'common'
-
 
 
 """ Arhive """

@@ -51,17 +51,28 @@ class AvailableControllers(Enum):
 
 
 class GetDataFromController:
-    def __init__(self, request):
-        self.request = request
-        self.data_request = request.data.get('data', {})
+    def __init__(self, data):
+        self.data_request = data
         self.processed_data = {}
+
+    async def get_data_from_controllers(self, objects_methods):
+
+        result = await asyncio.gather(*[method() for method in objects_methods])
+
+        json_responce = {}
+        for item in result:
+            json_responce.update(item)
+        print(json_responce)
+        logger.debug(f'json_responce-->>> {json_responce}')
+        return json_responce
+
 
     def create_objects_methods(self):
         objects_methods = []
 
-        logger.debug(self.request.data.get('data'))
+        logger.debug(self.data_request)
         # print(self.data_request.items())
-        for ip_adress, data in self.request.data.get('data').items():
+        for ip_adress, data in self.data_request.items():
             if not isinstance(data, dict):
                 continue
             # print(f'ip_adress---- {ip_adress}')
@@ -77,16 +88,16 @@ class GetDataFromController:
             if obj is None:
                 self.processed_data[num_host] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
-            objects_methods.append(obj.get_current_mode)
+            objects_methods.append(obj.get_current_state)
         return objects_methods
 
-    def get_data_from_controllers(self, objects_methods):
-
-        get_data_manager = controller_management.GetDataControllerManagement()
-
-        raw_data_from_controllers = asyncio.run(get_data_manager.collect_data_from_hosts(objects_methods, option='get'))
-        processed_data = get_data_manager.data_processing(raw_data_from_controllers)
-        return self.processed_data | processed_data
+    # def get_data_from_controllers(self, objects_methods):
+    #
+    #     get_data_manager = controller_management.GetDataControllerManagement()
+    #
+    #     raw_data_from_controllers = asyncio.run(get_data_manager.collect_data_from_hosts(objects_methods, option='get'))
+    #     processed_data = get_data_manager.data_processing(raw_data_from_controllers)
+    #     return self.processed_data | processed_data
 
     def get_type_object_get_request(self, controller_type: str):
 
@@ -97,7 +108,7 @@ class GetDataFromController:
         elif controller_type == AvailableControllers.SWARCO.value:
             return AvailableProtocolsManagement.SWARCO_STCIP.value
         elif controller_type == AvailableControllers.PEEK.value:
-            return AvailableProtocolsManagement.PEEK_UG405.value
+            return AvailableProtocolsManagement.PEEK_WEB.value
 
 
 class SetRequestToController:

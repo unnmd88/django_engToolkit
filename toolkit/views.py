@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import ast
+import time
 from datetime import datetime as dt
 from enum import Enum
 import asyncio
@@ -279,15 +280,22 @@ class GetDataFromControllerAPIView(APIView):
 
         # print(f'req_data = {request.data}')
         # print(f'req_data2 = {request.data.get("data")}')
+        start_time = time.time()
 
-        manager = services.GetDataFromController(request)
+        manager = services.GetDataFromController(request.data.get('data', {}))
         objects_methods = manager.create_objects_methods()
-        if objects_methods:
-            processed_data = manager.get_data_from_controllers(objects_methods)
-        else:
-            processed_data = {'software fault': 'Программный сбой'}
 
-        return Response(processed_data)
+        res = asyncio.run(manager.get_data_from_controllers(objects_methods))
+
+        logger.debug(f'Время выполнения запроса: {time.time() - start_time}')
+        # manager = services.GetDataFromController(request)
+        # objects_methods = manager.create_objects_methods()
+        # if objects_methods:
+        #     processed_data = manager.get_data_from_controllers(objects_methods)
+        # else:
+        #     processed_data = {'software fault': 'Программный сбой'}
+
+        return Response(res)
 
 
 class SetRequestToControllerAPIView(APIView):

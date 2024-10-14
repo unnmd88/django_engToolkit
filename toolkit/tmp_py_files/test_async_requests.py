@@ -5,7 +5,7 @@ import textwrap
 import time
 
 import aiohttp
-
+from enum import Enum
 from toolkit.sdp_lib import controller_management
 
 ip = '10.179.107.129'
@@ -15,9 +15,13 @@ ip4 = '10.45.154.11'
 
 logger = logging.getLogger(__name__)
 
-h1 = controller_management.PeekUG405(ip, scn='')
-res = asyncio.run(h1.get_utcType2VendorID())
+class A(Enum):
 
-logger.debug(res)
+    TEST = 'Test'
+    data = {
+        1: 2,
+        '3': 'pfnsp'
+    }
 
-
+print(A.TEST.value)
+print(controller_management.EntityJsonResponce.statusMode.value.get('3'))
