@@ -16,7 +16,6 @@ import paramiko
 import aiohttp
 from pysnmp.hlapi.asyncio import *
 
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -63,6 +62,11 @@ class EntityJsonResponce(Enum):
     TYPE_COMMAND = 'type_command'
     VALUE = 'value'
 
+    REQUEST_ERRORS = 'request_errors'
+    TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
+    TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
+    SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
+
     NUM_HOST = 'host_id'
     NUM_DET_LOGICS = 'num_detLogics'
     CURRENT_PLAN = 'current_plan'
@@ -91,19 +95,14 @@ class EntityJsonResponce(Enum):
         'MAN': 'Ручное управление',
         'UTC': 'Удалённое управление',
         'CLF': 'Беспентровая синхронизация',
+        'ЛАМПЫ ВЫКЛ': 'Сигналы выключены(ОС)',
+        'ЖЕЛТОЕ МИГАНИЕ': 'Жёлтое мигание',
+        'КРУГОМ КРАСНЫЙ': 'Кругом Красный',
+        'ЗАБЛОКИРОВАН ИНСПЕКТОРОМ': 'Заблокирован инспектором',
+        'УПРАВЛЕНИЕ': 'Управление',
+        'CONTROL': 'Управление'
     }
 
-
-#
-# def convert_scn(scn):
-#     """ Функция получает на вход строку, которую необходимо конвертировать в SCN
-#         для управления и мониторинга по протоколу UG405.
-#         Например: convert_scn(CO1111)
-#     """
-#     len_scn = str(len(scn)) + '.'
-#     convert_to_ASCII = [str(ord(c)) for c in scn]
-#     scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-#     return scn
 
 class BaseCommon:
     error_no_varBinds = 'Ошибка получения данных при выполнении запроса'
@@ -839,7 +838,6 @@ class SwarcoSTCIP(BaseSTCIP):
 
         return BaseCommon.make_json_responce(self.ip_adress, dict_data=data)
 
-
     async def get_current_state(self, timeout=0, retries=0):
 
         logger.debug(f'перед await get_current_mode')
@@ -853,7 +851,6 @@ class SwarcoSTCIP(BaseSTCIP):
         json_responce = self.determine_current_mode(result)
 
         return json_responce
-
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1471,17 +1468,6 @@ class PeekUG405(BaseUG405):
     # Маска адреса для получения контента с данными о режиме/работе дк on-line
     mask_url_get_data = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
     # Режимы ДК
-    state_CONTROL = ('УПРАВЛЕНИЕ', 'CONTROL')
-    state_OFF = 'ЛАМПЫ ВЫКЛ'
-    state_FLASH = 'ЖЕЛТОЕ МИГАНИЕ'
-    state_RED = 'КРУГОМ КРАСНЫЙ'
-    state_blocked_inspector = 'ЗАБЛОКИРОВАН ИНСПЕКТОРОМ'
-    # Рабочие режимы, когда state_CONTROL = 'УПРАВЛЕНИЕ'
-    modeVA = 'VA'
-    modeFT = 'FT'
-    modeMAN = 'MAN'
-    modeUTC = 'UTC'
-    modeCLF = 'CLF'
 
     # oid для UG405 Peek
     # oids_UG405_PEEK = {peek_utcReplyGn: '.1.3.6.1.4.1.13267.3.2.5.1.1.3',
@@ -2389,20 +2375,35 @@ class PeekWeb:
 
     def parse_main_page_content(self, content):
 
-        content = [
-            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-        ]
-        mode, stage = content[6].split('(')
+        hasError, error_msg = False, None
+
+        if content == TimeoutError:
+            error_msg, hasError = self.TIMEOUT_ERROR_MSG, True
+        elif content == TypeError:
+            error_msg, hasError = self.TYPE_CONTROLLER_ERROR_MSG, True
+
+        if not hasError:
+            content = [
+                line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+            ]
+            mode, stage = content[6].split('(')
+            stage = int(stage.replace(')', ''))
+            content[0], content[1] = int(content[0].replace("-", '')), int(content[1])
+        else:
+            content = [None for el in range(5)]
+            mode, stage = '--', None
+
         parsed_data = {
+            EntityJsonResponce.REQUEST_ERRORS.value: error_msg,
             EntityJsonResponce.NUM_HOST.value: self.host_id,
             EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            EntityJsonResponce.CURRENT_PLAN.value: content[0].replace("-", ''),
+            EntityJsonResponce.CURRENT_PLAN.value: content[0],
             EntityJsonResponce.CURRENT_PARAM_PLAN.value: content[1],
             EntityJsonResponce.CURRENT_TIME.value: content[2],
             EntityJsonResponce.CURRENT_ERRORS.value: content[3] if content[3] else None,
             EntityJsonResponce.CURRENT_STATE.value: content[4],
             EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(mode),
-            EntityJsonResponce.CURRENT_STAGE.value: stage.replace(')', '')
+            EntityJsonResponce.CURRENT_STAGE.value: stage
         }
         return BaseCommon.make_json_responce(ip_adress=self.ip_adress, dict_data=parsed_data)
 
@@ -2447,48 +2448,6 @@ class PeekWeb:
     async def get_current_state(self, timeout=1):
         content = await self.get_content_from_web(self.GET_CURRENT_MODE, timeout=timeout)
         return self.parse_main_page_content(content)
-
-        # result_check_varBinds = self.validate_varBinds_potokP(web_content)
-        #
-        # if not result_check_varBinds:
-        #     return f'Сбой получения данных. Проверьте ДК'
-        #
-        # state = mode = stage = plan = None
-        # for line in web_content.split('\n'):
-        #     if 'T_PLAN' in line:
-        #         plan = line.replace(':D;;##T_PLAN##;', '').replace('-', '').replace(' ', '')
-        #     elif ':SUBTITLE' in line:
-        #         adress = line.replace(':SUBTITLE;Moscow:', '')
-        #     elif 'T_STATE' in line:
-        #         state = line.replace(':D;;##T_STATE##;', '')
-        #
-        #     elif 'T_MODE' in line:
-        #         mode, stage = line.replace(':D;;##T_MODE## (##T_STAGE##);', '').split()
-        #         stage = stage.replace('(', '').replace(')', '')
-        #         break
-        #
-        # print(f'state -> {state}')
-        #
-        # if stage is not None and stage.isdigit() and int(stage) > 0 and state.strip() in obj.state_CONTROL:
-        #     if mode == obj.modeVA:
-        #         mode = self.statusMode.get('8')
-        #     elif mode == obj.modeFT:
-        #         mode = self.statusMode.get('12')
-        #     elif mode == obj.modeMAN:
-        #         mode = self.statusMode.get('10')
-        #     elif mode == obj.modeUTC:
-        #         mode = self.statusMode.get('11')
-        #
-        # elif state is not None and state.strip() == obj.state_FLASH:
-        #     mode = self.statusMode.get('4')
-        # elif state is not None and state.strip() == obj.state_OFF:
-        #     mode = self.statusMode.get('3')
-        # elif state is not None and state.strip() == obj.state_blocked_inspector:
-        #     mode = self.statusMode.get('5')
-        # else:
-        #     mode = self.statusMode.get('--')
-        #
-        # return f'Фаза={stage} План={plan} Режим={mode}'
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
