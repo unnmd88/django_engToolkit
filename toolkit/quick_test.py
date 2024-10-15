@@ -51,8 +51,10 @@ ip7 = '10.45.154.16'
 # print(f'res : {res}')
 # print(f'res : {h4.parse_inps_and_user_param_content(res)}')
 
-h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
-res = asyncio.run(h2.get_current_state())
+# h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
+# res = asyncio.run(h2.get_current_state())
+h2 = controller_management.PeekWeb(ip4, host_id='Testovi')
+res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'MPP_MAN=ВФ'))
 logger.debug(res)
 
 

@@ -51,7 +51,7 @@ class AvailableControllersAndCommands(Enum):
     POTOK_S = 'Поток (S)'
     PEEK = 'Peek'
 
-    SET_STAGE_MPP_MAN = 'set stage mpp man'
+
 
 
 class EntityJsonResponce(Enum):
@@ -62,8 +62,19 @@ class EntityJsonResponce(Enum):
     TYPE_COMMAND = 'type_command'
     VALUE = 'value'
 
+    SET_STAGE_MPP_MAN = 'set_stage_mpp_man'
+    SET_MAN_INPUTS_WEB = 'set_inputs'
+    SET_USER_PARAMETERS_WEB = 'set_user_parameters'
+
+    TYPE_WEB_REQUEST_SET = 'set_web_parameters'
+    TYPE_WEB_REQUEST_GET = 'get_web_parameters'
+
+    COMMAND_SEND_SUCCESSFULLY = 'Команда успешно отправлена'
+    COMMAND_SEND_ERROR = 'Команда не была отправлена'
+
     REQUEST_ERRORS = 'request_errors'
-    TIMEOUT_ERROR_GET_REQUEST_MSG = 'ConnectTimeoutError'
+    # TIMEOUT_ERROR_GET_REQUEST_MSG = 'ConnectTimeoutError'
+    TIMEOUT_ERROR_WEB_REQUEST_MSG = 'ConnectTimeoutError'
     TIMEOUT_ERROR_SNMP_MSG = 'No SNMP response received before timeout'
     BAD_CONTROLLER_TYPE_MSG = 'No Such Object currently exists at this OID'
     TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
@@ -218,9 +229,9 @@ class BaseCommon:
                            json_varBinds: tuple | list,
                            **kwargs):
 
-        logger.debug(f'kwargs: {kwargs}')
+        # logger.debug(f'kwargs: {kwargs}')
         data_body = {k: v for k, v in zip(json_entity, json_varBinds)}
-        logger.debug(f'data_body swarco: {data_body}')
+        # logger.debug(f'data_body: {data_body}')
         if kwargs:
             for k, v in kwargs.items():
                 data_body[k] = v
@@ -804,7 +815,7 @@ class SwarcoSTCIP(BaseSTCIP):
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
 
-    json_content = (
+    json_get_state = (
         EntityJsonResponce.REQUEST_ERRORS.value,
         EntityJsonResponce.TYPE_CONTROLLER.value,
         EntityJsonResponce.NUM_HOST.value,
@@ -876,7 +887,7 @@ class SwarcoSTCIP(BaseSTCIP):
         )
 
         return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.json_content,
+                                             json_entity=self.json_get_state,
                                              json_varBinds=processed_data,
                                              )
 
@@ -2387,9 +2398,9 @@ class PeekWeb(BaseCommon):
     # type_set_request_user_parameter = 'type_set_request_user_parameter'
     # reset_man = 'reset_man'
 
-    TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
-    TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
-    SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
+    # TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
+    # TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
+    # SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
@@ -2400,10 +2411,13 @@ class PeekWeb(BaseCommon):
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-    json_content = (
+    base_json_entity = (
         EntityJsonResponce.REQUEST_ERRORS.value,
         EntityJsonResponce.TYPE_CONTROLLER.value,
         EntityJsonResponce.NUM_HOST.value,
+    )
+
+    json_get_state = (
         EntityJsonResponce.CURRENT_MODE.value,
         EntityJsonResponce.CURRENT_STAGE.value,
         EntityJsonResponce.CURRENT_PLAN.value,
@@ -2411,6 +2425,12 @@ class PeekWeb(BaseCommon):
         EntityJsonResponce.CURRENT_TIME.value,
         EntityJsonResponce.CURRENT_ERRORS.value,
         EntityJsonResponce.CURRENT_STATE.value
+    )
+
+    json_set_command = (
+        EntityJsonResponce.RESULT.value,
+        EntityJsonResponce.TYPE_COMMAND.value,
+        EntityJsonResponce.VALUE.value
     )
 
     # def __new__(cls, ip_adress: str):
@@ -2429,15 +2449,17 @@ class PeekWeb(BaseCommon):
 
     def parse_main_page_content(self, content):
 
-        if type(content) == str and len(content) > 100:
-            error_request = None
-        elif content == TimeoutError:
-            error_request = self.TIMEOUT_ERROR_MSG
-        elif content == TimeoutError:
-            error_request = self.TYPE_CONTROLLER_ERROR_MSG
-        else:
-            raise ValueError
-
+        error_request, _ = self._check_errors_after_web_request(content, EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+        #
+        #
+        # if type(content) == str and len(content) > 100:
+        #     error_request = None
+        # elif content == TimeoutError:
+        #     error_request = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value
+        # elif content == TypeError:
+        #     error_request = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value
+        # else:
+        #     raise ValueError
         stage = plan = param_plan = current_time = current_err = current_state = current_mode = None
         if error_request is None:
             content = [
@@ -2466,7 +2488,7 @@ class PeekWeb(BaseCommon):
             current_state
         )
         return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.json_content,
+                                             json_entity=self.base_json_entity + self.json_get_state,
                                              json_varBinds=processed_data,
                                              )
 
@@ -2493,7 +2515,7 @@ class PeekWeb(BaseCommon):
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 async with session.get(url, timeout=timeout) as s:
                     if s.status != 200:
-                        raise TypeError(self.TYPE_CONTROLLER_ERROR_MSG)
+                        raise TypeError(EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value)
                     logger.debug('s.status : %s', s.status)
                     content = await s.text()
             logger.debug('после content = await s.text()')
@@ -2512,164 +2534,158 @@ class PeekWeb(BaseCommon):
         content = await self.get_content_from_web(self.GET_CURRENT_MODE, timeout=timeout)
         return self.parse_main_page_content(content)
 
+    def _check_errors_after_web_request(self, content, type_request):
+
+        result_text_message = None
+        if type(content) == str and len(content) > 100:
+            error_request = None
+        elif content == TimeoutError:
+            if type_request == EntityJsonResponce.TYPE_WEB_REQUEST_SET:
+                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
+            error_request = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value
+        elif content == TypeError:
+            if type_request == EntityJsonResponce.TYPE_WEB_REQUEST_SET:
+                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
+            error_request = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value
+        else:
+            raise ValueError
+        return error_request, result_text_message
+
     async def set_stage(self, stage_to_set: str, timeout=3):
 
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
         inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
-        if inputs_web_content == TimeoutError:
-            return self.TIMEOUT_ERROR_MSG
-        if inputs_web_content == TypeError:
-            return self.TYPE_CONTROLLER_ERROR_MSG
-
-        logger.debug('inputs_web_content, %s', inputs_web_content)
-
-        inputs = self.parse_inps_and_user_param_content(inputs_web_content)
-        timeout = aiohttp.ClientTimeout(timeout)
-        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            set_CP_AUTO = False
-            async with asyncio.TaskGroup() as tg1:
-                logger.debug('tg1')
-                params_to_set = []
-                blocked_inps = [
-                    'MPP_FL', 'MPP_OFF', 'CP_OFF', 'CP_FLASH', 'CP_RED',
-                ]
-                for inp in blocked_inps:
-                    if inputs.get(inp)[1] == '1':
-                        set_CP_AUTO = True
-                        if inp.startswith('MPP_'):
-                            params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
-                        else:
-                            params_to_set.append(params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET)))
-                if params_to_set:
-                    tasks_res = [
-                        tg1.create_task(self.set_val_to_web(self.SET_INPUTS, session, params_to_set))
+        error_request, result_text_message = self._check_errors_after_web_request(inputs_web_content,
+                                                                                  EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+        if error_request is None:
+            logger.debug('inputs_web_content, %s', inputs_web_content)
+            inputs = self.parse_inps_and_user_param_content(inputs_web_content)
+            timeout = aiohttp.ClientTimeout(timeout)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                set_CP_AUTO = False
+                async with asyncio.TaskGroup() as tg1:
+                    logger.debug('tg1')
+                    params_to_set = []
+                    blocked_inps = [
+                        'MPP_FL', 'MPP_OFF', 'CP_OFF', 'CP_FLASH', 'CP_RED',
                     ]
+                    for inp in blocked_inps:
+                        if inputs.get(inp)[1] == '1':
+                            set_CP_AUTO = True
+                            if inp.startswith('MPP_'):
+                                params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
+                            else:
+                                params_to_set.append(params_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET)))
+                    if params_to_set:
+                        tasks_res = [
+                            tg1.create_task(self.set_val_to_web(self.SET_INPUTS, session, params_to_set))
+                        ]
 
-            if set_CP_AUTO:
-                await self.set_val_to_web(self.SET_INPUTS, session,
-                                          (inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
-                await self.set_val_to_web(self.SET_INPUTS, session,
-                                          (inputs.get('CP_AUTO')[0], self.ACTUATOR_ON))
-
-            async with asyncio.TaskGroup() as tg:
-                logger.debug('tg')
-                data_param_to_set = []
                 if set_CP_AUTO:
-                    data_param_to_set.append((inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
+                    await self.set_val_to_web(self.SET_INPUTS, session,
+                                              (inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
+                    await self.set_val_to_web(self.SET_INPUTS, session,
+                                              (inputs.get('CP_AUTO')[0], self.ACTUATOR_ON))
 
-                if input_name_to_set == 'reset_man':
-                    data_param_to_set.append((inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF))
-                    for inp in self.MAN_INPUTS_MPP_PH:
-                        data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET))
-                else:
-                    for inp in inputs:
-                        if inp == 'MPP_MAN':
-                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
-                        elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[1] == '1':
-                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
-                        elif inp == input_name_to_set:
-                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
-                tasks_res = [tg.create_task(self.set_val_to_web(self.SET_INPUTS, session, data_params))
-                             for data_params in data_param_to_set]
-        logger.info('tasks: %s', tasks_res)
+                async with asyncio.TaskGroup() as tg:
+                    logger.debug('tg')
+                    data_param_to_set = []
+                    if set_CP_AUTO:
+                        data_param_to_set.append((inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
 
-        if all(res.result() == 200 for res in tasks_res):
-            text_message = 'Команда успешно отправлена'
-        else:
-            text_message = 'Произошёл сбой при отправке команды'
+                    if input_name_to_set == 'reset_man':
+                        data_param_to_set.append((inputs.get('MPP_MAN')[0], self.ACTUATOR_OFF))
+                        for inp in self.MAN_INPUTS_MPP_PH:
+                            data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_RESET))
+                    else:
+                        for inp in inputs:
+                            if inp == 'MPP_MAN':
+                                data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
+                            elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[
+                                1] == '1':
+                                data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
+                            elif inp == input_name_to_set:
+                                data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
+                    tasks_res = [tg.create_task(self.set_val_to_web(self.SET_INPUTS, session, data_params))
+                                 for data_params in data_param_to_set]
+            logger.info('tasks: %s', tasks_res)
 
-        part_of_resp = {
-            EntityJsonResponce.RESULT.value: text_message,
-            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            EntityJsonResponce.TYPE_COMMAND.value: AvailableControllersAndCommands.SET_STAGE_MPP_MAN.value,
-            EntityJsonResponce.VALUE.value: stage_to_set
-        }
+            if all(res.result() == 200 for res in tasks_res):
+                result_text_message = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+            else:
+                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
 
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.host_id, dict_data=part_of_resp)
+        processed_data = (
+            error_request,
+            AvailableControllersAndCommands.PEEK.value,
+            self.host_id,
+            result_text_message,
+            EntityJsonResponce.SET_STAGE_MPP_MAN.value,
+            stage_to_set
+        )
 
-        # if stage_to_set == input_name:
-        #     pass
-        # else:
-        #
-        # inputs_from_web = self.get_INPUTS_from_web()
-        # if not isinstance(inputs_from_web, types.GeneratorType):
-        #     err_message = inputs_from_web
-        #     return err_message
-        #
-        # cnt = 0
-        # inputs = {}
-        # stopper = len(self.MAN_INPUTS) - 2
-        #
-        # for line in inputs_from_web:
-        #     index, num, name, cur_val, time_state, actuator_val = line
-        #     if collect_inputs:
-        #         self.inputs[name] = index
-        #     if 'MPP_PH' in name and name != stage_to_set:
-        #         cnt += 1
-        #         if cur_val != '0':
-        #             inputs[name] = (index, self.ACTUATOR_OFF)
-        #     elif name == stage_to_set:
-        #         cnt += 1
-        #         inputs[name] = (index, self.ACTUATOR_ON)
-        #     if name == 'MPP_MAN':
-        #         cnt += 1
-        #         if cur_val != '1':
-        #             inputs[name] = (index, self.ACTUATOR_ON)
-        #     if cnt > stopper:
-        #         break
-        # print(f'inputs-->> {inputs}')
-        # return inputs
+        return BaseCommon.make_json_responce(self.ip_adress,
+                                             json_entity=self.base_json_entity + self.json_set_command,
+                                             json_varBinds=processed_data,
+                                             )
 
     async def set_val_to_web_common(self, set_type, data, timeout=3):
 
         if set_type == self.SET_USER_PARAMETERS:
+            type_command_ = EntityJsonResponce.SET_USER_PARAMETERS_WEB.value
             part_url = self.GET_USER_PARAMETERS
         elif set_type == self.SET_INPUTS:
+            type_command_ = EntityJsonResponce.SET_MAN_INPUTS_WEB.value
             part_url = self.GET_INPUTS
         else:
             raise TypeError
 
         web_content = await self.get_content_from_web(part_url)
-        if web_content == TimeoutError:
-            return self.TIMEOUT_ERROR_MSG
-        if web_content == TypeError:
-            return self.TYPE_CONTROLLER_ERROR_MSG
 
-        params_from_web = self.parse_inps_and_user_param_content(web_content)
+        error_request, result_text_message = self._check_errors_after_web_request(web_content,
+                                                                                  EntityJsonResponce.TYPE_WEB_REQUEST_SET)
 
-        params_to_set = {}
-        for param in data.split(';'):
-            param, val = param.split('=')
-            if param in params_from_web:
-                if set_type == 'inputs':
-                    val = self.ACTUATOR_VALUES.get(val)
-                params_to_set[params_from_web.get(param)[0]] = val
+        if error_request is None:
+            params_from_web = self.parse_inps_and_user_param_content(web_content)
+            params_to_set = {}
+            for param in data.split(';'):
+                param, val = param.split('=')
+                if param in params_from_web:
+                    if set_type == 'inputs':
+                        val = self.ACTUATOR_VALUES.get(val)
+                    params_to_set[params_from_web.get(param)[0]] = val
 
-        if not params_to_set:
-            raise ValueError
+            if not params_to_set:
+                raise ValueError
 
-        timeout = aiohttp.ClientTimeout(timeout)
-        async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-            async with asyncio.TaskGroup() as tg:
-                logger.debug('params_to_set: %s', params_to_set)
-                logger.debug('params_to_set.items(): %s', params_to_set.items())
-                tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
-                             for data_params in params_to_set.items()]
-                logger.info('tasks: %s', tasks_res)
+            timeout = aiohttp.ClientTimeout(timeout)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                async with asyncio.TaskGroup() as tg:
+                    logger.debug('params_to_set: %s', params_to_set)
+                    logger.debug('params_to_set.items(): %s', params_to_set.items())
+                    tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
+                                 for data_params in params_to_set.items()]
+                    logger.info('tasks: %s', tasks_res)
 
-        if all(res.result() == 200 for res in tasks_res):
-            text_message = 'Команда успешно отправлена'
-        else:
-            text_message = 'Произошёл сбой при отправке команды'
+            if all(res.result() == 200 for res in tasks_res):
+                result_text_message = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+            else:
+                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
 
-        part_of_resp = {
-            EntityJsonResponce.RESULT.value: text_message,
-            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            EntityJsonResponce.TYPE_COMMAND.value: set_type,
-            EntityJsonResponce.VALUE.value: data
-        }
+        processed_data = (
+            error_request,
+            AvailableControllersAndCommands.PEEK.value,
+            self.host_id,
+            result_text_message,
+            type_command_,
+            data
+        )
 
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.host_id, dict_data=part_of_resp)
+        return BaseCommon.make_json_responce(self.ip_adress,
+                                             json_entity=self.base_json_entity + self.json_set_command,
+                                             json_varBinds=processed_data,
+                                             )
+
 
     # def validate_val(self, value, type_set_request):
     #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
