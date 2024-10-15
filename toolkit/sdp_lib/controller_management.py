@@ -59,7 +59,7 @@ class EntityJsonResponce(Enum):
     TYPE_COMMAND = 'type_command'
     VALUE = 'value'
 
-    NUM_HOST = 'num_host'
+    NUM_HOST = 'host_id'
     NUM_DET_LOGICS = 'num_detLogics'
     CURRENT_PLAN = 'current_plan'
     CURRENT_PARAM_PLAN = 'current_parameter_plan'
@@ -247,8 +247,8 @@ class BaseSTCIP(BaseCommon):
         '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
     }
 
-    def __init__(self, ip_adress, num_host=None, ):
-        self.num_host = num_host
+    def __init__(self, ip_adress, host_id=None, ):
+        self.host_id = host_id
         self.ip_adress = ip_adress
 
     """ GET REQUEST """
@@ -504,10 +504,10 @@ class BaseUG405(BaseCommon):
         convert_to_ASCII = [str(ord(c)) for c in scn]
         return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
-    def __init__(self, ip_adress, scn=None, num_host=None):
+    def __init__(self, ip_adress, scn=None, host_id=None):
         self.ip_adress = ip_adress
         self.scn = asyncio.run(self.get_scn(self)) if scn is None else BaseUG405.convert_scn(scn)
-        self.num_host = num_host
+        self.host_id = host_id
 
     """ GET REQUEST """
 
@@ -823,7 +823,7 @@ class SwarcoSTCIP(BaseSTCIP):
 
         data = {
             EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.SWARCO.value,
-            EntityJsonResponce.NUM_HOST.value: self.num_host,
+            EntityJsonResponce.NUM_HOST.value: self.host_id,
             EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(val_mode),
             EntityJsonResponce.CURRENT_STAGE.value: stage,
             EntityJsonResponce.CURRENT_PLAN.value: int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
@@ -1950,7 +1950,7 @@ class GetDataControllerManagement:
 
         data = {
             'controller_type': 'Swarco',
-            'num_host': obj.num_host,
+            'num_host': obj.host_id,
             'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
             'current_errors': None,
             'current_det_errors': None,
@@ -2015,7 +2015,7 @@ class GetDataControllerManagement:
         if not result_check_varBinds:
             data = {
                 'controller_type': 'Поток (S)',
-                'num_host': obj.num_host,
+                'num_host': obj.host_id,
                 'fault': 'Сбой получения данных. Проверьте ДК',
             }
             return data
@@ -2027,7 +2027,7 @@ class GetDataControllerManagement:
         plan = str(varBinds[4])
 
         data = {
-            'num_host': obj.num_host,
+            'num_host': obj.host_id,
             'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
             'current_errors': None,
             'current_det_errors': None,
@@ -2063,7 +2063,7 @@ class GetDataControllerManagement:
         if not result_check_varBinds:
             data = {
                 'controller_type': 'Поток (P)',
-                'num_host': obj.num_host,
+                'num_host': obj.host_id,
                 'fault': 'Сбой получения данных. Проверьте ДК',
             }
 
@@ -2082,7 +2082,7 @@ class GetDataControllerManagement:
         localAdaptiv = str(varBinds[8])
 
         data = {
-            'num_host': obj.num_host,
+            'num_host': obj.host_id,
             'scn': obj.scn,
             'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
             'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
@@ -2112,7 +2112,7 @@ class GetDataControllerManagement:
 
         data.update(
             {
-                'num_host': obj.num_host,
+                'num_host': obj.host_id,
                 'scn': obj.scn,
                 'current_stage': stage,
                 'current_mode': mode,
@@ -2377,9 +2377,9 @@ class PeekWeb:
     #         return super(PeekWeb, cls).__new__(cls)
     #     return None
 
-    def __init__(self, ip_adress: str, num_host: str = None):
+    def __init__(self, ip_adress: str, host_id: str = None):
         self.ip_adress = ip_adress
-        self.num_host = num_host
+        self.host_id = host_id
         self.inputs = {}
         self.user_parameters = {}
 
@@ -2390,7 +2390,7 @@ class PeekWeb:
         ]
         mode, stage = content[6].split('(')
         parsed_data = {
-            EntityJsonResponce.NUM_HOST.value: self.num_host,
+            EntityJsonResponce.NUM_HOST.value: self.host_id,
             EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
             EntityJsonResponce.CURRENT_PLAN.value: content[0].replace("-", ''),
             EntityJsonResponce.CURRENT_PARAM_PLAN.value: content[1],
@@ -2559,7 +2559,7 @@ class PeekWeb:
             EntityJsonResponce.VALUE.value: stage_to_set
         }
 
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.host_id, dict_data=part_of_resp)
 
         # if stage_to_set == input_name:
         #     pass
@@ -2643,7 +2643,7 @@ class PeekWeb:
             EntityJsonResponce.VALUE.value: data
         }
 
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.num_host, dict_data=part_of_resp)
+        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, num_host=self.host_id, dict_data=part_of_resp)
 
     # def validate_val(self, value, type_set_request):
     #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')

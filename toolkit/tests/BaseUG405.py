@@ -5,7 +5,7 @@ import asyncio
 
 class TestBaseUG405(TestCase):
     def setUp(self) -> None:
-        self.host = BaseUG405('10.45.154.11', num_host=2, scn='CO1111')
+        self.host = BaseUG405('10.45.154.11', host_id=2, scn='CO1111')
 
     def test_get_utcType2OperationMode(self):
         self.assertIn(int(asyncio.run(self.host.get_utcType2OperationMode())[0]), range(1, 3))

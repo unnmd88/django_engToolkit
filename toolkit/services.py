@@ -15,21 +15,21 @@ def test_for_logger():
 
 class Controller:
 
-    def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
+    def __new__(cls, ip_adress, type_object, scn: str = None, host_id: str = None):
         logger.debug('ya в new, type_object = %s', type_object)
         scn = scn if scn else None
         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
-            return controller_management.PotokS(ip_adress, num_host)
+            return controller_management.PotokS(ip_adress, host_id)
         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-            return controller_management.PotokP(ip_adress, num_host=num_host, scn=scn)
+            return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-            return controller_management.SwarcoSTCIP(ip_adress, num_host)
+            return controller_management.SwarcoSTCIP(ip_adress, host_id)
         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-            return controller_management.SwarcoSSH(ip_adress, num_host)
+            return controller_management.SwarcoSSH(ip_adress, host_id)
         elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-            return controller_management.PeekUG405(ip_adress, scn, num_host)
+            return controller_management.PeekUG405(ip_adress, scn, host_id)
         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
-            return controller_management.PeekWeb(ip_adress, num_host)
+            return controller_management.PeekWeb(ip_adress, host_id)
 
 
 class AvailableProtocolsManagement(Enum):
