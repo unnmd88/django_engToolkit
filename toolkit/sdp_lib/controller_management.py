@@ -52,8 +52,6 @@ class AvailableControllersAndCommands(Enum):
     PEEK = 'Peek'
 
 
-
-
 class EntityJsonResponce(Enum):
     """ Доступные типы контроллера и команд"""
 
@@ -2555,8 +2553,8 @@ class PeekWeb(BaseCommon):
 
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
         inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
-        error_request, result_text_message = self._check_errors_after_web_request(inputs_web_content,
-                                                                                  EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+        error_request, result_text_msg = self._check_errors_after_web_request(inputs_web_content,
+                                                                              EntityJsonResponce.TYPE_WEB_REQUEST_SET)
         if error_request is None:
             logger.debug('inputs_web_content, %s', inputs_web_content)
             inputs = self.parse_inps_and_user_param_content(inputs_web_content)
@@ -2601,8 +2599,8 @@ class PeekWeb(BaseCommon):
                         for inp in inputs:
                             if inp == 'MPP_MAN':
                                 data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
-                            elif inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set and inputs.get(inp)[
-                                1] == '1':
+                            elif (inp in self.MAN_INPUTS_MPP_PH and inp != input_name_to_set
+                                  and inputs.get(inp)[1] == '1'):
                                 data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_OFF))
                             elif inp == input_name_to_set:
                                 data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
@@ -2611,15 +2609,15 @@ class PeekWeb(BaseCommon):
             logger.info('tasks: %s', tasks_res)
 
             if all(res.result() == 200 for res in tasks_res):
-                result_text_message = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+                result_text_msg = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
             else:
-                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
+                result_text_msg = EntityJsonResponce.COMMAND_SEND_ERROR.value
 
         processed_data = (
             error_request,
             AvailableControllersAndCommands.PEEK.value,
             self.host_id,
-            result_text_message,
+            result_text_msg,
             EntityJsonResponce.SET_STAGE_MPP_MAN.value,
             stage_to_set
         )
@@ -2631,6 +2629,7 @@ class PeekWeb(BaseCommon):
 
     async def set_val_to_web_common(self, set_type, data, timeout=3):
 
+        set_CP_AUTO = False
         if set_type == self.SET_USER_PARAMETERS:
             type_command_ = EntityJsonResponce.SET_USER_PARAMETERS_WEB.value
             part_url = self.GET_USER_PARAMETERS
@@ -2642,16 +2641,18 @@ class PeekWeb(BaseCommon):
 
         web_content = await self.get_content_from_web(part_url)
 
-        error_request, result_text_message = self._check_errors_after_web_request(web_content,
-                                                                                  EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+        error_request, result_text_msg = self._check_errors_after_web_request(web_content,
+                                                                              EntityJsonResponce.TYPE_WEB_REQUEST_SET)
 
         if error_request is None:
             params_from_web = self.parse_inps_and_user_param_content(web_content)
             params_to_set = {}
             for param in data.split(';'):
+                if param in ('CP_RED=ВФ', 'MPP_FL=ВЫКЛ', 'MPP_FL=ВФ', 'MPP_OFF=ВКЛ', 'MPP_OFF=ВФ'):
+                    set_CP_AUTO = True
                 param, val = param.split('=')
                 if param in params_from_web:
-                    if set_type == 'inputs':
+                    if set_type == 'SET_INPUTS':
                         val = self.ACTUATOR_VALUES.get(val)
                     params_to_set[params_from_web.get(param)[0]] = val
 
@@ -2666,17 +2667,21 @@ class PeekWeb(BaseCommon):
                     tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
                                  for data_params in params_to_set.items()]
                     logger.info('tasks: %s', tasks_res)
+                if set_CP_AUTO:
+                    logger.debug('if set_CP_AUTO:')
+                    await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '2'))
+                    await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '0'))
 
             if all(res.result() == 200 for res in tasks_res):
-                result_text_message = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+                result_text_msg = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
             else:
-                result_text_message = EntityJsonResponce.COMMAND_SEND_ERROR.value
+                result_text_msg = EntityJsonResponce.COMMAND_SEND_ERROR.value
 
         processed_data = (
             error_request,
             AvailableControllersAndCommands.PEEK.value,
             self.host_id,
-            result_text_message,
+            result_text_msg,
             type_command_,
             data
         )
@@ -2685,7 +2690,6 @@ class PeekWeb(BaseCommon):
                                              json_entity=self.base_json_entity + self.json_set_command,
                                              json_varBinds=processed_data,
                                              )
-
 
     # def validate_val(self, value, type_set_request):
     #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
@@ -2734,7 +2738,7 @@ class PeekWeb(BaseCommon):
         else:
             raise TypeError
 
-        # print(f'params: {params}')
+        logger.debug(f'params: {params}')
 
         async with session.post(url=url, data=params) as response:
             await response.text()
@@ -2742,7 +2746,7 @@ class PeekWeb(BaseCommon):
             return response.status
 
     async def set_flash(self, value):
-        return await self.set_flash_dark_allred('MPP_FL', value)
+        return await self.set_val_to_web_common('SET_INPUTS', 'CP_RED=1', value)
 
         # res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
         # if not res:

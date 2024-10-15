@@ -15,6 +15,7 @@ ip4 = '10.179.107.129'
 ip5 = '10.179.65.89'
 ip6 = '10.179.19.81'
 ip7 = '10.45.154.16'
+ip8 = '10.179.46.121'
 
 # async def main():
 #     start_time = time.time()
@@ -53,8 +54,8 @@ ip7 = '10.45.154.16'
 
 # h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
 # res = asyncio.run(h2.get_current_state())
-h2 = controller_management.PeekWeb(ip4, host_id='Testovi')
-res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'MPP_MAN=ВФ'))
+h2 = controller_management.PeekWeb(ip8, host_id='Testovi')
+res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'CP_RED=ВФ'))
 logger.debug(res)
 
 
