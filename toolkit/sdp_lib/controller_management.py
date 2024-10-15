@@ -63,7 +63,9 @@ class EntityJsonResponce(Enum):
     VALUE = 'value'
 
     REQUEST_ERRORS = 'request_errors'
-    TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
+    TIMEOUT_ERROR_GET_REQUEST_MSG = 'ConnectTimeoutError'
+    TIMEOUT_ERROR_SNMP_MSG = 'No SNMP response received before timeout'
+    BAD_CONTROLLER_TYPE_MSG = 'No Such Object currently exists at this OID'
     TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
     SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
 
@@ -105,10 +107,35 @@ class EntityJsonResponce(Enum):
 
 
 class BaseCommon:
+    statusMode = {
+        '3': 'Сигналы выключены(ОС)',
+        '4': 'Жёлтое мигание',
+        '5': 'Заблокирован инспектором',
+        '6': 'Кругом Красный',
+        '8': 'Адаптивный',
+        '10': 'Ручное управление',
+        '11': 'Удалённое управление',
+        '12': 'Фиксированный',
+        '00': 'Ошибка электрической цепи',
+        '14': 'Жёлтое мигание по расписанию',
+        '--': 'Нет данных',
+        'FT': 'Фиксированный',
+        'VA': 'Адаптивный',
+        'MAN': 'Ручное управление',
+        'UTC': 'Удалённое управление',
+        'CLF': 'Беспентровая синхронизация',
+        'ЛАМПЫ ВЫКЛ': 'Сигналы выключены(ОС)',
+        'ЖЕЛТОЕ МИГАНИЕ': 'Жёлтое мигание',
+        'КРУГОМ КРАСНЫЙ': 'Кругом Красный',
+        'ЗАБЛОКИРОВАН ИНСПЕКТОРОМ': 'Заблокирован инспектором',
+        'УПРАВЛЕНИЕ': 'Управление',
+        'CONTROL': 'Управление'
+    }
+
     error_no_varBinds = 'Ошибка получения данных при выполнении запроса'
 
     async def get_request(self, ip_adress: str, community: str, oids: list | tuple,
-                          timeout: int = 0, retries: int = 0) -> str | list:
+                          timeout: int = 0, retries: int = 0) -> list | Exception:
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
         :param ip_adress: ip хоста
@@ -135,7 +162,9 @@ class BaseCommon:
             f'errorIndex: {errorIndex}\n'
             f'varBinds: {varBinds}\n'
         )
-        print(f'errorIndication: {errorIndication.__str__()}')
+        print(f'errorIndication .__str__: {errorIndication.__str__()}')
+        print(f'errorIndication: {errorIndication}')
+        print(f'errorIndication type : {type(errorIndication)}')
         print(f'errorStatus: {errorStatus}')
         print(f'errorIndex: {errorIndex}')
         print(f'varBinds: {varBinds}')
@@ -145,12 +174,12 @@ class BaseCommon:
                 # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
                 return [data[1].prettyPrint() for data in varBinds]
             else:
-                return self.error_no_varBinds
+                raise ValueError
             # print(f'(len(varBinds): {len(varBinds)}')
             # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
             # res = [data[1].prettyPrint() for data in varBinds]
             # print(f'res -> {res}')
-        return errorIndication.__str__()
+        return errorIndication
 
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
@@ -211,12 +240,14 @@ class BaseCommon:
         return errorIndication.__str__()
 
     @staticmethod
-    def make_json_responce(ip_adress, dict_data=None, **kwargs):
+    def make_json_responce(ip_adress: str,
+                           json_entity: tuple | list,
+                           json_varBinds: tuple | list,
+                           **kwargs):
 
         logger.debug(f'kwargs: {kwargs}')
-
-        data_body = dict_data if type(dict_data) == dict else {}
-
+        data_body = {k: v for k, v in zip(json_entity, json_varBinds)}
+        logger.debug(f'data_body swarco: {data_body}')
         if kwargs:
             for k, v in kwargs.items():
                 data_body[k] = v
@@ -795,21 +826,75 @@ class BaseUG405(BaseCommon):
 class SwarcoSTCIP(BaseSTCIP):
     get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
     set_val_stage = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
-
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
 
+    json_content = (
+        EntityJsonResponce.REQUEST_ERRORS.value,
+        EntityJsonResponce.TYPE_CONTROLLER.value,
+        EntityJsonResponce.NUM_HOST.value,
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.NUM_DET_LOGICS.value,
+    )
+
     """ GET REQUEST """
 
-    def determine_current_mode(self, varBinds):
+    def parse_responce(self, varBinds):
 
-        equipment_status = varBinds[0]
-        stage = self.get_val_stage.get(varBinds[1])
-        plan = varBinds[2]
-        num_logics = varBinds[3]
-        softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+        if type(varBinds) == list:
+            error_request = None
+        elif isinstance(varBinds, Exception):
+            error_request = varBinds.__str__()
+        else:
+            raise ValueError
+
+        stage = plan = num_logics = mode = None
+        if error_request is None:
+            equipment_status = varBinds[0]
+            stage = self.get_val_stage.get(varBinds[1])
+            plan = varBinds[2]
+            num_logics = varBinds[3]
+            softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+            mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+
+        processed_data = (
+            error_request,
+            AvailableControllersAndCommands.SWARCO.value,
+            self.host_id,
+            mode,
+            stage,
+            int(plan) if error_request is None and plan.isdigit() else plan,
+            int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
+        )
+
+        logger.debug(f'processed_data swarco: {processed_data}')
+
+        return BaseCommon.make_json_responce(self.ip_adress,
+                                             json_entity=self.json_content,
+                                             json_varBinds=processed_data,
+                                             test_kwarg='test_shMARG'
+                                             )
+
+    def _mode_define(self, equipment_status: str, plan: str, softstat180_181: str, num_logics: str) -> str:
+        """ Определяет текщий ружим ДК.
+        :arg equipment_status (str): Текущий режим работы контроллера:
+                                     workingProperly(1),
+                                     powerUp(2),
+                                     dark(3),
+                                     flash(4),
+                                     partialFlash(5),
+                                     allRed(6)
+
+        :arg plan (str): Текущий номер плана
+        :arg softstat180_181 (str): Текущее состояние входов 180 и 181
+        :arg num_logics (str): Количество детекторных логик
+
+        :return str: Возращает текущий режим ДК(Фикс/Адаптива/КУ и т.д)
+        """
 
         if equipment_status != '1':
             val_mode = equipment_status
@@ -823,20 +908,7 @@ class SwarcoSTCIP(BaseSTCIP):
             val_mode = '8'
         else:
             val_mode = '--'
-
-        data = {
-            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.SWARCO.value,
-            EntityJsonResponce.NUM_HOST.value: self.host_id,
-            EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(val_mode),
-            EntityJsonResponce.CURRENT_STAGE.value: stage,
-            EntityJsonResponce.CURRENT_PLAN.value: int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
-            EntityJsonResponce.CURRENT_ERRORS.value: None,
-            EntityJsonResponce.CURRENT_DET_ERRORS.value: None,
-            EntityJsonResponce.NUM_DET_LOGICS.value:
-                int(num_logics) if not isinstance(num_logics, int) and num_logics.isdigit() else num_logics
-        }
-
-        return BaseCommon.make_json_responce(self.ip_adress, dict_data=data)
+        return self.statusMode.get(val_mode)
 
     async def get_current_state(self, timeout=0, retries=0):
 
@@ -847,8 +919,9 @@ class SwarcoSTCIP(BaseSTCIP):
                 ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty)),
                 ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
                 ]
-        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        json_responce = self.determine_current_mode(result)
+        responce = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        logger.debug(f'resp:: {isinstance(responce, Exception)}')
+        json_responce = self.parse_responce(responce)
 
         return json_responce
 

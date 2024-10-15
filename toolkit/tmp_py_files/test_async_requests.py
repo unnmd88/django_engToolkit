@@ -23,5 +23,9 @@ class A(Enum):
         '3': 'pfnsp'
     }
 
-print(A.TEST.value)
-print(controller_management.EntityJsonResponce.statusMode.value.get('3'))
+class B(A):
+
+    clllls = 'class B'
+
+print(B.TEST.value)
+# print(controller_management.EntityJsonResponce.statusMode.value.get('3'))
