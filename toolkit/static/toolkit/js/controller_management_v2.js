@@ -556,7 +556,7 @@ async function sendReqGetDataAxios() {
             
             let cur_host = response.data[ip_addr]
 
-            document.querySelector(`#datahost_${cur_host['num_host']}`).textContent = `Фаза=${cur_host['current_stage']} ` + 
+            document.querySelector(`#datahost_${cur_host['host_id']}`).textContent = `Фаза=${cur_host['current_stage']} ` + 
                                                                                       `План=${cur_host['current_plan']} ` +
                                                                                       `Режим=${cur_host['current_mode']}`
             // $(`#datahost_${num_host}`).text(write_data);

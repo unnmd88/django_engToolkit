@@ -1,18 +1,22 @@
-import itertools
-import math
+"""" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
+
 import os
+from dotenv import load_dotenv
+
+import itertools
 import re
-import types
 import time
+import math
 from datetime import datetime
+import logging
+
 from enum import Enum
 import asyncio
 import paramiko
 import aiohttp
-import requests
 from pysnmp.hlapi.asyncio import *
-from dotenv import load_dotenv
-import logging
+
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
