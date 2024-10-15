@@ -80,31 +80,6 @@ class EntityJsonResponce(Enum):
     CURRENT_MODE = 'current_mode'
     CURRENT_STAGE = 'current_stage'
 
-    statusMode = {
-        '3': 'Сигналы выключены(ОС)',
-        '4': 'Жёлтое мигание',
-        '5': 'Заблокирован инспектором',
-        '6': 'Кругом Красный',
-        '8': 'Адаптивный',
-        '10': 'Ручное управление',
-        '11': 'Удалённое управление',
-        '12': 'Фиксированный',
-        '00': 'Ошибка электрической цепи',
-        '14': 'Жёлтое мигание по расписанию',
-        '--': 'Нет данных',
-        'FT': 'Фиксированный',
-        'VA': 'Адаптивный',
-        'MAN': 'Ручное управление',
-        'UTC': 'Удалённое управление',
-        'CLF': 'Беспентровая синхронизация',
-        'ЛАМПЫ ВЫКЛ': 'Сигналы выключены(ОС)',
-        'ЖЕЛТОЕ МИГАНИЕ': 'Жёлтое мигание',
-        'КРУГОМ КРАСНЫЙ': 'Кругом Красный',
-        'ЗАБЛОКИРОВАН ИНСПЕКТОРОМ': 'Заблокирован инспектором',
-        'УПРАВЛЕНИЕ': 'Управление',
-        'CONTROL': 'Управление'
-    }
-
 
 class BaseCommon:
     statusMode = {
@@ -132,18 +107,16 @@ class BaseCommon:
         'CONTROL': 'Управление'
     }
 
-    error_no_varBinds = 'Ошибка получения данных при выполнении запроса'
-
     async def get_request(self, ip_adress: str, community: str, oids: list | tuple,
                           timeout: int = 0, retries: int = 0) -> list | Exception:
         """
-        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
-        :param ip_adress: ip хоста
-        :param community: коммьюнити хоста
-        :param oids: List или Tuple оидов
-        :param timeout: таймаут запроса, в секундах
-        :param retries: количество попыток запроса
-        :return: list при успешном запросе, иначе str с текстом ошибки
+        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
+        :arg ip_adress: ip хоста
+        :arg community: коммьюнити хоста
+        :arg oids: List или Tuple оидов
+        :arg timeout: таймаут запроса, в секундах
+        :arg retries: количество попыток запроса
+        :return: list при успешном запросе, иначе errorIndication
         """
         # print(f'get_request ')
         # print(f'oids : {oids} ')
@@ -843,42 +816,6 @@ class SwarcoSTCIP(BaseSTCIP):
 
     """ GET REQUEST """
 
-    def parse_responce(self, varBinds):
-
-        if type(varBinds) == list:
-            error_request = None
-        elif isinstance(varBinds, Exception):
-            error_request = varBinds.__str__()
-        else:
-            raise ValueError
-
-        stage = plan = num_logics = mode = None
-        if error_request is None:
-            equipment_status = varBinds[0]
-            stage = self.get_val_stage.get(varBinds[1])
-            plan = varBinds[2]
-            num_logics = varBinds[3]
-            softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
-            mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-
-        processed_data = (
-            error_request,
-            AvailableControllersAndCommands.SWARCO.value,
-            self.host_id,
-            mode,
-            stage,
-            int(plan) if error_request is None and plan.isdigit() else plan,
-            int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
-        )
-
-        logger.debug(f'processed_data swarco: {processed_data}')
-
-        return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.json_content,
-                                             json_varBinds=processed_data,
-                                             test_kwarg='test_shMARG'
-                                             )
-
     def _mode_define(self, equipment_status: str, plan: str, softstat180_181: str, num_logics: str) -> str:
         """ Определяет текщий ружим ДК.
         :arg equipment_status (str): Текущий режим работы контроллера:
@@ -910,7 +847,40 @@ class SwarcoSTCIP(BaseSTCIP):
             val_mode = '--'
         return self.statusMode.get(val_mode)
 
-    async def get_current_state(self, timeout=0, retries=0):
+    def parse_responce(self, varBinds):
+
+        if type(varBinds) == list:
+            error_request = None
+        elif isinstance(varBinds, Exception):
+            error_request = varBinds.__str__()
+        else:
+            raise ValueError
+
+        stage = plan = num_logics = mode = None
+        if error_request is None:
+            equipment_status = varBinds[0]
+            stage = self.get_val_stage.get(varBinds[1])
+            plan = varBinds[2]
+            num_logics = varBinds[3]
+            softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+            mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+
+        processed_data = (
+            error_request,
+            AvailableControllersAndCommands.SWARCO.value,
+            self.host_id,
+            mode,
+            stage,
+            int(plan) if error_request is None and plan.isdigit() else plan,
+            int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
+        )
+
+        return BaseCommon.make_json_responce(self.ip_adress,
+                                             json_entity=self.json_content,
+                                             json_varBinds=processed_data,
+                                             )
+
+    async def get_current_state(self, timeout=0, retries=0) -> dict:
 
         logger.debug(f'перед await get_current_mode')
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
@@ -920,9 +890,7 @@ class SwarcoSTCIP(BaseSTCIP):
                 ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
                 ]
         responce = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        logger.debug(f'resp:: {isinstance(responce, Exception)}')
         json_responce = self.parse_responce(responce)
-
         return json_responce
 
     async def get_stage(self, timeout=0, retries=0):
@@ -2375,7 +2343,7 @@ class SwarcoSSH(ConnectionSSH):
 """" WEB MANAGEMENT """
 
 
-class PeekWeb:
+class PeekWeb(BaseCommon):
     # MAN_INPUTS = {'MPP_MAN', 'MPP_FL', 'MPP_OFF', 'MPP_PH1', 'MPP_PH2', 'MPP_PH3',
     #               'MPP_PH4', 'MPP_PH5', 'MPP_PH6', 'MPP_PH7', 'MPP_PH8'}
     MAN_INPUTS_MPP_PH = {'MPP_PH1', 'MPP_PH2', 'MPP_PH3', 'MPP_PH4',
@@ -2432,6 +2400,19 @@ class PeekWeb:
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
+    json_content = (
+        EntityJsonResponce.REQUEST_ERRORS.value,
+        EntityJsonResponce.TYPE_CONTROLLER.value,
+        EntityJsonResponce.NUM_HOST.value,
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.CURRENT_PARAM_PLAN.value,
+        EntityJsonResponce.CURRENT_TIME.value,
+        EntityJsonResponce.CURRENT_ERRORS.value,
+        EntityJsonResponce.CURRENT_STATE.value
+    )
+
     # def __new__(cls, ip_adress: str):
     #     host = BaseUG405(ip_adress, scn=' ')
     #     res = asyncio.run(host.get_utcReplySiteID())
@@ -2448,37 +2429,46 @@ class PeekWeb:
 
     def parse_main_page_content(self, content):
 
-        hasError, error_msg = False, None
+        if type(content) == str and len(content) > 100:
+            error_request = None
+        elif content == TimeoutError:
+            error_request = self.TIMEOUT_ERROR_MSG
+        elif content == TimeoutError:
+            error_request = self.TYPE_CONTROLLER_ERROR_MSG
+        else:
+            raise ValueError
 
-        if content == TimeoutError:
-            error_msg, hasError = self.TIMEOUT_ERROR_MSG, True
-        elif content == TypeError:
-            error_msg, hasError = self.TYPE_CONTROLLER_ERROR_MSG, True
-
-        if not hasError:
+        stage = plan = param_plan = current_time = current_err = current_state = current_mode = None
+        if error_request is None:
             content = [
                 line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
             ]
             mode, stage = content[6].split('(')
             stage = int(stage.replace(')', ''))
-            content[0], content[1] = int(content[0].replace("-", '')), int(content[1])
-        else:
-            content = [None for el in range(5)]
-            mode, stage = '--', None
+            plan = re.sub('[^0-9]', '', content[0])
+            plan = int(plan) if plan.isdigit() else plan
+            param_plan = int(content[1]) if content[1].isdigit() else content[1]
+            current_time = content[2]
+            current_err = content[3]
+            current_state = content[4]
+            current_mode = self.statusMode.get(mode)
 
-        parsed_data = {
-            EntityJsonResponce.REQUEST_ERRORS.value: error_msg,
-            EntityJsonResponce.NUM_HOST.value: self.host_id,
-            EntityJsonResponce.TYPE_CONTROLLER.value: AvailableControllersAndCommands.PEEK.value,
-            EntityJsonResponce.CURRENT_PLAN.value: content[0],
-            EntityJsonResponce.CURRENT_PARAM_PLAN.value: content[1],
-            EntityJsonResponce.CURRENT_TIME.value: content[2],
-            EntityJsonResponce.CURRENT_ERRORS.value: content[3] if content[3] else None,
-            EntityJsonResponce.CURRENT_STATE.value: content[4],
-            EntityJsonResponce.CURRENT_MODE.value: EntityJsonResponce.statusMode.value.get(mode),
-            EntityJsonResponce.CURRENT_STAGE.value: stage
-        }
-        return BaseCommon.make_json_responce(ip_adress=self.ip_adress, dict_data=parsed_data)
+        processed_data = (
+            error_request,
+            AvailableControllersAndCommands.PEEK.value,
+            self.host_id,
+            current_mode,
+            stage,
+            plan,
+            param_plan,
+            current_time,
+            current_err,
+            current_state
+        )
+        return BaseCommon.make_json_responce(self.ip_adress,
+                                             json_entity=self.json_content,
+                                             json_varBinds=processed_data,
+                                             )
 
     def parse_inps_and_user_param_content(self, content):
 

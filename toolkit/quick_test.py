@@ -51,8 +51,8 @@ ip7 = '10.45.154.16'
 # print(f'res : {res}')
 # print(f'res : {h4.parse_inps_and_user_param_content(res)}')
 
-h1 = controller_management.SwarcoSTCIP(ip, host_id='Testoviy')
-res = asyncio.run(h1.get_current_state())
+h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
+res = asyncio.run(h2.get_current_state())
 logger.debug(res)
 
 
