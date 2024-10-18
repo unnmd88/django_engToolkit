@@ -1095,19 +1095,24 @@ class SwarcoSTCIP(BaseSTCIP):
         return self.statusMode.get(val_mode)
 
     def parse_varBinds_get_state(self, varBinds):
-        varBinds = [data[1].prettyPrint() for data in varBinds]
-        equipment_status = varBinds[0]
-        stage = self.get_val_stage.get(varBinds[1])
-        plan = varBinds[2]
-        num_logics = varBinds[3]
-        softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+
+        equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
+        softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
         mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+
+        # varBinds = [data[1].prettyPrint() for data in varBinds]
+        # equipment_status = varBinds[0]
+        # stage = self.get_val_stage.get(varBinds[1])
+        # plan = varBinds[2]
+        # num_logics = varBinds[3]
+        # softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+        # mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
 
         # self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
 
         get_mode_data = (
             mode,
-            stage,
+            self.get_val_stage.get(stage),
             int(plan) if plan.isdigit() else plan,
             int(num_logics) if num_logics.isdigit() else num_logics,
         )
@@ -1244,20 +1249,6 @@ class PotokS(BaseSTCIP):
         :return str: Возращает текущий режим ДК(Фикс/Адаптива/КУ и т.д)
         """
 
-        # if equipment_status != '1':
-        #     val_mode = equipment_status
-        # elif plan == '16':
-        #     val_mode = '11'
-        # elif plan == '15':
-        #     val_mode = '10'
-        # elif '1' in softstat180_181 or softstat180_181 == 'no_data' or num_logics == '0':
-        #     val_mode = '12'
-        # elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 0:
-        #     val_mode = '8'
-        # else:
-        #     val_mode = '--'
-        # return self.statusMode.get(val_mode)
-
         if equipment_status != '1':
             val_mode = equipment_status
         elif status_mode == '11' and plan == '16':
@@ -1268,43 +1259,23 @@ class PotokS(BaseSTCIP):
             val_mode = '--'
         return self.statusMode.get(val_mode)
 
-    def parse_varBinds_get_state(self, varBinds):
-        # equipment_status = str(varBinds[0])
-        # status_mode = str(varBinds[1])
-        # stage = obj.get_val_stage.get(str(varBinds[2]))
-        # det_count = str(varBinds[3])
-        # plan = str(varBinds[4])
+    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
 
-
-        varBinds = [data[1].prettyPrint() for data in varBinds]
-        equipment_status = varBinds[0]
-        status_mode = varBinds[1]
-        stage = self.get_val_stage.get(varBinds[2])
-        det_count = varBinds[3]
-        plan = varBinds[4]
+        equipment_status, status_mode, stage, det_count, plan, *rest = [data[1].prettyPrint() for data in varBinds]
         mode = self._mode_define(equipment_status, plan, status_mode)
 
         get_mode_data = (
             mode,
-            stage,
+            self.get_val_stage.get(stage),
             int(plan) if plan.isdigit() else plan,
             int(det_count) if det_count.isdigit() else det_count,
         )
         return get_mode_data
 
-        # get_mode_data = (
-        #     mode,
-        #     stage,
-        #     int(plan) if plan.isdigit() else plan,
-        #     int(num_logics) if num_logics.isdigit() else num_logics,
-        # )
-        # keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value, JsonBody.JSON_GET_MODE_SWARCO_BODY.value)
-        # values_json = itertools.chain(common_data, get_mode_data)
-        # return keys_json, values_json
-
     async def get_current_state(self, timeout=0, retries=0) -> tuple:
         """
         Метод запроса значений необходимых оидов для получения текущего состояния ДК
+        :param retries:
         :param timeout:
         :return tuple: (errorIndication, varBinds)
         """
@@ -1325,6 +1296,9 @@ class PotokS(BaseSTCIP):
         logger.debug(f'redponcr {responce}')
         # json_responce = self.parse_responce(responce)
         return responce
+
+
+
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """

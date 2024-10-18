@@ -67,7 +67,7 @@ oids = [
 # h2 = controller_management.PeekWeb('10.179.16.81', host_id='Testovi')
 # res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'MPP_FL=ВКЛ'))
 # h3 = controller_management.PeekWeb(ip3)
-h3 = controller_management.PotokS('10.179.65.161')
+h3 = controller_management.SwarcoSTCIP('10.179.56.97')
 errInd, varBinds = asyncio.run(h3.get_current_state())
 res_json = h3.create_json(errInd, varBinds)
 # res2 = h3.create_json(errInd, varBinds)
