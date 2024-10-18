@@ -131,6 +131,13 @@ class JsonBody(Enum):
         EntityJsonResponce.NUM_DETECTORS.value,
     )
 
+    JSON_GET_STATE_POTOK_P_BODY = (
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.CURRENT_DET_ERRORS.value,
+    )
+
     JSON_GET_STATE_PEEK_BODY = (
         EntityJsonResponce.CURRENT_MODE.value,
         EntityJsonResponce.CURRENT_STAGE.value,
@@ -143,10 +150,14 @@ class JsonBody(Enum):
 
 
 class Oids(Enum):
+
+    """" STCIP """
+    # Command
     swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
     swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
     swarcoUTCCommandFlash = '1.3.6.1.4.1.1618.3.2.2.1.1.0'
     swarcoUTCTrafftechPlanCommand = '1.3.6.1.4.1.1618.3.7.2.2.1.0'
+    # Status
     swarcoUTCStatusEquipment = '1.3.6.1.4.1.1618.3.6.2.1.2.0'
     swarcoUTCTrafftechPhaseStatus = '1.3.6.1.4.1.1618.3.7.2.11.2.0'
     swarcoUTCTrafftechPlanCurrent = '1.3.6.1.4.1.1618.3.7.2.1.2.0'
@@ -155,14 +166,52 @@ class Oids(Enum):
     swarcoUTCDetectorQty = '1.3.6.1.4.1.1618.3.3.2.2.2.0'
     swarcoUTCSignalGroupState = '1.3.6.1.4.1.1618.3.5.2.1.6.0'
     swarcoUTCSignalGroupOffsetTime = '1.3.6.1.4.1.1618.3.5.2.1.3.0'
-
-    # Command
+    # Command(Spec PotokS)
     potokUTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
     potokUTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
     potokUTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
     potokUTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
-    # Status
+    # Status(Spec PotokS)
     potokUTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
+
+    """" UG405 """
+    # -- Control Bits --#
+    utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
+    utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
+    utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
+    utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
+    # -- Reply Bits --#
+    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
+    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
+    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
+    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
+    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
+    utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
+    utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
+    utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
+    utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
+    utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
+    utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
+    utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
+    utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
+    # -- Control Bits --#(Spec PotokP)
+    potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    # -- Reply Bits --#(Spec PotokP)
+    potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
+    potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+
+    scn_required_oids = {
+        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potok_utcReplyPlanStatus,
+        potok_utcReplyPlanSource, potok_utcReplyPlanSource, potok_utcReplyDarkStatus, potok_utcReplyLocalAdaptiv,
+        potok_utcReplyHardwareErr, potok_utcReplySoftwareErr, potok_utcReplyElectricalCircuitErr
+    }
 
 
 class BaseCommon:
@@ -297,6 +346,14 @@ class BaseCommon:
         """
         # print(f'get_request ')
         # print(f'oids : {oids} ')
+        logger.debug(f'oids before: {oids}')
+        if isinstance(self, (PotokP, PeekUG405)):
+            for i, oid in enumerate(oids):
+                if oid in Oids.scn_required_oids.value:
+                    oids[i] = oid + self.scn
+            logger.debug(f'self.scn: {self.scn}')
+        logger.debug(f'oids after: {oids}')
+
 
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
@@ -603,7 +660,8 @@ class BaseSTCIP(BaseCommon):
         """
 
         oids = [ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value))]
-        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         if num_inp is not None and len(result[0]) > 254 and num_inp.isdigit() and int(num_inp) in range(1, 256):
             return [result[0][int(num_inp) - 1]]
         return result
@@ -686,25 +744,25 @@ class BaseUG405(BaseCommon):
     #                                '13': '0010', '14': '0020', '15': '0040', '16': '0080'}
 
     # oid для UG405 Peek
-    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
-    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
-    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
-    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
-    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
-    utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
-    utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
-    utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
-    utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
-    utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
-    utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
-    utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
-    utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
-    utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
-    utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
-    utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
-    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
-    utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
-    utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
+    # utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
+    # utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
+    # utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
+    # utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
+    # utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
+    # utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
+    # utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
+    # utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
+    # utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
+    # utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
+    # utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
+    # utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
+    # utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
+    # utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
+    # utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
+    # utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    # utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    # utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
+    # utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
 
     # oid для UG405 Peek
     # oids_UG405_PEEK = {peek_utcReplyGn: '.1.3.6.1.4.1.13267.3.2.5.1.1.3',
@@ -743,21 +801,41 @@ class BaseUG405(BaseCommon):
     def __init__(self, ip_adress, scn=None, host_id=None):
         super().__init__(ip_adress, host_id)
         self.ip_adress = ip_adress
-        self.scn = asyncio.run(self.get_scn(self)) if scn is None else BaseUG405.convert_scn(scn)
+        self.scn = asyncio.run(self.get_scn()) if scn is None else self.convert_scn(scn)
         self.host_id = host_id
 
     """ GET REQUEST """
 
-    async def get_scn(self, obj):
+    # async def get_scn(self, obj):
+    #
+    #     if isinstance(obj, PeekUG405):
+    #         result, val = await self.getNext_request(self.ip_adress,
+    #                                                  self.community,
+    #                                                  [ObjectType(
+    #                                                   ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+    #                                                  )
+    #     elif isinstance(obj, PotokP):
+    #         logging.debug(f'get_scn: {obj}')
+    #         r = await self.get_utcReplySiteID()
+    #         logging.debug(f'res: {r}')
+    #         val = r[0]
+    #         result = True if val else False
+    #     else:
+    #         raise TypeError
+    #
+    #     if result:
+    #         return BaseUG405.convert_scn(val)
 
-        if isinstance(obj, PeekUG405):
+    async def get_scn(self):
+
+        if isinstance(self, PeekUG405):
             result, val = await self.getNext_request(self.ip_adress,
                                                      self.community,
                                                      [ObjectType(
-                                                         ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                      ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
-        elif isinstance(obj, PotokP):
-            logging.debug(f'get_scn: {obj}')
+        elif isinstance(self, PotokP):
+            logging.debug(f'get_scn: {self}')
             r = await self.get_utcReplySiteID()
             logging.debug(f'res: {r}')
             val = r[0]
@@ -766,7 +844,8 @@ class BaseUG405(BaseCommon):
             raise TypeError
 
         if result:
-            return BaseUG405.convert_scn(val)
+            return self.convert_scn(val)
+
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -1150,13 +1229,10 @@ class SwarcoSTCIP(BaseSTCIP):
             Oids.swarcoUTCDetectorQty,
             Oids.swarcoSoftIOStatus,
         ]
-        responce = await self.get_request_base(self.ip_adress,
-                                               self.community_write,
-                                               oids,
-                                               timeout=timeout, retries=retries)
-        logger.debug(f'redponcr {responce}')
-        # json_responce = self.parse_responce(responce)
-        return responce
+        return await self.get_request_base(self.ip_adress,
+                                           self.community_read,
+                                           oids,
+                                           timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1166,7 +1242,8 @@ class SwarcoSTCIP(BaseSTCIP):
         :return: номер фазы
         """
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         return [self.get_val_stage.get(result[0])]
 
     """ SET REQUEST """
@@ -1228,7 +1305,6 @@ class PotokS(BaseSTCIP):
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
         self.set_controller_type()
-        # self._get_current_state = False
 
     """ GET REQUEST """
 
@@ -1289,16 +1365,10 @@ class PotokS(BaseSTCIP):
             Oids.swarcoUTCDetectorQty,
             Oids.swarcoUTCTrafftechPlanCurrent,
         ]
-        responce = await self.get_request_base(self.ip_adress,
-                                               self.community_read,
-                                               oids,
-                                               timeout=timeout, retries=retries)
-        logger.debug(f'redponcr {responce}')
-        # json_responce = self.parse_responce(responce)
-        return responce
-
-
-
+        return await self.get_request_base(self.ip_adress,
+                                           self.community_read,
+                                           oids,
+                                           timeout=timeout, retries=retries)
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """
@@ -1324,7 +1394,8 @@ class PotokS(BaseSTCIP):
         """
 
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         return [self.get_val_stage.get(result[0])]
 
     async def get_swarcoUTCSetGetLocal(self, timeout=0, retries=0):
@@ -1508,21 +1579,22 @@ class PotokP(BaseUG405):
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
 
     # -- Control Bits --#
-    potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
-    # -- Reply Bits --#
-
-    potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
-    potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
-    potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
-    potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
-
-    potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
-    potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
-    potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+    # potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    # # -- Reply Bits --#
+    #
+    # potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
+    # potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    # potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    # potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    #
+    # potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    # potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    # potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
 
-    def convert_val_stage_to_num_stage(self, value):
+    @staticmethod
+    def convert_val_stage_to_num_stage(value):
         if value not in (' ', '@'):
             return int(math.log2(int(value, 16))) + 1
         elif value == ' ':
@@ -1531,6 +1603,152 @@ class PotokP(BaseUG405):
             return 7
         else:
             raise ValueError
+
+    def _mode_define(self, utcType2OperationMode: str, isFlash: str, isDark: str,
+                     isManual: str, plan: str, hasDetErrors: str, localAdaptiv: str) -> str:
+        """ Определяет текщий ружим ДК.
+        :arg equipment_status (str): Текущий режим работы контроллера:
+                                     workingProperly(1),
+                                     powerUp(2),
+                                     dark(3),
+                                     flash(4),
+                                     partialFlash(5),
+                                     allRed(6)
+
+        :arg plan (str): Текущий номер плана
+        :arg softstat180_181 (str): Текущее состояние входов 180 и 181
+        :arg num_logics (str): Количество детекторных логик
+
+        :return str: Возращает текущий режим ДК(Фикс/Адаптива/КУ и т.д)
+        """
+        # utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, stage, hasDetErrors,
+        # localAdaptiv
+
+        if isFlash.isdigit() and int(isFlash) in range(1, 5):
+            val_mode = '4'
+        elif isDark == '1':
+            val_mode = '3'
+        elif isManual == '1':
+            val_mode = '10'
+        elif utcType2OperationMode == '3' and plan == '0':
+            val_mode = '1'
+        elif localAdaptiv == '1' and hasDetErrors == '0' and plan != '0':
+            val_mode = '8'
+        elif (localAdaptiv == '0' or hasDetErrors == '1') and plan != '0':
+            val_mode = '12'
+        else:
+            val_mode = '--'
+        return self.statusMode.get(val_mode)
+
+        # if equipment_status != '1':
+        #     val_mode = equipment_status
+        # elif status_mode == '11' and plan == '16':
+        #     val_mode = status_mode
+        # elif status_mode != '11' and status_mode in ('8', '10', '12'):
+        #     val_mode = status_mode
+        # else:
+        #     val_mode = '--'
+        # return self.statusMode.get(val_mode)
+
+    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
+
+        (utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, val_stage, hasDetErrors,
+         localAdaptiv, *rest) = [data[1].prettyPrint() for data in varBinds]
+
+        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
+
+        # utcType2OperationMode = str(varBinds[0])
+        # hasErrors = str(varBinds[1])
+        # isFlash = str(varBinds[2])
+        # isDark = str(varBinds[3])
+        # isManual = str(varBinds[4])
+        # plan = str(varBinds[5])
+        # stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+        # hasDetErrors = str(varBinds[7])
+        # localAdaptiv = str(varBinds[8])
+
+        get_mode_data = (
+            mode,
+            self.convert_val_stage_to_num_stage(val_stage),
+            int(plan) if plan.isdigit() else plan,
+            bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors,
+        )
+        return get_mode_data
+
+    async def get_current_state(self, timeout=0, retries=0) -> tuple:
+        """
+        Метод запроса значений необходимых оидов для получения текущего состояния ДК
+        :param retries:
+        :param timeout:
+        :return tuple: (errorIndication, varBinds)
+        """
+        self.type_request = EntityJsonResponce.TYPE_GET_STATE
+        self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_P_BODY.value
+        logger.debug(f'перед await get_current_mode')
+        oids = [
+            Oids.swarcoUTCStatusEquipment,
+            Oids.potokUTCStatusMode,
+            Oids.swarcoUTCTrafftechPhaseStatus,
+            Oids.swarcoUTCDetectorQty,
+            Oids.swarcoUTCTrafftechPlanCurrent,
+        ]
+        return await self.get_request_base(self.ip_adress,
+                                           self.community,
+                                           oids,
+                                           timeout=timeout, retries=retries)
+
+    # def foo(self):
+    #     utcType2OperationMode = str(varBinds[0])
+    #     hasErrors = str(varBinds[1])
+    #     isFlash = str(varBinds[2])
+    #     isDark = str(varBinds[3])
+    #     isManual = str(varBinds[4])
+    #     plan = str(varBinds[5])
+    #     stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+    #     hasDetErrors = str(varBinds[7])
+    #     localAdaptiv = str(varBinds[8])
+    #
+    #     data = {
+    #         'num_host': obj.host_id,
+    #         'scn': obj.scn,
+    #         'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
+    #         'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
+    #         'current_det_errors': bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors
+    #     }
+    #
+    #     if isFlash.isdigit() and int(isFlash) in range(1, 5):
+    #         data['current_mode'] = self.statusMode.get("4")
+    #         return data
+    #     if isDark == '1':
+    #         data['current_mode'] = self.statusMode.get("3")
+    #         return data
+    #     if isManual == '1':
+    #         data['current_mode'] = self.statusMode.get("10")
+    #         return data
+    #
+    #     if utcType2OperationMode == '3' and plan == '0':
+    #         mode = self.statusMode.get('11')
+    #     elif localAdaptiv == '1' and hasDetErrors == '0' and plan != '0':
+    #         mode = self.statusMode.get('8')
+    #     elif (localAdaptiv == '0' or hasDetErrors == '1') and plan != '0':
+    #         mode = self.statusMode.get('12')
+    #     else:
+    #         mode = self.statusMode.get("--")
+    #
+    #     logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
+    #
+    #     data.update(
+    #         {
+    #             'num_host': obj.host_id,
+    #             'scn': obj.scn,
+    #             'current_stage': stage,
+    #             'current_mode': mode,
+    #         }
+    #     )
+
+
+
+
 
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
