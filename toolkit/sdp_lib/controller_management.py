@@ -68,7 +68,7 @@ class EntityJsonResponce(Enum):
     SET_MAN_INPUTS_WEB = 'set_inputs'
     SET_USER_PARAMETERS_WEB = 'set_user_parameters'
 
-    TYPE_GET_STATE = auto()
+    TYPE_GET_STATE = ''
     TYPE_SNMP_REQUEST_SET = 'set_snmp_values'
     TYPE_SNMP_REQUEST_GET = 'get_snmp_values'
     TYPE_SNMP_REQUEST_GET_STATE = 'get_state_on_snmp'
@@ -210,7 +210,8 @@ class Oids(Enum):
     scn_required_oids = {
         utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potok_utcReplyPlanStatus,
         potok_utcReplyPlanSource, potok_utcReplyPlanSource, potok_utcReplyDarkStatus, potok_utcReplyLocalAdaptiv,
-        potok_utcReplyHardwareErr, potok_utcReplySoftwareErr, potok_utcReplyElectricalCircuitErr
+        potok_utcReplyHardwareErr, potok_utcReplySoftwareErr, potok_utcReplyElectricalCircuitErr,
+        utcReplyMC, utcReplyCF
     }
 
 
@@ -251,6 +252,20 @@ class BaseCommon:
         self.json_body_second_part = None
         self.json = None
         self.type_request = None
+
+    def checking_the_need_for_scn(self, oids: list | tuple) -> list | tuple:
+        print(f'Ooidse {oids}')
+        for i, oid in enumerate(oids):
+            print(f'Oids.scn_required_oids.value {Oids.scn_required_oids.value}')
+            if oid.value in Oids.scn_required_oids.value:
+                print(f'oid.value {oid.value}')
+                oids[i] = oid.value + self.scn
+            else:
+                oids[i] = oid.value
+        logger.debug(f'self.scn: {self.scn}')
+        logger.debug(f'oids after: {oids}')
+        return oids
+
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -348,11 +363,7 @@ class BaseCommon:
         # print(f'oids : {oids} ')
         logger.debug(f'oids before: {oids}')
         if isinstance(self, (PotokP, PeekUG405)):
-            for i, oid in enumerate(oids):
-                if oid in Oids.scn_required_oids.value:
-                    oids[i] = oid + self.scn
-            logger.debug(f'self.scn: {self.scn}')
-        logger.debug(f'oids after: {oids}')
+            oids = self.checking_the_need_for_scn(oids)
 
 
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -360,7 +371,7 @@ class BaseCommon:
             CommunityData(community),
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *[ObjectType(ObjectIdentity(Oids(oid).value)) for oid in oids]
+            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
 
         # logging.debug(
@@ -842,7 +853,7 @@ class BaseUG405(BaseCommon):
             result = True if val else False
         else:
             raise TypeError
-
+        logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
         if result:
             return self.convert_scn(val)
 
@@ -899,7 +910,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcType2OperationModeTimeout
         """
 
-        oids = [ObjectType(ObjectIdentity(self.utcReplySiteID))]
+        oids = [ObjectType(ObjectIdentity(Oids.utcReplySiteID))]
         return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
@@ -1537,6 +1548,15 @@ class PotokP(BaseUG405):
 
     # Ключи oid UG405 Potok
 
+    def __init__(self, ip_adress, host_id=None, scn=None):
+        super().__init__(ip_adress, scn, host_id)
+        self.set_controller_type()
+        print(f'scn: {scn}')
+
+    # super().__init__(ip_adress, host_id, scn)
+        # self.set_controller_type()
+        # print(f'scn: {scn}')
+
     @staticmethod
     def make_val_stages_for_get_stage_UG405_potok(option):
         """ В зависимости от опции функция формирует словарь с номером и значением фазы
@@ -1655,6 +1675,8 @@ class PotokP(BaseUG405):
         (utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, val_stage, hasDetErrors,
          localAdaptiv, *rest) = [data[1].prettyPrint() for data in varBinds]
 
+        logger.warning(f'val_stage: {val_stage}')
+
         mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
 
         # utcType2OperationMode = str(varBinds[0])
@@ -1685,12 +1707,30 @@ class PotokP(BaseUG405):
         self.type_request = EntityJsonResponce.TYPE_GET_STATE
         self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_P_BODY.value
         logger.debug(f'перед await get_current_mode')
+
+        # oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
+        #         ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
+        #         ]
+        #
+
         oids = [
-            Oids.swarcoUTCStatusEquipment,
-            Oids.potokUTCStatusMode,
-            Oids.swarcoUTCTrafftechPhaseStatus,
-            Oids.swarcoUTCDetectorQty,
-            Oids.swarcoUTCTrafftechPlanCurrent,
+            Oids.utcType2OperationMode,
+            Oids.utcReplyCF,
+            Oids.utcReplyFR,
+            Oids.potok_utcReplyDarkStatus,
+            Oids.utcReplyMC,
+            Oids.potok_utcReplyPlanStatus,
+            Oids.utcReplyGn,
+            Oids.utcReplyDF,
+            Oids.potok_utcReplyLocalAdaptiv,
+
         ]
         return await self.get_request_base(self.ip_adress,
                                            self.community,
