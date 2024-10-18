@@ -1,7 +1,11 @@
 """" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
 
 import os
+from typing import Any, Generator
+
 from dotenv import load_dotenv
+
+from collections.abc import Iterable, Callable
 
 import itertools
 import re
@@ -10,7 +14,7 @@ import math
 from datetime import datetime
 import logging
 
-from enum import Enum
+from enum import Enum, auto
 import asyncio
 import paramiko
 import aiohttp
@@ -44,7 +48,7 @@ async def get_stage(ip_adress, community, oids):
     return varBinds
 
 
-class AvailableControllersAndCommands(Enum):
+class AvailableControllers(Enum):
     """ Доступные типы контроллера и команд"""
     SWARCO = 'Swarco'
     POTOK_P = 'Поток (P)'
@@ -64,6 +68,10 @@ class EntityJsonResponce(Enum):
     SET_MAN_INPUTS_WEB = 'set_inputs'
     SET_USER_PARAMETERS_WEB = 'set_user_parameters'
 
+    TYPE_GET_STATE = ''
+    TYPE_SNMP_REQUEST_SET = 'set_snmp_values'
+    TYPE_SNMP_REQUEST_GET = 'get_snmp_values'
+    TYPE_SNMP_REQUEST_GET_STATE = 'get_state_on_snmp'
     TYPE_WEB_REQUEST_SET = 'set_web_parameters'
     TYPE_WEB_REQUEST_GET = 'get_web_parameters'
 
@@ -80,6 +88,7 @@ class EntityJsonResponce(Enum):
 
     NUM_HOST = 'host_id'
     NUM_DET_LOGICS = 'num_detLogics'
+    NUM_DETECTORS = 'num_detectors'
     CURRENT_PLAN = 'current_plan'
     CURRENT_PARAM_PLAN = 'current_parameter_plan'
     CURRENT_TIME = 'current_time'
@@ -88,6 +97,122 @@ class EntityJsonResponce(Enum):
     CURRENT_STATE = 'current_state'
     CURRENT_MODE = 'current_mode'
     CURRENT_STAGE = 'current_stage'
+
+
+class JsonBody(Enum):
+    # BASE_JSON_BODY = (
+    #     EntityJsonResponce.REQUEST_ERRORS.value,
+    #     EntityJsonResponce.TYPE_CONTROLLER.value,
+    #     EntityJsonResponce.NUM_HOST.value,
+    # )
+
+    BASE_JSON_BODY = (
+        EntityJsonResponce.TYPE_CONTROLLER.value,
+        EntityJsonResponce.NUM_HOST.value,
+    )
+
+    JSON_SET_BODY = (
+        EntityJsonResponce.RESULT.value,
+        EntityJsonResponce.TYPE_COMMAND.value,
+        EntityJsonResponce.VALUE.value
+    )
+
+    JSON_GET_STATE_SWARCO_BODY = (
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.NUM_DET_LOGICS.value,
+    )
+
+    JSON_GET_STATE_POTOK_S_BODY = (
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.NUM_DETECTORS.value,
+    )
+
+    JSON_GET_STATE_POTOK_P_BODY = (
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.CURRENT_DET_ERRORS.value,
+    )
+
+    JSON_GET_STATE_PEEK_BODY = (
+        EntityJsonResponce.CURRENT_MODE.value,
+        EntityJsonResponce.CURRENT_STAGE.value,
+        EntityJsonResponce.CURRENT_PLAN.value,
+        EntityJsonResponce.CURRENT_PARAM_PLAN.value,
+        EntityJsonResponce.CURRENT_TIME.value,
+        EntityJsonResponce.CURRENT_ERRORS.value,
+        EntityJsonResponce.CURRENT_STATE.value
+    )
+
+
+class Oids(Enum):
+
+    """" STCIP """
+    # Command
+    swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
+    swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
+    swarcoUTCCommandFlash = '1.3.6.1.4.1.1618.3.2.2.1.1.0'
+    swarcoUTCTrafftechPlanCommand = '1.3.6.1.4.1.1618.3.7.2.2.1.0'
+    # Status
+    swarcoUTCStatusEquipment = '1.3.6.1.4.1.1618.3.6.2.1.2.0'
+    swarcoUTCTrafftechPhaseStatus = '1.3.6.1.4.1.1618.3.7.2.11.2.0'
+    swarcoUTCTrafftechPlanCurrent = '1.3.6.1.4.1.1618.3.7.2.1.2.0'
+    swarcoUTCTrafftechPlanSource = '1.3.6.1.4.1.1618.3.7.2.1.3.0'
+    swarcoSoftIOStatus = '1.3.6.1.4.1.1618.5.1.1.1.1.0'
+    swarcoUTCDetectorQty = '1.3.6.1.4.1.1618.3.3.2.2.2.0'
+    swarcoUTCSignalGroupState = '1.3.6.1.4.1.1618.3.5.2.1.6.0'
+    swarcoUTCSignalGroupOffsetTime = '1.3.6.1.4.1.1618.3.5.2.1.3.0'
+    # Command(Spec PotokS)
+    potokUTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
+    potokUTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
+    potokUTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
+    potokUTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
+    # Status(Spec PotokS)
+    potokUTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
+
+    """" UG405 """
+    # -- Control Bits --#
+    utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
+    utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
+    utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
+    utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
+    # -- Reply Bits --#
+    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
+    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
+    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
+    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
+    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
+    utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
+    utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
+    utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
+    utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
+    utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
+    utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
+    utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
+    utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
+    # -- Control Bits --#(Spec PotokP)
+    potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    # -- Reply Bits --#(Spec PotokP)
+    potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
+    potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+
+    scn_required_oids = {
+        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potok_utcReplyPlanStatus,
+        potok_utcReplyPlanSource, potok_utcReplyPlanSource, potok_utcReplyDarkStatus, potok_utcReplyLocalAdaptiv,
+        potok_utcReplyHardwareErr, potok_utcReplySoftwareErr, potok_utcReplyElectricalCircuitErr,
+        utcReplyMC, utcReplyCF
+    }
 
 
 class BaseCommon:
@@ -116,10 +241,73 @@ class BaseCommon:
         'CONTROL': 'Управление'
     }
 
-    async def get_request(self, ip_adress: str, community: str, oids: list | tuple,
-                          timeout: int = 0, retries: int = 0) -> list | Exception:
+    type_request: EntityJsonResponce | None
+    controller_type: str | None
+    json_body_second_part: Iterable | None
+    parse_varBinds_get_state: Callable
+
+    def __init__(self, ip_adress, host_id=None):
+        self.ip_adress = ip_adress
+        self.host_id = host_id
+        self.json_body_second_part = None
+        self.json = None
+        self.type_request = None
+
+    def checking_the_need_for_scn(self, oids: list | tuple) -> list | tuple:
+        print(f'Ooidse {oids}')
+        for i, oid in enumerate(oids):
+            print(f'Oids.scn_required_oids.value {Oids.scn_required_oids.value}')
+            if oid.value in Oids.scn_required_oids.value:
+                print(f'oid.value {oid.value}')
+                oids[i] = oid.value + self.scn
+            else:
+                oids[i] = oid.value
+        logger.debug(f'self.scn: {self.scn}')
+        logger.debug(f'oids after: {oids}')
+        return oids
+
+
+    def set_controller_type(self) -> None:
+        """ Метод устанавливает тип контроллера """
+
+        if isinstance(self, (SwarcoSTCIP, SwarcoSSH)):
+            self.controller_type = AvailableControllers.SWARCO.value
+        elif isinstance(self, PotokP):
+            self.controller_type = AvailableControllers.POTOK_P.value
+        elif isinstance(self, PotokS):
+            self.controller_type = AvailableControllers.POTOK_S.value
+        elif isinstance(self, (PeekUG405, PeekWeb)):
+            self.controller_type = AvailableControllers.PEEK.value
+        else:
+            self.controller_type = None
+
+    def create_json(self, errorIndication, varBinds, **kwargs):
+        self.json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
+        logger.debug(f'errorIndication: {errorIndication}')
+        errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
+        self.json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
+        if errorIndication:
+            return {self.ip_adress: self.json}
+
+        if self.type_request == EntityJsonResponce.TYPE_GET_STATE:
+            self.json |= {k: v for k, v in zip(self.json_body_second_part, self.parse_varBinds_get_state(varBinds))}
+            logger.debug(f'self.json.update: {self.json}')
+        else:
+            self.json |= {oid: val for oid, val in self.parse_varBinds_common(varBinds)}
+
+        return {self.ip_adress: self.json}
+
+    async def get_request_archive(self,
+                                  ip_adress: str,
+                                  community: str,
+                                  oids: list | tuple,
+                                  json_responce: bool = False,
+                                  timeout: int = 0,
+                                  retries: int = 0):
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
+        :param type_controller:
+        :param json_responce:
         :arg ip_adress: ip хоста
         :arg community: коммьюнити хоста
         :arg oids: List или Tuple оидов
@@ -138,30 +326,71 @@ class BaseCommon:
             *oids
         )
 
-        logging.debug(
-            f'errorIndication: {errorIndication.__str__()}\n'
-            f'errorStatus: {errorStatus}\n'
-            f'errorIndex: {errorIndex}\n'
-            f'varBinds: {varBinds}\n'
-        )
-        print(f'errorIndication .__str__: {errorIndication.__str__()}')
-        print(f'errorIndication: {errorIndication}')
-        print(f'errorIndication type : {type(errorIndication)}')
-        print(f'errorStatus: {errorStatus}')
-        print(f'errorIndex: {errorIndex}')
-        print(f'varBinds: {varBinds}')
+        # logging.debug(
+        #     f'errorIndication: {errorIndication.__str__()}\n'
+        #     f'errorStatus: {errorStatus}\n'
+        #     f'errorIndex: {errorIndex}\n'
+        #     f'varBinds: {varBinds}\n'
+        # )
+        # print(f'errorIndication .__str__: {errorIndication.__str__()}')
+        # print(f'errorIndication: {errorIndication}')
+        # print(f'errorIndication type : {type(errorIndication)}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
 
-        if not errorIndication and varBinds:
-            if varBinds:
-                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-                return [data[1].prettyPrint() for data in varBinds]
-            else:
-                raise ValueError
-            # print(f'(len(varBinds): {len(varBinds)}')
-            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-            # res = [data[1].prettyPrint() for data in varBinds]
-            # print(f'res -> {res}')
-        return errorIndication
+        return errorIndication, varBinds
+
+    async def get_request_base(self,
+                               ip_adress: str,
+                               community: str,
+                               oids: list | tuple,
+                               json_responce: bool = False,
+                               timeout: int = 0,
+                               retries: int = 0):
+        """
+        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
+        :param type_controller:
+        :param json_responce:
+        :arg ip_adress: ip хоста
+        :arg community: коммьюнити хоста
+        :arg oids: List или Tuple оидов
+        :arg timeout: таймаут запроса, в секундах
+        :arg retries: количество попыток запроса
+        :return: list при успешном запросе, иначе errorIndication
+        """
+        # print(f'get_request ')
+        # print(f'oids : {oids} ')
+        logger.debug(f'oids before: {oids}')
+        if isinstance(self, (PotokP, PeekUG405)):
+            oids = self.checking_the_need_for_scn(oids)
+
+
+        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
+        )
+
+        # logging.debug(
+        #     f'errorIndication: {errorIndication.__str__()}\n'
+        #     f'errorStatus: {errorStatus}\n'
+        #     f'errorIndex: {errorIndex}\n'
+        #     f'varBinds: {varBinds}\n'
+        # )
+        # print(f'errorIndication .__str__: {errorIndication.__str__()}')
+        # print(f'errorIndication: {errorIndication}')
+        # print(f'errorIndication type : {type(errorIndication)}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
+
+        return errorIndication, varBinds
+
+    async def get_request(self, *args, **kwargs):
+        pass
 
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
@@ -212,6 +441,7 @@ class BaseCommon:
         if not errorIndication and varBinds:
             if varBinds:
                 # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+
                 return [data[1].prettyPrint() for data in varBinds]
             else:
                 return self.error_no_varBinds
@@ -221,53 +451,108 @@ class BaseCommon:
             # print(f'res -> {res}')
         return errorIndication.__str__()
 
+    # @staticmethod
+    # def make_json_responce(ip_adress: str,
+    #                        varBinds: tuple | list,
+    #                        host,
+    #                        get_state_request: bool = False,
+    #                        **kwargs):
+    #
+    #     if isinstance(host, SwarcoSTCIP):
+    #         json_entity = host.parse_responce(varBinds, responce_for_get_state=get_state_request)
+    #
+    #     elif isinstance(host, PeekWeb):
+    #         json_entity = JsonBody.BASE_JSON_BODY.value + JsonBody.JSON_GET_MODE_PEEK_BODY.value
+    #         parsed_varBinds = varBinds
+    #
+    #     data_body = {k: v for k, v in json_entity}
+    #     logger.debug(f'!!!data body: {data_body}')
+    #     return
+    #
+    #     # logger.debug(f'kwargs: {kwargs}')
+    #     data_body = {k: v for k, v in zip(json_entity, parsed_varBinds)}
+    #     # logger.debug(f'data_body: {data_body}')
+    #     if kwargs:
+    #         for k, v in kwargs.items():
+    #             data_body[k] = v
+    #
+    #     data_responce = {
+    #         ip_adress: data_body
+    #     }
+    #
+    #     logger.debug(f'data_responce: {data_responce}')
+    #     return data_responce
     @staticmethod
-    def make_json_responce(ip_adress: str,
-                           json_entity: tuple | list,
-                           json_varBinds: tuple | list,
-                           **kwargs):
+    def parse_varBinds_common(varBinds: list) -> Generator:
 
-        # logger.debug(f'kwargs: {kwargs}')
-        data_body = {k: v for k, v in zip(json_entity, json_varBinds)}
-        # logger.debug(f'data_body: {data_body}')
-        if kwargs:
-            for k, v in kwargs.items():
-                data_body[k] = v
+        return ((f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]', val.prettyPrint())
+                for oid, val in varBinds)
 
-        data_responce = {
-            ip_adress: data_body
-        }
+        # logger.debug(f'json_part2: {json_part2}')
 
-        logger.debug(f'data_responce: {data_responce}')
-        return data_responce
+    # def parse_responce(self, errorIndication, varBinds, responce_for_get_state, controller_type):
+    #
+    #
+    #     if responce_for_get_state:
+    #         # stage = plan = num_logics = mode = None
+    #         # if error_request is None:
+    #         #     varBinds = [data[1].prettyPrint() for data in varBinds]
+    #         #     equipment_status = varBinds[0]
+    #         #     stage = self.get_val_stage.get(varBinds[1])
+    #         #     plan = varBinds[2]
+    #         #     num_logics = varBinds[3]
+    #         #     softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+    #         #     mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+    #         #
+    #         # get_mode_data = (
+    #         #     mode,
+    #         #     stage,
+    #         #     int(plan) if error_request is None and plan.isdigit() else plan,
+    #         #     int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
+    #         # )
+    #         keys_json, values_json = self.make_get_mode_data_for_json(varBinds,
+    #                                                                         common_data)
+    #     else:
+    #         keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value,
+    #                                     (name_oid for name_oid, _ in varBinds))
+    #         values_json = itertools.chain(common_data, (val for _, val in varBinds))
+    #     return zip(keys_json, values_json)
+    #     return BaseCommon.make_json_responce(self.ip_adress,
+    #                                          json_entity=JsonBody.BASE_JSON_BODY.value + self.JSON_GET_STATE_BODY,
+    #                                          varBinds=processed_data,
+    #                                          )
 
 
 class BaseSTCIP(BaseCommon):
-    community = os.getenv('communitySTCIP')
+    community_write = os.getenv('communitySTCIP_r')
+    community_read = os.getenv('communitySTCIP_w')
 
-    swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
-    swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
-    swarcoUTCCommandFlash = '1.3.6.1.4.1.1618.3.2.2.1.1.0'
-    swarcoUTCTrafftechPlanCommand = '1.3.6.1.4.1.1618.3.7.2.2.1.0'
-    swarcoUTCStatusEquipment = '1.3.6.1.4.1.1618.3.6.2.1.2.0'
-    swarcoUTCTrafftechPhaseStatus = '1.3.6.1.4.1.1618.3.7.2.11.2.0'
-    swarcoUTCTrafftechPlanCurrent = '1.3.6.1.4.1.1618.3.7.2.1.2.0'
-    swarcoUTCTrafftechPlanSource = '.1.3.6.1.4.1.1618.3.7.2.1.3'
-    swarcoSoftIOStatus = '1.3.6.1.4.1.1618.5.1.1.1.1.0'
-    swarcoUTCDetectorQty = '1.3.6.1.4.1.1618.3.3.2.2.2.0'
-    swarcoUTCSignalGroupState = '.1.3.6.1.4.1.1618.3.5.2.1.6.0'
-    swarcoUTCSignalGroupOffsetTime = '.1.3.6.1.4.1.1618.3.5.2.1.3.0'
+    # swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
+    # swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
+    # swarcoUTCCommandFlash = '1.3.6.1.4.1.1618.3.2.2.1.1.0'
+    # swarcoUTCTrafftechPlanCommand = '1.3.6.1.4.1.1618.3.7.2.2.1.0'
+    # swarcoUTCStatusEquipment = '1.3.6.1.4.1.1618.3.6.2.1.2.0'
+    # swarcoUTCTrafftechPhaseStatus = '1.3.6.1.4.1.1618.3.7.2.11.2.0'
+    # swarcoUTCTrafftechPlanCurrent = '1.3.6.1.4.1.1618.3.7.2.1.2.0'
+    # swarcoUTCTrafftechPlanSource = '.1.3.6.1.4.1.1618.3.7.2.1.3.0'
+    # swarcoSoftIOStatus = '1.3.6.1.4.1.1618.5.1.1.1.1.0'
+    # swarcoUTCDetectorQty = '1.3.6.1.4.1.1618.3.3.2.2.2.0'
+    # swarcoUTCSignalGroupState = '.1.3.6.1.4.1.1618.3.5.2.1.6.0'
+    # swarcoUTCSignalGroupOffsetTime = '.1.3.6.1.4.1.1618.3.5.2.1.3.0'
 
     converted_values_flash_dark = {
         '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
         '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
     }
 
-    def __init__(self, ip_adress, host_id=None, ):
-        self.host_id = host_id
-        self.ip_adress = ip_adress
-
     """ GET REQUEST """
+
+    async def get_request(self, oids: tuple | list) -> tuple:
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=oids
+        )
 
     async def get_swarcoUTCStatusEquipment(self, timeout=0, retries=0):
         """
@@ -285,8 +570,9 @@ class BaseSTCIP(BaseCommon):
         :return: значение swarcoUTCStatusEquipment
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment))]
-        result, val = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCStatusEquipment.value))]
+        result, val = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                                  retries=retries)
         print(f'result = {result}, val = {val}')
         return result, val
 
@@ -309,8 +595,8 @@ class BaseSTCIP(BaseCommon):
                  Result False -> при выполении get запроса была ошибка.
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
@@ -329,8 +615,8 @@ class BaseSTCIP(BaseCommon):
         :return: значение swarcoUTCTrafftechPhaseStatus
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseStatus.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanCommand(self, timeout=0, retries=0):
         """
@@ -340,8 +626,8 @@ class BaseSTCIP(BaseCommon):
         :return: значение команды текущего плана swarcoUTCTrafftechPlanCommand
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCommand.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanCurrent(self, timeout=0, retries=0):
         """
@@ -350,8 +636,8 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение номер текущего плана swarcoUTCTrafftechPlanCurrent
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCurrent.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCTrafftechPlanSource(self, timeout=0, retries=0):
         """
@@ -372,8 +658,8 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение источника текущего плана swarcoUTCTrafftechPlanSource
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanSource))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanSource.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoSoftIOStatus(self, num_inp=None, timeout=0, retries=0):
         """
@@ -384,8 +670,9 @@ class BaseSTCIP(BaseCommon):
         :return: значение номер текущего плана swarcoUTCTrafftechPlanCurrent
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoSoftIOStatus))]
-        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value))]
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         if num_inp is not None and len(result[0]) > 254 and num_inp.isdigit() and int(num_inp) in range(1, 256):
             return [result[0][int(num_inp) - 1]]
         return result
@@ -409,8 +696,8 @@ class BaseSTCIP(BaseCommon):
         :return: количество дет логик swarcoUTCDetectorQty
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCDetectorQty.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_swarcoUTCSignalGroupState(self, timeout=0, retries=0):
         """
@@ -419,8 +706,8 @@ class BaseSTCIP(BaseCommon):
         :param retries: количество попыток подключения
         :return: значение текущих состояний групп в hex формате в виде строки swarcoUTCSignalGroupState
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCSignalGroupState))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCSignalGroupState.value))]
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
@@ -430,36 +717,36 @@ class BaseSTCIP(BaseCommon):
         :param value:  1-16 обычный план, 17 -> ЖМ, 18 -> ОС, 100 -> КК,
         """
 
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCommand), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCommand.value), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCTrafftechPhaseCommand(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает  фазу.
         :param value:  Значение фазы (фаза 1 -> value=2, фаза 2 -> value=3 и т.д)
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(value))]
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCCommandFlash(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает ЖМ(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ЖМ
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCCommandFlash), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCCommandFlash.value), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCCommandDark(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
         """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCCommandDark), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCCommandDark.value), Integer32(value))]
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
 
 class BaseUG405(BaseCommon):
-    community = os.getenv('communityUG405')
+    community = os.getenv('communityUG405_r')
 
     # Ключи, прописанные вручную, рабочая версия
     # set_stage_UG405_peek_values = {'1': '01', '2': '02', '3': '04', '4': '08',
@@ -468,23 +755,25 @@ class BaseUG405(BaseCommon):
     #                                '13': '0010', '14': '0020', '15': '0040', '16': '0080'}
 
     # oid для UG405 Peek
-    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
-    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
-    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
-    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
-    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
-    utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
-    utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
-    utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
-    utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
-    utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
-    utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
-    utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
-    utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
-    utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
-    utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
-    utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
-    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    # utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
+    # utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
+    # utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
+    # utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
+    # utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
+    # utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
+    # utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
+    # utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
+    # utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
+    # utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
+    # utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
+    # utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
+    # utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
+    # utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
+    # utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
+    # utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    # utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    # utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
+    # utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
 
     # oid для UG405 Peek
     # oids_UG405_PEEK = {peek_utcReplyGn: '.1.3.6.1.4.1.13267.3.2.5.1.1.3',
@@ -521,31 +810,53 @@ class BaseUG405(BaseCommon):
         return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
     def __init__(self, ip_adress, scn=None, host_id=None):
+        super().__init__(ip_adress, host_id)
         self.ip_adress = ip_adress
-        self.scn = asyncio.run(self.get_scn(self)) if scn is None else BaseUG405.convert_scn(scn)
+        self.scn = asyncio.run(self.get_scn()) if scn is None else self.convert_scn(scn)
         self.host_id = host_id
 
     """ GET REQUEST """
 
-    async def get_scn(self, obj):
+    # async def get_scn(self, obj):
+    #
+    #     if isinstance(obj, PeekUG405):
+    #         result, val = await self.getNext_request(self.ip_adress,
+    #                                                  self.community,
+    #                                                  [ObjectType(
+    #                                                   ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+    #                                                  )
+    #     elif isinstance(obj, PotokP):
+    #         logging.debug(f'get_scn: {obj}')
+    #         r = await self.get_utcReplySiteID()
+    #         logging.debug(f'res: {r}')
+    #         val = r[0]
+    #         result = True if val else False
+    #     else:
+    #         raise TypeError
+    #
+    #     if result:
+    #         return BaseUG405.convert_scn(val)
 
-        if isinstance(obj, PeekUG405):
+    async def get_scn(self):
+
+        if isinstance(self, PeekUG405):
             result, val = await self.getNext_request(self.ip_adress,
                                                      self.community,
                                                      [ObjectType(
-                                                         ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                      ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
-        elif isinstance(obj, PotokP):
-            logging.debug(f'get_scn: {obj}')
+        elif isinstance(self, PotokP):
+            logging.debug(f'get_scn: {self}')
             r = await self.get_utcReplySiteID()
             logging.debug(f'res: {r}')
             val = r[0]
             result = True if val else False
         else:
             raise TypeError
-
+        logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
         if result:
-            return BaseUG405.convert_scn(val)
+            return self.convert_scn(val)
+
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -555,7 +866,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcType2OperationModeTimeout
         """
         oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
@@ -575,10 +886,10 @@ class BaseUG405(BaseCommon):
             ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
         ]
 
-        result, val = await self.get_request(self.ip_adress,
-                                             self.community,
-                                             oids
-                                             )
+        result, val = await self.get_request_base(self.ip_adress,
+                                                  self.community,
+                                                  oids
+                                                  )
 
     async def get_utcType2VendorID(self, timeout=0, retries=0):
         """
@@ -589,7 +900,7 @@ class BaseUG405(BaseCommon):
         """
 
         oids = [ObjectType(ObjectIdentity(self.utcType2VendorID))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplySiteID(self, timeout=0, retries=0):
         """
@@ -599,8 +910,8 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcType2OperationModeTimeout
         """
 
-        oids = [ObjectType(ObjectIdentity(self.utcReplySiteID))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        oids = [ObjectType(ObjectIdentity(Oids.utcReplySiteID))]
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcType2OperationMode(self, timeout=0, retries=0):
         """
@@ -610,7 +921,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcType2OperationMode
         """
         oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyGn(self, timeout=0, retries=0):
         """
@@ -620,7 +931,7 @@ class BaseUG405(BaseCommon):
         :return значение фазы utcReplyGn в стоке hex формата
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlTO(self, timeout=0, retries=0):
         """
@@ -630,7 +941,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcControlTO
         """
         oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlLO(self, timeout=0, retries=0):
         """
@@ -640,7 +951,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcControlLO
         """
         oids = [ObjectType(ObjectIdentity(self.utcControlLO + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlFF(self, timeout=0, retries=0):
         """
@@ -650,7 +961,7 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcControlFF
         """
         oids = [ObjectType(ObjectIdentity(self.utcControlFF + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcControlFn(self, timeout=0, retries=0):
         """
@@ -660,7 +971,7 @@ class BaseUG405(BaseCommon):
         :return tuple: Возвращает текущее значение utcControlFn в виде "val: stage"
         """
         oids = [ObjectType(ObjectIdentity(self.utcControlFn + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
@@ -671,7 +982,7 @@ class BaseUG405(BaseCommon):
         :return tuple: Возвращает значение utcReplyFR (1 или 0)
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyDF(self, timeout=0, retries=0):
         """
@@ -682,7 +993,7 @@ class BaseUG405(BaseCommon):
         :return tuple: Возвращает значение utcReplyDF (1 или 0)
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyDF + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyMC(self, timeout=0, retries=0):
         """
@@ -694,13 +1005,28 @@ class BaseUG405(BaseCommon):
         :return Текущее значение utcReplyMC
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyMC + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_utcReplyVSn(self, timeout=0, retries=0):
         oids = [ObjectType(ObjectIdentity(self.utcReplyVSn + self.scn))]
         # print('get_utcReplyVSn')
         # print(f'scn: {self.scn}')
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def get_utcType2OutstationTime(self, timeout=0, retries=0):
+        oids = [ObjectType(ObjectIdentity(self.utcType2OutstationTime))]
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def get_utcType2ScootDetectorCount(self, timeout=0, retries=0):
+        oids = [ObjectType(ObjectIdentity(self.utcType2ScootDetectorCount))]
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+
+    async def get_data_scoot(self, timeout=0, retries=0):
+        oids = [ObjectType(ObjectIdentity(self.utcType2ScootDetectorCount)),
+                ObjectType(ObjectIdentity(self.utcType2OutstationTime)),
+                ObjectType(ObjectIdentity(self.utcReplyVSn + self.scn))
+                ]
+        return await self.get_request_archive(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     """ archive methods(not usage) """
 
@@ -813,15 +1139,17 @@ class SwarcoSTCIP(BaseSTCIP):
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
 
-    json_get_state = (
-        EntityJsonResponce.REQUEST_ERRORS.value,
-        EntityJsonResponce.TYPE_CONTROLLER.value,
-        EntityJsonResponce.NUM_HOST.value,
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.NUM_DET_LOGICS.value,
-    )
+    # JSON_GET_STATE_BODY = (
+    #     EntityJsonResponce.CURRENT_MODE.value,
+    #     EntityJsonResponce.CURRENT_STAGE.value,
+    #     EntityJsonResponce.CURRENT_PLAN.value,
+    #     EntityJsonResponce.NUM_DET_LOGICS.value,
+    # )
+
+    def __init__(self, ip_adress, host_id=None):
+        super().__init__(ip_adress, host_id)
+        self.set_controller_type()
+        self._get_current_state = False
 
     """ GET REQUEST """
 
@@ -856,51 +1184,66 @@ class SwarcoSTCIP(BaseSTCIP):
             val_mode = '--'
         return self.statusMode.get(val_mode)
 
-    def parse_responce(self, varBinds):
+    def parse_varBinds_get_state(self, varBinds):
 
-        if type(varBinds) == list:
-            error_request = None
-        elif isinstance(varBinds, Exception):
-            error_request = varBinds.__str__()
-        else:
-            raise ValueError
+        equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
+        softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
+        mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
 
-        stage = plan = num_logics = mode = None
-        if error_request is None:
-            equipment_status = varBinds[0]
-            stage = self.get_val_stage.get(varBinds[1])
-            plan = varBinds[2]
-            num_logics = varBinds[3]
-            softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
-            mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+        # varBinds = [data[1].prettyPrint() for data in varBinds]
+        # equipment_status = varBinds[0]
+        # stage = self.get_val_stage.get(varBinds[1])
+        # plan = varBinds[2]
+        # num_logics = varBinds[3]
+        # softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+        # mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
 
-        processed_data = (
-            error_request,
-            AvailableControllersAndCommands.SWARCO.value,
-            self.host_id,
+        # self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
+
+        get_mode_data = (
             mode,
-            stage,
-            int(plan) if error_request is None and plan.isdigit() else plan,
-            int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
+            self.get_val_stage.get(stage),
+            int(plan) if plan.isdigit() else plan,
+            int(num_logics) if num_logics.isdigit() else num_logics,
         )
+        return get_mode_data
 
-        return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.json_get_state,
-                                             json_varBinds=processed_data,
-                                             )
+        # get_mode_data = (
+        #     mode,
+        #     stage,
+        #     int(plan) if plan.isdigit() else plan,
+        #     int(num_logics) if num_logics.isdigit() else num_logics,
+        # )
+        # keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value, JsonBody.JSON_GET_MODE_SWARCO_BODY.value)
+        # values_json = itertools.chain(common_data, get_mode_data)
+        # return keys_json, values_json
 
-    async def get_current_state(self, timeout=0, retries=0) -> dict:
-
+    async def get_current_state(self, timeout=0, retries=0) -> tuple:
+        """
+        Метод запроса значений необходимых оидов для получения текущего состояния ДК
+        :param timeout:
+        :return tuple: (errorIndication, varBinds)
+        """
+        self.type_request = EntityJsonResponce.TYPE_GET_STATE
+        self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
         logger.debug(f'перед await get_current_mode')
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
-                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
-                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
-                ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty)),
-                ObjectType(ObjectIdentity(self.swarcoSoftIOStatus)),
-                ]
-        responce = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        json_responce = self.parse_responce(responce)
-        return json_responce
+        # oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCStatusEquipment.value)),
+        #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseStatus.value)),
+        #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCurrent.value)),
+        #         ObjectType(ObjectIdentity(Oids.swarcoUTCDetectorQty.value)),
+        #         ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value)),
+        #         ]
+        oids = [
+            Oids.swarcoUTCStatusEquipment,
+            Oids.swarcoUTCTrafftechPhaseStatus,
+            Oids.swarcoUTCTrafftechPlanCurrent,
+            Oids.swarcoUTCDetectorQty,
+            Oids.swarcoSoftIOStatus,
+        ]
+        return await self.get_request_base(self.ip_adress,
+                                           self.community_read,
+                                           oids,
+                                           timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -910,7 +1253,8 @@ class SwarcoSTCIP(BaseSTCIP):
         :return: номер фазы
         """
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         return [self.get_val_stage.get(result[0])]
 
     """ SET REQUEST """
@@ -925,7 +1269,7 @@ class SwarcoSTCIP(BaseSTCIP):
         oids = [
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
         ]
-        result = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
         return [str(self.get_val_stage.get(result[0]))]
         # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
@@ -969,26 +1313,73 @@ class PotokS(BaseSTCIP):
         str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))
     }
 
-    # Command
-    potokUTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
-    potokUTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
-    potokUTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
-    potokUTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
-    # Status
-    potokUTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
+    def __init__(self, ip_adress, host_id=None):
+        super().__init__(ip_adress, host_id)
+        self.set_controller_type()
 
     """ GET REQUEST """
 
-    async def get_current_mode(self, timeout=0, retries=0):
-        logger.debug('перед await get_current_mode')
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCStatusEquipment)),
-                ObjectType(ObjectIdentity(self.potokUTCStatusMode)),
-                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus)),
-                ObjectType(ObjectIdentity(self.swarcoUTCDetectorQty)),
-                ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPlanCurrent)),
-                ]
-        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return self, result
+    def _mode_define(self, equipment_status: str, plan: str, status_mode: str) -> str:
+        """ Определяет текщий ружим ДК.
+        :arg equipment_status (str): Текущий режим работы контроллера:
+                                     workingProperly(1),
+                                     powerUp(2),
+                                     dark(3),
+                                     flash(4),
+                                     partialFlash(5),
+                                     allRed(6)
+
+        :arg plan (str): Текущий номер плана
+        :arg softstat180_181 (str): Текущее состояние входов 180 и 181
+        :arg num_logics (str): Количество детекторных логик
+
+        :return str: Возращает текущий режим ДК(Фикс/Адаптива/КУ и т.д)
+        """
+
+        if equipment_status != '1':
+            val_mode = equipment_status
+        elif status_mode == '11' and plan == '16':
+            val_mode = status_mode
+        elif status_mode != '11' and status_mode in ('8', '10', '12'):
+            val_mode = status_mode
+        else:
+            val_mode = '--'
+        return self.statusMode.get(val_mode)
+
+    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
+
+        equipment_status, status_mode, stage, det_count, plan, *rest = [data[1].prettyPrint() for data in varBinds]
+        mode = self._mode_define(equipment_status, plan, status_mode)
+
+        get_mode_data = (
+            mode,
+            self.get_val_stage.get(stage),
+            int(plan) if plan.isdigit() else plan,
+            int(det_count) if det_count.isdigit() else det_count,
+        )
+        return get_mode_data
+
+    async def get_current_state(self, timeout=0, retries=0) -> tuple:
+        """
+        Метод запроса значений необходимых оидов для получения текущего состояния ДК
+        :param retries:
+        :param timeout:
+        :return tuple: (errorIndication, varBinds)
+        """
+        self.type_request = EntityJsonResponce.TYPE_GET_STATE
+        self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_S_BODY.value
+        logger.debug(f'перед await get_current_mode')
+        oids = [
+            Oids.swarcoUTCStatusEquipment,
+            Oids.potokUTCStatusMode,
+            Oids.swarcoUTCTrafftechPhaseStatus,
+            Oids.swarcoUTCDetectorQty,
+            Oids.swarcoUTCTrafftechPlanCurrent,
+        ]
+        return await self.get_request_base(self.ip_adress,
+                                           self.community_read,
+                                           oids,
+                                           timeout=timeout, retries=retries)
 
     async def get_potokUTCStatusMode(self, timeout=0, retries=0):
         """
@@ -1003,7 +1394,7 @@ class PotokS(BaseSTCIP):
         :return Возвращает значение текущего статуса
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCStatusMode))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1014,7 +1405,8 @@ class PotokS(BaseSTCIP):
         """
 
         oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
+                                             retries=retries)
         return [self.get_val_stage.get(result[0])]
 
     async def get_swarcoUTCSetGetLocal(self, timeout=0, retries=0):
@@ -1025,7 +1417,7 @@ class PotokS(BaseSTCIP):
         :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCSetGetLocal))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def get_potokUTCprohibitionManualPanel(self, timeout=0, retries=0):
         """
@@ -1035,7 +1427,7 @@ class PotokS(BaseSTCIP):
         :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
@@ -1053,7 +1445,7 @@ class PotokS(BaseSTCIP):
         oids = [
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
         ]
-        result = await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
         return [str(self.get_val_stage.get(result[0]))]
 
     async def set_potokUTCCommandAllRed(self, value=0, timeout=0, retries=0):
@@ -1062,7 +1454,7 @@ class PotokS(BaseSTCIP):
         :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCCommandAllRed), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_potokUTCSetGetLocal(self, value=0, timeout=0, retries=0):
         """"
@@ -1070,7 +1462,7 @@ class PotokS(BaseSTCIP):
         :param value: 1 -> устанавливает Устанавливает локальный режим, 0 -> сбрасывает установленный локальный режим
         """
         oids = [ObjectType(ObjectIdentity(self.get_swarcoUTCSetGetLocal), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_potokUTCprohibitionManualPanel(self, value=0, timeout=0, retries=0):
         """
@@ -1079,7 +1471,7 @@ class PotokS(BaseSTCIP):
         :param retries: количество попыток подключения
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_allred(self, value=0, timeout=0, retries=0):
         """"
@@ -1111,7 +1503,7 @@ class PotokS(BaseSTCIP):
         :param value: 1 -> команда на перезапуск рабочей программы
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCCommandRestartProgramm), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
 
 class PotokP(BaseUG405):
@@ -1156,6 +1548,15 @@ class PotokP(BaseUG405):
 
     # Ключи oid UG405 Potok
 
+    def __init__(self, ip_adress, host_id=None, scn=None):
+        super().__init__(ip_adress, scn, host_id)
+        self.set_controller_type()
+        print(f'scn: {scn}')
+
+    # super().__init__(ip_adress, host_id, scn)
+        # self.set_controller_type()
+        # print(f'scn: {scn}')
+
     @staticmethod
     def make_val_stages_for_get_stage_UG405_potok(option):
         """ В зависимости от опции функция формирует словарь с номером и значением фазы
@@ -1198,21 +1599,22 @@ class PotokP(BaseUG405):
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
 
     # -- Control Bits --#
-    potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
-    # -- Reply Bits --#
-
-    potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
-    potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
-    potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
-    potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
-
-    potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
-    potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
-    potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+    # potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    # # -- Reply Bits --#
+    #
+    # potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
+    # potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    # potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    # potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    #
+    # potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    # potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    # potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
 
-    def convert_val_stage_to_num_stage(self, value):
+    @staticmethod
+    def convert_val_stage_to_num_stage(value):
         if value not in (' ', '@'):
             return int(math.log2(int(value, 16))) + 1
         elif value == ' ':
@@ -1221,6 +1623,172 @@ class PotokP(BaseUG405):
             return 7
         else:
             raise ValueError
+
+    def _mode_define(self, utcType2OperationMode: str, isFlash: str, isDark: str,
+                     isManual: str, plan: str, hasDetErrors: str, localAdaptiv: str) -> str:
+        """ Определяет текщий ружим ДК.
+        :arg equipment_status (str): Текущий режим работы контроллера:
+                                     workingProperly(1),
+                                     powerUp(2),
+                                     dark(3),
+                                     flash(4),
+                                     partialFlash(5),
+                                     allRed(6)
+
+        :arg plan (str): Текущий номер плана
+        :arg softstat180_181 (str): Текущее состояние входов 180 и 181
+        :arg num_logics (str): Количество детекторных логик
+
+        :return str: Возращает текущий режим ДК(Фикс/Адаптива/КУ и т.д)
+        """
+        # utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, stage, hasDetErrors,
+        # localAdaptiv
+
+        if isFlash.isdigit() and int(isFlash) in range(1, 5):
+            val_mode = '4'
+        elif isDark == '1':
+            val_mode = '3'
+        elif isManual == '1':
+            val_mode = '10'
+        elif utcType2OperationMode == '3' and plan == '0':
+            val_mode = '1'
+        elif localAdaptiv == '1' and hasDetErrors == '0' and plan != '0':
+            val_mode = '8'
+        elif (localAdaptiv == '0' or hasDetErrors == '1') and plan != '0':
+            val_mode = '12'
+        else:
+            val_mode = '--'
+        return self.statusMode.get(val_mode)
+
+        # if equipment_status != '1':
+        #     val_mode = equipment_status
+        # elif status_mode == '11' and plan == '16':
+        #     val_mode = status_mode
+        # elif status_mode != '11' and status_mode in ('8', '10', '12'):
+        #     val_mode = status_mode
+        # else:
+        #     val_mode = '--'
+        # return self.statusMode.get(val_mode)
+
+    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
+
+        (utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, val_stage, hasDetErrors,
+         localAdaptiv, *rest) = [data[1].prettyPrint() for data in varBinds]
+
+        logger.warning(f'val_stage: {val_stage}')
+
+        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
+
+        # utcType2OperationMode = str(varBinds[0])
+        # hasErrors = str(varBinds[1])
+        # isFlash = str(varBinds[2])
+        # isDark = str(varBinds[3])
+        # isManual = str(varBinds[4])
+        # plan = str(varBinds[5])
+        # stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+        # hasDetErrors = str(varBinds[7])
+        # localAdaptiv = str(varBinds[8])
+
+        get_mode_data = (
+            mode,
+            self.convert_val_stage_to_num_stage(val_stage),
+            int(plan) if plan.isdigit() else plan,
+            bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors,
+        )
+        return get_mode_data
+
+    async def get_current_state(self, timeout=0, retries=0) -> tuple:
+        """
+        Метод запроса значений необходимых оидов для получения текущего состояния ДК
+        :param retries:
+        :param timeout:
+        :return tuple: (errorIndication, varBinds)
+        """
+        self.type_request = EntityJsonResponce.TYPE_GET_STATE
+        self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_P_BODY.value
+        logger.debug(f'перед await get_current_mode')
+
+        # oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
+        #         ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
+        #         ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
+        #         ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
+        #         ]
+        #
+
+        oids = [
+            Oids.utcType2OperationMode,
+            Oids.utcReplyCF,
+            Oids.utcReplyFR,
+            Oids.potok_utcReplyDarkStatus,
+            Oids.utcReplyMC,
+            Oids.potok_utcReplyPlanStatus,
+            Oids.utcReplyGn,
+            Oids.utcReplyDF,
+            Oids.potok_utcReplyLocalAdaptiv,
+
+        ]
+        return await self.get_request_base(self.ip_adress,
+                                           self.community,
+                                           oids,
+                                           timeout=timeout, retries=retries)
+
+    # def foo(self):
+    #     utcType2OperationMode = str(varBinds[0])
+    #     hasErrors = str(varBinds[1])
+    #     isFlash = str(varBinds[2])
+    #     isDark = str(varBinds[3])
+    #     isManual = str(varBinds[4])
+    #     plan = str(varBinds[5])
+    #     stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+    #     hasDetErrors = str(varBinds[7])
+    #     localAdaptiv = str(varBinds[8])
+    #
+    #     data = {
+    #         'num_host': obj.host_id,
+    #         'scn': obj.scn,
+    #         'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
+    #         'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
+    #         'current_det_errors': bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors
+    #     }
+    #
+    #     if isFlash.isdigit() and int(isFlash) in range(1, 5):
+    #         data['current_mode'] = self.statusMode.get("4")
+    #         return data
+    #     if isDark == '1':
+    #         data['current_mode'] = self.statusMode.get("3")
+    #         return data
+    #     if isManual == '1':
+    #         data['current_mode'] = self.statusMode.get("10")
+    #         return data
+    #
+    #     if utcType2OperationMode == '3' and plan == '0':
+    #         mode = self.statusMode.get('11')
+    #     elif localAdaptiv == '1' and hasDetErrors == '0' and plan != '0':
+    #         mode = self.statusMode.get('8')
+    #     elif (localAdaptiv == '0' or hasDetErrors == '1') and plan != '0':
+    #         mode = self.statusMode.get('12')
+    #     else:
+    #         mode = self.statusMode.get("--")
+    #
+    #     logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
+    #
+    #     data.update(
+    #         {
+    #             'num_host': obj.host_id,
+    #             'scn': obj.scn,
+    #             'current_stage': stage,
+    #             'current_mode': mode,
+    #         }
+    #     )
+
+
+
+
 
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """
@@ -1231,7 +1799,7 @@ class PotokP(BaseUG405):
         :return tuple: Возвращает значение utcReplyFR (1 или 0)
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_current_mode(self, timeout=0, retries=0):
         """
@@ -1252,7 +1820,7 @@ class PotokP(BaseUG405):
                 ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
                 ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
                 ]
-        res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        res = await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         return self, res
 
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
@@ -1281,7 +1849,7 @@ class PotokP(BaseUG405):
         """
 
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
         #     CommunityData(self.community),
@@ -1303,7 +1871,7 @@ class PotokP(BaseUG405):
         :return Текущее значение utcReplyPlanSource
         """
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_potok_utcReplyElectricalCircuitErr(self, timeout=0, retries=0):
         """
@@ -1313,7 +1881,7 @@ class PotokP(BaseUG405):
         :return Текущее значение utcReplyElectricalCircuitErr
         """
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyElectricalCircuitErr + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_potok_utcReplyLocalAdaptiv(self, timeout=0, retries=0):
         """
@@ -1326,7 +1894,7 @@ class PotokP(BaseUG405):
         :return Текущее значение utcReplyLocalAdaptiv
         """
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def get_stage(self, timeout=0, retries=0):
         """
@@ -1336,7 +1904,7 @@ class PotokP(BaseUG405):
         :return Значение текущей фазы в десятичном виде
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
-        res = await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        res = await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         return [self.convert_val_stage_to_num_stage(res[0])]
 
     async def get_dark(self, timeout=0, retries=0):
@@ -1347,7 +1915,7 @@ class PotokP(BaseUG405):
         :return Текущее значение utcReplyDarkStatus
         """
         oids = [ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
         #     CommunityData(self.community),
@@ -1371,7 +1939,7 @@ class PotokP(BaseUG405):
         :return Текущее значение utcReplyFR
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
         # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
         #     SnmpEngine(),
         #     CommunityData(self.community),
@@ -2378,14 +2946,14 @@ class PeekWeb(BaseCommon):
     SET_INPUTS = 'SET_INPUTS'
     GET_USER_PARAMETERS = 'GET_USER_PARAMETERS'
     SET_USER_PARAMETERS = 'SET_USER_PARAMETERS'
-    GET_CURRENT_MODE = 'GET_CURRENT_MODE'
+    GET_CURRENT_STATE = 'GET_CURRENT_MODE'
 
     routes_url = {
         GET_INPUTS: '/hvi?file=cell1020.hvi&pos1=0&pos2=-1',
         SET_INPUTS: '/hvi?file=data.hvi&page=cell1020.hvi',
         GET_USER_PARAMETERS: '/hvi?file=cell6710.hvi&pos1=0&pos2=-1',
         SET_USER_PARAMETERS: '/hvi?file=data.hvi&page=cell6710.hvi',
-        GET_CURRENT_MODE: '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
+        GET_CURRENT_STATE: '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
     }
 
     # type_set_request_man_stage = 'type_set_request_man_stage'
@@ -2409,13 +2977,13 @@ class PeekWeb(BaseCommon):
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-    base_json_entity = (
-        EntityJsonResponce.REQUEST_ERRORS.value,
-        EntityJsonResponce.TYPE_CONTROLLER.value,
-        EntityJsonResponce.NUM_HOST.value,
-    )
+    # base_json_entity = (
+    #     EntityJsonResponce.REQUEST_ERRORS.value,
+    #     EntityJsonResponce.TYPE_CONTROLLER.value,
+    #     EntityJsonResponce.NUM_HOST.value,
+    # )
 
-    json_get_state = (
+    JSON_GET_STATE_BODY = (
         EntityJsonResponce.CURRENT_MODE.value,
         EntityJsonResponce.CURRENT_STAGE.value,
         EntityJsonResponce.CURRENT_PLAN.value,
@@ -2425,7 +2993,7 @@ class PeekWeb(BaseCommon):
         EntityJsonResponce.CURRENT_STATE.value
     )
 
-    json_set_command = (
+    JSON_SET_COMMAND_BODY = (
         EntityJsonResponce.RESULT.value,
         EntityJsonResponce.TYPE_COMMAND.value,
         EntityJsonResponce.VALUE.value
@@ -2440,43 +3008,77 @@ class PeekWeb(BaseCommon):
     #     return None
 
     def __init__(self, ip_adress: str, host_id: str = None):
+        super().__init__(ip_adress, host_id)
         self.ip_adress = ip_adress
         self.host_id = host_id
+        self.controller_type = AvailableControllers.PEEK.value
         self.inputs = {}
         self.user_parameters = {}
 
-    def parse_main_page_content(self, content):
+    # def _parse_Varbinds_get_state(self, content):
+    #
+    #     error_request, _ = self._check_errors_after_web_request(content, EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+    #     #
+    #     #
+    #     # if type(content) == str and len(content) > 100:
+    #     #     error_request = None
+    #     # elif content == TimeoutError:
+    #     #     error_request = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value
+    #     # elif content == TypeError:
+    #     #     error_request = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value
+    #     # else:
+    #     #     raise ValueError
+    #     stage = plan = param_plan = current_time = current_err = current_state = current_mode = None
+    #     if error_request is None:
+    #         content = [
+    #             line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+    #         ]
+    #         mode, stage = content[6].split('(')
+    #         stage = int(stage.replace(')', ''))
+    #         plan = re.sub('[^0-9]', '', content[0])
+    #         plan = int(plan) if plan.isdigit() else plan
+    #         param_plan = int(content[1]) if content[1].isdigit() else content[1]
+    #         current_time = content[2]
+    #         current_err = content[3]
+    #         current_state = content[4]
+    #         current_mode = self.statusMode.get(mode)
+    #
+    #     processed_data = (
+    #         error_request,
+    #         AvailableControllers.PEEK.value,
+    #         self.host_id,
+    #         current_mode,
+    #         stage,
+    #         plan,
+    #         param_plan,
+    #         current_time,
+    #         current_err,
+    #         current_state
+    #     )
+    #     return processed_data
+    #
+    #     return BaseCommon.make_json_responce(self.ip_adress,
+    #                                          json_entity=self.base_json_entity + self.JSON_GET_STATE_BODY,
+    #                                          varBinds=processed_data,
+    #                                          host=self
+    #                                          )
 
-        error_request, _ = self._check_errors_after_web_request(content, EntityJsonResponce.TYPE_WEB_REQUEST_SET)
-        #
-        #
-        # if type(content) == str and len(content) > 100:
-        #     error_request = None
-        # elif content == TimeoutError:
-        #     error_request = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value
-        # elif content == TypeError:
-        #     error_request = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value
-        # else:
-        #     raise ValueError
-        stage = plan = param_plan = current_time = current_err = current_state = current_mode = None
-        if error_request is None:
-            content = [
-                line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-            ]
-            mode, stage = content[6].split('(')
-            stage = int(stage.replace(')', ''))
-            plan = re.sub('[^0-9]', '', content[0])
-            plan = int(plan) if plan.isdigit() else plan
-            param_plan = int(content[1]) if content[1].isdigit() else content[1]
-            current_time = content[2]
-            current_err = content[3]
-            current_state = content[4]
-            current_mode = self.statusMode.get(mode)
+    def parse_varBinds_get_state(self, content):
+
+        content = [
+            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+        ]
+        mode, stage = content[6].split('(')
+        stage = int(stage.replace(')', ''))
+        plan = re.sub('[^0-9]', '', content[0])
+        plan = int(plan) if plan.isdigit() else plan
+        param_plan = int(content[1]) if content[1].isdigit() else content[1]
+        current_time = content[2]
+        current_err = content[3]
+        current_state = content[4]
+        current_mode = self.statusMode.get(mode)
 
         processed_data = (
-            error_request,
-            AvailableControllersAndCommands.PEEK.value,
-            self.host_id,
             current_mode,
             stage,
             plan,
@@ -2485,10 +3087,7 @@ class PeekWeb(BaseCommon):
             current_err,
             current_state
         )
-        return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.base_json_entity + self.json_get_state,
-                                             json_varBinds=processed_data,
-                                             )
+        return processed_data
 
     def parse_inps_and_user_param_content(self, content):
 
@@ -2505,32 +3104,6 @@ class PeekWeb(BaseCommon):
             parsed_data[name] = index, val1, val2, val3
 
         return parsed_data
-
-    async def get_content_from_web(self, route_type, timeout=1):
-        url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
-        try:
-            timeout = aiohttp.ClientTimeout(timeout)
-            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-                async with session.get(url, timeout=timeout) as s:
-                    if s.status != 200:
-                        raise TypeError(EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value)
-                    logger.debug('s.status : %s', s.status)
-                    content = await s.text()
-            logger.debug('после content = await s.text()')
-            logger.debug(content)
-
-        except aiohttp.client_exceptions.ClientConnectorError:
-            content = aiohttp.client_exceptions.ClientConnectorError
-        except asyncio.TimeoutError:
-            content = asyncio.TimeoutError
-        except TypeError:
-            content = TypeError
-
-        return content
-
-    async def get_current_state(self, timeout=1):
-        content = await self.get_content_from_web(self.GET_CURRENT_MODE, timeout=timeout)
-        return self.parse_main_page_content(content)
 
     def _check_errors_after_web_request(self, content, type_request):
 
@@ -2549,13 +3122,51 @@ class PeekWeb(BaseCommon):
             raise ValueError
         return error_request, result_text_message
 
+    async def get_content_from_web(self, route_type, timeout=1) -> tuple:
+        url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
+
+        try:
+            timeout = aiohttp.ClientTimeout(timeout)
+            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+                async with session.get(url, timeout=timeout) as s:
+                    if s.status != 200:
+                        raise TypeError(EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value)
+                    logger.debug('s.status : %s', s.status)
+                    content = await s.text()
+                    errorIndication = None
+            logger.debug('после content = await s.text()')
+            logger.debug(content)
+            logger.debug(f'errorIndication: {errorIndication}')
+
+        except aiohttp.client_exceptions.ClientConnectorError:
+            errorIndication, content = aiohttp.client_exceptions.ClientConnectorError, []
+        except asyncio.TimeoutError:
+            errorIndication, content = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value, []
+        except TypeError:
+            errorIndication, content = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value, []
+
+        return errorIndication, content
+
+    async def get_current_state(self, timeout=1) -> tuple:
+        """
+        Метод запроса контента web страницы получения текущего состояния ДК
+        :param timeout:
+        :return tuple: (errorIndication, varBinds)
+        """
+        self.type_request = EntityJsonResponce.TYPE_GET_STATE
+        self.json_body_second_part = JsonBody.JSON_GET_STATE_PEEK_BODY.value
+        errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
+        return errorIndication, content
+
     async def set_stage(self, stage_to_set: str, timeout=3):
 
+        self.type_request = EntityJsonResponce.TYPE_WEB_REQUEST_SET
+
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
-        inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
-        error_request, result_text_msg = self._check_errors_after_web_request(inputs_web_content,
-                                                                              EntityJsonResponce.TYPE_WEB_REQUEST_SET)
-        if error_request is None:
+        errorIndication, inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
+        # error_request, result_text_msg = self._check_errors_after_web_request(inputs_web_content,
+        #                                                                       EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+        if errorIndication is None:
             logger.debug('inputs_web_content, %s', inputs_web_content)
             inputs = self.parse_inps_and_user_param_content(inputs_web_content)
             timeout = aiohttp.ClientTimeout(timeout)
@@ -2609,23 +3220,23 @@ class PeekWeb(BaseCommon):
             logger.info('tasks: %s', tasks_res)
 
             if all(res.result() == 200 for res in tasks_res):
-                result_text_msg = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
-            else:
-                result_text_msg = EntityJsonResponce.COMMAND_SEND_ERROR.value
+                errorIndication = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
 
-        processed_data = (
-            error_request,
-            AvailableControllersAndCommands.PEEK.value,
-            self.host_id,
-            result_text_msg,
-            EntityJsonResponce.SET_STAGE_MPP_MAN.value,
-            stage_to_set
-        )
+        return errorIndication, [EntityJsonResponce.SET_STAGE_MPP_MAN.value, stage_to_set]
 
-        return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.base_json_entity + self.json_set_command,
-                                             json_varBinds=processed_data,
-                                             )
+        # processed_data = (
+        #     error_request,
+        #     AvailableControllers.PEEK.value,
+        #     self.host_id,
+        #     result_text_msg,
+        #     EntityJsonResponce.SET_STAGE_MPP_MAN.value,
+        #     stage_to_set
+        # )
+        #
+        # return BaseCommon.make_json_responce(self.ip_adress,
+        #                                      json_entity=self.base_json_entity + self.JSON_SET_COMMAND_BODY,
+        #                                      varBinds=processed_data,
+        #                                      )
 
     async def set_val_to_web_common(self, set_type, data, timeout=3):
 
@@ -2679,7 +3290,7 @@ class PeekWeb(BaseCommon):
 
         processed_data = (
             error_request,
-            AvailableControllersAndCommands.PEEK.value,
+            AvailableControllers.PEEK.value,
             self.host_id,
             result_text_msg,
             type_command_,
@@ -2687,8 +3298,8 @@ class PeekWeb(BaseCommon):
         )
 
         return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.base_json_entity + self.json_set_command,
-                                             json_varBinds=processed_data,
+                                             json_entity=self.base_json_entity + self.JSON_SET_COMMAND_BODY,
+                                             varBinds=processed_data,
                                              )
 
     # def validate_val(self, value, type_set_request):

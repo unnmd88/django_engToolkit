@@ -8,14 +8,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# ip = '10.179.15.97'
-# ip2 = '10.45.154.11'
-# ip3 = '10.45.154.19'
-# ip4 = '10.179.107.129'
-# ip5 = '10.179.65.89'
-# ip6 = '10.179.19.81'
-# ip7 = '10.45.154.16'
-# ip8 = '10.179.46.121'
+ip = '10.179.15.97'
+ip2 = '10.45.154.11'
+ip3 = '10.45.154.19'
+ip4 = '10.179.107.129'
+ip5 = '10.179.65.89'
+ip6 = '10.179.72.129'
+
+ip8 = '10.179.72.129'
+CO2385 = '10.179.16.81'
+swarco16 = '10.45.154.16'
 
 # async def main():
 #     start_time = time.time()
@@ -54,9 +56,24 @@ logger = logging.getLogger(__name__)
 
 # h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
 # res = asyncio.run(h2.get_current_state())
-h2 = controller_management.PeekWeb(ip8, host_id='Testovi')
-res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'CP_RED=ВФ'))
-logger.debug(res)
+
+oids = [
+    controller_management.Oids.swarcoUTCDetectorQty,
+    controller_management.Oids.swarcoUTCTrafftechPhaseStatus,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource,
+    controller_management.Oids.swarcoSoftIOStatus,
+]
+
+# h2 = controller_management.PeekWeb('10.179.16.81', host_id='Testovi')
+# res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'MPP_FL=ВКЛ'))
+# h3 = controller_management.PeekWeb(ip3)
+h3 = controller_management.PotokP('10.179.60.217', scn='CO3127')
+errInd, varBinds = asyncio.run(h3.get_current_state())
+res_json = h3.create_json(errInd, varBinds)
+# res2 = h3.create_json(errInd, varBinds)
+logger.debug(res_json)
+for k, v in res_json.get(h3.ip_adress).items():
+    print(f'k: {k} ::: v: {v}')
 
 
 
