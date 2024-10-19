@@ -1,5 +1,5 @@
 """" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
-
+import abc
 import os
 from typing import Any, Generator
 
@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 from collections.abc import Iterable, Callable
 
+from abc import ABC
 import itertools
 import re
 import time
@@ -150,7 +151,6 @@ class JsonBody(Enum):
 
 
 class Oids(Enum):
-
     """" STCIP """
     # Command
     swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
@@ -167,55 +167,63 @@ class Oids(Enum):
     swarcoUTCSignalGroupState = '1.3.6.1.4.1.1618.3.5.2.1.6.0'
     swarcoUTCSignalGroupOffsetTime = '1.3.6.1.4.1.1618.3.5.2.1.3.0'
     # Command(Spec PotokS)
-    potokUTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
-    potokUTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
-    potokUTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
-    potokUTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
+    potokS_UTCCommandAllRed = '1.3.6.1.4.1.1618.3.2.2.4.1.0'
+    potokS_UTCSetGetLocal = '1.3.6.1.4.1.1618.3.7.2.8.1.0'
+    potokS_UTCprohibitionManualPanel = '1.3.6.1.4.1.1618.3.6.2.1.3.1.0'
+    potokS_UTCCommandRestartProgramm = '1.3.6.1.4.1.1618.3.2.2.3.1.0'
     # Status(Spec PotokS)
-    potokUTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
+    potokS_UTCStatusMode = '1.3.6.1.4.1.1618.3.6.2.2.2.0'
 
     """" UG405 """
     # -- Control Bits --#
-    utcControlLO = '.1.3.6.1.4.1.13267.3.2.4.2.1.11'
-    utcControlFF = '.1.3.6.1.4.1.13267.3.2.4.2.1.20'
-    utcControlTO = '.1.3.6.1.4.1.13267.3.2.4.2.1.15'
-    utcControlFn = '.1.3.6.1.4.1.13267.3.2.4.2.1.5'
+    utcControlLO = '1.3.6.1.4.1.13267.3.2.4.2.1.11'
+    utcControlFF = '1.3.6.1.4.1.13267.3.2.4.2.1.20'
+    utcControlTO = '1.3.6.1.4.1.13267.3.2.4.2.1.15'
+    utcControlFn = '1.3.6.1.4.1.13267.3.2.4.2.1.5'
     # -- Reply Bits --#
-    utcType2Reply = '.1.3.6.1.4.1.13267.3.2.5'
-    utcType2Version = '.1.3.6.1.4.1.13267.3.2.1.1.0'
-    utcReplySiteID = '.1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
-    utcType2VendorID = '.1.3.6.1.4.1.13267.3.2.1.4.0'
-    utcType2HardwareType = '.1.3.6.1.4.1.13267.3.2.1.5.0'
-    utcType2OperationModeTimeout = '.1.3.6.1.4.1.13267.3.2.2.4.0'
-    utcType2OperationMode = '.1.3.6.1.4.1.13267.3.2.4.1.0'
-    utcReplyGn = '.1.3.6.1.4.1.13267.3.2.5.1.1.3'
-    utcReplyFR = '.1.3.6.1.4.1.13267.3.2.5.1.1.36'
-    utcReplyDF = '.1.3.6.1.4.1.13267.3.2.5.1.1.5'
-    utcReplyMC = '.1.3.6.1.4.1.13267.3.2.5.1.1.15'
-    utcReplyCF = '.1.3.6.1.4.1.13267.3.2.5.1.1.16'
-    utcReplyVSn = '.1.3.6.1.4.1.13267.3.2.5.1.1.32'
-    utcType2OutstationTime = '.1.3.6.1.4.1.13267.3.2.3.2.0'
-    utcType2ScootDetectorCount = '.1.3.6.1.4.1.13267.3.2.3.1.0'
+    utcType2Reply = '1.3.6.1.4.1.13267.3.2.5'
+    utcType2Version = '1.3.6.1.4.1.13267.3.2.1.1.0'
+    utcReplySiteID = '1.3.6.1.4.1.13267.3.2.5.1.1.2.0'
+    utcType2VendorID = '1.3.6.1.4.1.13267.3.2.1.4.0'
+    utcType2HardwareType = '1.3.6.1.4.1.13267.3.2.1.5.0'
+    utcType2OperationModeTimeout = '1.3.6.1.4.1.13267.3.2.2.4.0'
+    utcType2OperationMode = '1.3.6.1.4.1.13267.3.2.4.1.0'
+    utcReplyGn = '1.3.6.1.4.1.13267.3.2.5.1.1.3'
+    utcReplyFR = '1.3.6.1.4.1.13267.3.2.5.1.1.36'
+    utcReplyDF = '1.3.6.1.4.1.13267.3.2.5.1.1.5'
+    utcReplyMC = '1.3.6.1.4.1.13267.3.2.5.1.1.15'
+    utcReplyCF = '1.3.6.1.4.1.13267.3.2.5.1.1.16'
+    utcReplyVSn = '1.3.6.1.4.1.13267.3.2.5.1.1.32'
+    utcType2OutstationTime = '1.3.6.1.4.1.13267.3.2.3.2.0'
+    utcType2ScootDetectorCount = '1.3.6.1.4.1.13267.3.2.3.1.0'
     # -- Control Bits --#(Spec PotokP)
-    potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    PotokP_utcControRestartProgramm = '1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
     # -- Reply Bits --#(Spec PotokP)
-    potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
-    potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
-    potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
-    potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
-    potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
-    potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
-    potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+    PotokP_utcReplyPlanStatus = '1.3.6.1.4.1.13267.1.2.9.1.3'
+    PotokP_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    PotokP_utcReplyDarkStatus = '1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    PotokP_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    PotokP_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    PotokP_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    PotokP_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     scn_required_oids = {
-        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potok_utcReplyPlanStatus,
-        potok_utcReplyPlanSource, potok_utcReplyPlanSource, potok_utcReplyDarkStatus, potok_utcReplyLocalAdaptiv,
-        potok_utcReplyHardwareErr, potok_utcReplySoftwareErr, potok_utcReplyElectricalCircuitErr,
+        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, PotokP_utcReplyPlanStatus,
+        PotokP_utcReplyPlanSource, PotokP_utcReplyPlanSource, PotokP_utcReplyDarkStatus, PotokP_utcReplyLocalAdaptiv,
+        PotokP_utcReplyHardwareErr, PotokP_utcReplySoftwareErr, PotokP_utcReplyElectricalCircuitErr,
         utcReplyMC, utcReplyCF
     }
 
+    get_state_swarco_oids = {
+        swarcoUTCStatusEquipment,
+        swarcoUTCTrafftechPhaseStatus,
+        swarcoUTCTrafftechPlanCurrent,
+        swarcoUTCDetectorQty,
+        swarcoSoftIOStatus,
+    }
 
-class BaseCommon:
+
+class BaseCommon(ABC):
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -246,12 +254,11 @@ class BaseCommon:
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
 
+
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
         self.host_id = host_id
-        self.json_body_second_part = None
-        self.json = None
-        self.type_request = None
+        self.get_mode_flag = False
 
     def checking_the_need_for_scn(self, oids: list | tuple) -> list | tuple:
         print(f'Ooidse {oids}')
@@ -265,7 +272,6 @@ class BaseCommon:
         logger.debug(f'self.scn: {self.scn}')
         logger.debug(f'oids after: {oids}')
         return oids
-
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -281,21 +287,50 @@ class BaseCommon:
         else:
             self.controller_type = None
 
-    def create_json(self, errorIndication, varBinds, **kwargs):
-        self.json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
-        logger.debug(f'errorIndication: {errorIndication}')
+    def set_oids(self) -> None:
+        name_attr = 'OIDS'
+        oids = None
+        if isinstance(self, PotokS):
+            oids = {oid for oid in Oids if oid.name.startswith(('swarco', 'potokS'))}
+        elif isinstance(self, PotokP):
+            oids = {oid for oid in Oids if oid.name.startswith(('utc', 'potokP'))}
+        elif isinstance(self, (SwarcoSTCIP, BaseSTCIP)):
+            oids = {oid for oid in Oids if oid.name.startswith('swarco')}
+        elif isinstance(self, (BaseUG405, PeekUG405)):
+            oids = {oid for oid in Oids if oid.name.startswith('utc')}
+        setattr(self, name_attr, oids)
+
+    # def create_json(self, errorIndication, varBinds, **kwargs):
+    #     self.json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
+    #     logger.debug(f'errorIndication: {errorIndication}')
+    #     errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
+    #     self.json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
+    #     if errorIndication:
+    #         return {self.ip_adress: self.json}
+    #
+    #     if self.type_request == EntityJsonResponce.TYPE_GET_STATE:
+    #         self.json |= {k: v for k, v in zip(self.json_body_second_part, self.parse_varBinds_get_state(varBinds))}
+    #         logger.debug(f'self.json.update: {self.json}')
+    #     else:
+    #         self.json |= {oid: val for oid, val in self.parse_varBinds_common(varBinds)}
+    #
+    #     return {self.ip_adress: self.json}
+
+    def create_json(self, errorIndication, varBinds: list, **kwargs) -> dict:
+        json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
         errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
-        self.json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
-        if errorIndication:
-            return {self.ip_adress: self.json}
+        json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
 
-        if self.type_request == EntityJsonResponce.TYPE_GET_STATE:
-            self.json |= {k: v for k, v in zip(self.json_body_second_part, self.parse_varBinds_get_state(varBinds))}
-            logger.debug(f'self.json.update: {self.json}')
-        else:
-            self.json |= {oid: val for oid, val in self.parse_varBinds_common(varBinds)}
+        if not errorIndication:
+            if self.get_mode_flag:
+                varBinds, curr_state = self.get_current_mode(varBinds)
+                json |= curr_state
+            if varBinds:
+                json |= self.parse_varBinds_common(varBinds)
 
-        return {self.ip_adress: self.json}
+        self.get_mode_flag = False
+        return {self.ip_adress: json}
+
 
     async def get_request_archive(self,
                                   ip_adress: str,
@@ -362,9 +397,10 @@ class BaseCommon:
         # print(f'get_request ')
         # print(f'oids : {oids} ')
         logger.debug(f'oids before: {oids}')
-        if isinstance(self, (PotokP, PeekUG405)):
-            oids = self.checking_the_need_for_scn(oids)
-
+        # if isinstance(self, (PotokP, PeekUG405)):
+        #     oids = self.checking_the_need_for_scn(oids)
+        # elif isinstance(self, SwarcoSTCIP):
+        #     oids = [oid.value for oid in oids]
 
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
@@ -451,45 +487,18 @@ class BaseCommon:
             # print(f'res -> {res}')
         return errorIndication.__str__()
 
-    # @staticmethod
-    # def make_json_responce(ip_adress: str,
-    #                        varBinds: tuple | list,
-    #                        host,
-    #                        get_state_request: bool = False,
-    #                        **kwargs):
-    #
-    #     if isinstance(host, SwarcoSTCIP):
-    #         json_entity = host.parse_responce(varBinds, responce_for_get_state=get_state_request)
-    #
-    #     elif isinstance(host, PeekWeb):
-    #         json_entity = JsonBody.BASE_JSON_BODY.value + JsonBody.JSON_GET_MODE_PEEK_BODY.value
-    #         parsed_varBinds = varBinds
-    #
-    #     data_body = {k: v for k, v in json_entity}
-    #     logger.debug(f'!!!data body: {data_body}')
-    #     return
-    #
-    #     # logger.debug(f'kwargs: {kwargs}')
-    #     data_body = {k: v for k, v in zip(json_entity, parsed_varBinds)}
-    #     # logger.debug(f'data_body: {data_body}')
-    #     if kwargs:
-    #         for k, v in kwargs.items():
-    #             data_body[k] = v
-    #
-    #     data_responce = {
-    #         ip_adress: data_body
-    #     }
-    #
-    #     logger.debug(f'data_responce: {data_responce}')
-    #     return data_responce
+
     @staticmethod
-    def parse_varBinds_common(varBinds: list) -> Generator:
+    def parse_varBinds_common(varBinds: list) -> dict:
 
-        return ((f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]', val.prettyPrint())
-                for oid, val in varBinds)
+        vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
+        logger.debug(f'vb: {vb}')
+        return vb
 
-        # logger.debug(f'json_part2: {json_part2}')
 
+    @abc.abstractmethod
+    def get_current_mode(self, *args):
+        pass
     # def parse_responce(self, errorIndication, varBinds, responce_for_get_state, controller_type):
     #
     #
@@ -526,7 +535,6 @@ class BaseCommon:
 class BaseSTCIP(BaseCommon):
     community_write = os.getenv('communitySTCIP_r')
     community_read = os.getenv('communitySTCIP_w')
-
     # swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
     # swarcoUTCCommandDark = '1.3.6.1.4.1.1618.3.2.2.2.1.0'
     # swarcoUTCCommandFlash = '1.3.6.1.4.1.1618.3.2.2.1.1.0'
@@ -546,13 +554,6 @@ class BaseSTCIP(BaseCommon):
     }
 
     """ GET REQUEST """
-
-    async def get_request(self, oids: tuple | list) -> tuple:
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=oids
-        )
 
     async def get_swarcoUTCStatusEquipment(self, timeout=0, retries=0):
         """
@@ -843,7 +844,7 @@ class BaseUG405(BaseCommon):
             result, val = await self.getNext_request(self.ip_adress,
                                                      self.community,
                                                      [ObjectType(
-                                                      ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                         ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
         elif isinstance(self, PotokP):
             logging.debug(f'get_scn: {self}')
@@ -856,7 +857,6 @@ class BaseUG405(BaseCommon):
         logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
         if result:
             return self.convert_scn(val)
-
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -1132,7 +1132,7 @@ class BaseUG405(BaseCommon):
 
 
 class SwarcoSTCIP(BaseSTCIP):
-    get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
+    # get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
     set_val_stage = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
@@ -1152,6 +1152,34 @@ class SwarcoSTCIP(BaseSTCIP):
         self._get_current_state = False
 
     """ GET REQUEST """
+    @staticmethod
+    def get_val_stage(val: str) -> int | None:
+        values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
+        return values.get(val)
+
+    async def get_request(self, oids: tuple | list, get_mode: bool = False) -> tuple:
+
+        if get_mode:
+            oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
+        # print(type(Oids.swarco_get_state))
+        # print(type(Oids.swarco_get_state.name))
+        # print(type(Oids.swarco_get_state.value))
+        # print(Oids.swarco_get_state.value)
+        #
+        # for o in Oids.swarco_get_state.value:
+        #     print(f'это {Oids(o)}')
+        #     oids_set = {oid.value for oid in oids}
+        # for o in oids_set:
+        #     print(f'это o {Oids(o)}')
+            self.get_mode_flag = True
+
+        logger.debug(f'oids перед get_request_base: {oids}')
+
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=oids
+        )
 
     def _mode_define(self, equipment_status: str, plan: str, softstat180_181: str, num_logics: str) -> str:
         """ Определяет текщий ружим ДК.
@@ -1176,15 +1204,97 @@ class SwarcoSTCIP(BaseSTCIP):
             val_mode = '11'
         elif plan == '15':
             val_mode = '10'
-        elif '1' in softstat180_181 or softstat180_181 == 'no_data' or num_logics == '0':
+        elif softstat180_181 is None or '1' in softstat180_181 or num_logics == '0':
             val_mode = '12'
         elif softstat180_181 == '00' and num_logics.isdigit() and int(num_logics) > 0:
             val_mode = '8'
         else:
             val_mode = '--'
+        # logger.info(f"self.statusMode.get(val_mode): {self.statusMode.get(val_mode)}")
         return self.statusMode.get(val_mode)
 
-    def parse_varBinds_get_state(self, varBinds):
+    # def parse_varBinds_get_state(self, varBinds):
+    #
+    #     equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
+    #     softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
+    #     mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+    #
+    #     # varBinds = [data[1].prettyPrint() for data in varBinds]
+    #     # equipment_status = varBinds[0]
+    #     # stage = self.get_val_stage.get(varBinds[1])
+    #     # plan = varBinds[2]
+    #     # num_logics = varBinds[3]
+    #     # softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
+    #     # mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+    #
+    #     # self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
+    #
+    #     get_mode_data = (
+    #         mode,
+    #         self.get_val_stage.get(stage),
+    #         int(plan) if plan.isdigit() else plan,
+    #         int(num_logics) if num_logics.isdigit() else num_logics,
+    #     )
+    #     return get_mode_data
+    #
+    #     # get_mode_data = (
+    #     #     mode,
+    #     #     stage,
+    #     #     int(plan) if plan.isdigit() else plan,
+    #     #     int(num_logics) if num_logics.isdigit() else num_logics,
+    #     # )
+    #     # keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value, JsonBody.JSON_GET_MODE_SWARCO_BODY.value)
+    #     # values_json = itertools.chain(common_data, get_mode_data)
+    #     # return keys_json, values_json
+
+    def get_current_mode(self, varBinds: list) -> tuple:
+        equipment_status = plan = softstat180_181 = num_logics = stage = None
+        new_varBins = []
+        for data in varBinds:
+            # oid, val = data
+            oid, val = data[0].__str__(), data[1].prettyPrint()
+            if oid in Oids.get_state_swarco_oids.value:
+                if oid == Oids.swarcoUTCStatusEquipment.value:
+                    equipment_status = val
+                elif oid == Oids.swarcoUTCTrafftechPhaseStatus.value:
+                    stage = self.get_val_stage(val)
+                elif oid == Oids.swarcoUTCTrafftechPlanCurrent.value:
+                    plan = val
+                elif oid == Oids.swarcoUTCDetectorQty.value:
+                    num_logics = val
+                elif oid == Oids.swarcoSoftIOStatus.value:
+                    softstat180_181 = val[179:181] if len(val) > 180 else None
+            else:
+                new_varBins.append(data)
+        # logger.info(f'equipment_status: {equipment_status}')
+        logger.info(f'len_vb posle: {len(varBinds)}')
+        # logger.info(f'stage: {stage}')
+        # logger.info(f'plan: {plan}')
+        # logger.info(f'num_logics: {num_logics}')
+        # logger.info(f'softstat180_181: {softstat180_181}')
+
+
+
+        mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
+        # logger.info(f'mode: {mode}')
+        curr_state = {
+            EntityJsonResponce.CURRENT_MODE.value: mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+        }
+
+        for oid, val in varBinds:
+            print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
+        return new_varBins, curr_state
+
+
+            # print(f'oid.__str__() {oid.__str__()}')
+            # print(f'val.prettyPrint() {val.prettyPrint()}')
+        return
+
+
+        return ((f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]', val.prettyPrint())
+                for oid, val in varBinds)
 
         equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
         softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
@@ -1554,8 +1664,8 @@ class PotokP(BaseUG405):
         print(f'scn: {scn}')
 
     # super().__init__(ip_adress, host_id, scn)
-        # self.set_controller_type()
-        # print(f'scn: {scn}')
+    # self.set_controller_type()
+    # print(f'scn: {scn}')
 
     @staticmethod
     def make_val_stages_for_get_stage_UG405_potok(option):
@@ -1785,10 +1895,6 @@ class PotokP(BaseUG405):
     #             'current_mode': mode,
     #         }
     #     )
-
-
-
-
 
     async def get_utcReplyFR(self, timeout=0, retries=0):
         """

@@ -1,5 +1,7 @@
 import asyncio
+import sys
 import time
+from enum import Enum
 
 from toolkit.sdp_lib import controller_management
 from engineering_tools import settings
@@ -61,23 +63,36 @@ oids = [
     controller_management.Oids.swarcoUTCDetectorQty,
     controller_management.Oids.swarcoUTCTrafftechPhaseStatus,
     controller_management.Oids.swarcoUTCTrafftechPlanSource,
+controller_management.Oids.swarcoUTCTrafftechPlanSource,
+controller_management.Oids.swarcoUTCTrafftechPlanSource,
+controller_management.Oids.swarcoUTCTrafftechPlanSource,
+controller_management.Oids.swarcoUTCTrafftechPlanSource,
+    controller_management.Oids.utcControlFF,
     controller_management.Oids.swarcoSoftIOStatus,
 ]
 
-# h2 = controller_management.PeekWeb('10.179.16.81', host_id='Testovi')
-# res = asyncio.run(h2.set_val_to_web_common('SET_INPUTS', 'MPP_FL=ВКЛ'))
-# h3 = controller_management.PeekWeb(ip3)
-h3 = controller_management.PotokP('10.179.60.217', scn='CO3127')
-errInd, varBinds = asyncio.run(h3.get_current_state())
-res_json = h3.create_json(errInd, varBinds)
+
+# for o in controller_management.Oids:
+#     print(f'o: {o.name}')
+
+
+
+
+h3 = controller_management.SwarcoSTCIP('10.179.56.73')
+
+# errInd, varBinds = asyncio.run(h3.get_request_base(
+#     ip_adress=h3.ip_adress,
+#     community=h3.community_read,
+#     oids=oids))
+errInd, varBinds = asyncio.run(h3.get_request(oids=oids, get_mode=True))
+# h3.parse_varBinds_get_state(varBinds)
+logger.debug(h3.create_json(errInd, varBinds))
+# res_json = h3.parse_varBinds_common(varBinds)
 # res2 = h3.create_json(errInd, varBinds)
-logger.debug(res_json)
-for k, v in res_json.get(h3.ip_adress).items():
-    print(f'k: {k} ::: v: {v}')
+# logger.debug(res_json)
+# for k, v in res_json:
+#     if 'PhaseStatus' in k:
+#         print(f'k: {k} ::: val: {v}, num_stage: {h3.get_val_stage.get(v)}')
 
-
-
-# h6 = controller_management.PotokP(ip2)
-# asyncio.run(h6.get_utcControlFn())
 
 
