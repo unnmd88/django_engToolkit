@@ -222,6 +222,13 @@ class Oids(Enum):
         swarcoSoftIOStatus,
     }
 
+    get_state_potokS_oids = {
+        swarcoUTCStatusEquipment,
+        swarcoUTCTrafftechPhaseStatus,
+        swarcoUTCTrafftechPlanCurrent,
+        potokS_UTCStatusMode,
+    }
+
 
 class BaseCommon(ABC):
     statusMode = {
@@ -253,7 +260,6 @@ class BaseCommon(ABC):
     controller_type: str | None
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
-
 
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
@@ -334,7 +340,7 @@ class BaseCommon(ABC):
     async def get_request_base(self,
                                ip_adress: str,
                                community: str,
-                               oids: list | tuple,
+                               oids: Iterable,
                                json_responce: bool = False,
                                timeout: int = 0,
                                retries: int = 0):
@@ -444,9 +450,9 @@ class BaseCommon(ABC):
 
     @staticmethod
     def parse_varBinds_common(varBinds: list) -> dict:
-        vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
-        logger.debug(f'vb: {vb}')
-        return vb
+        # vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
+        # logger.debug(f'vb: {vb}')
+        return {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
 
     @abc.abstractmethod
     def get_current_mode(self, *args):
@@ -469,12 +475,31 @@ class BaseSTCIP(BaseCommon):
     # swarcoUTCSignalGroupState = '.1.3.6.1.4.1.1618.3.5.2.1.6.0'
     # swarcoUTCSignalGroupOffsetTime = '.1.3.6.1.4.1.1618.3.5.2.1.3.0'
 
-    converted_values_flash_dark = {
-        '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
-        '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
-    }
-
     """ GET REQUEST """
+
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+
+        if get_mode:
+            if oids:
+                if isinstance(self, SwarcoSTCIP):
+                    oids_get_req: set = Oids.get_state_swarco_oids.value
+                elif isinstance(self, PotokS):
+                    oids_get_req: set = Oids.get_state_potokS_oids.value
+                else:
+                    raise TypeError
+
+                processed_oids = {oid.value for oid in oids} | oids_get_req
+            else:
+                processed_oids = Oids.get_state_swarco_oids.value
+            self.get_mode_flag = True
+        else:
+            processed_oids = {oid.value for oid in oids}
+
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=processed_oids
+        )
 
     async def get_swarcoUTCStatusEquipment(self, timeout=0, retries=0):
         """
@@ -1053,7 +1078,6 @@ class BaseUG405(BaseCommon):
 
 
 class SwarcoSTCIP(BaseSTCIP):
-
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
@@ -1065,6 +1089,7 @@ class SwarcoSTCIP(BaseSTCIP):
         self._get_current_state = False
 
     """ GET REQUEST """
+
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str) -> int | None:
         values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
@@ -1136,25 +1161,22 @@ class SwarcoSTCIP(BaseSTCIP):
         #     print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
         return new_varBins, curr_state
 
-    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-
-        if get_mode:
-            if oids:
-                processed_oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
-            else:
-                processed_oids = Oids.get_state_swarco_oids.value
-            self.get_mode_flag = True
-        else:
-            processed_oids = {oid.value for oid in oids}
-        logger.debug(f'oids перед get_request_base: {processed_oids}')
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=processed_oids
-        )
-
-
-
+    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+    #
+    #     if get_mode:
+    #         if oids:
+    #             processed_oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
+    #         else:
+    #             processed_oids = Oids.get_state_swarco_oids.value
+    #         self.get_mode_flag = True
+    #     else:
+    #         processed_oids = {oid.value for oid in oids}
+    #
+    #     return await self.get_request_base(
+    #         ip_adress=self.ip_adress,
+    #         community=self.community_read,
+    #         oids=processed_oids
+    #     )
 
     # async def get_current_state(self, timeout=0, retries=0) -> tuple:
     #     """
@@ -1228,22 +1250,40 @@ class SwarcoSTCIP(BaseSTCIP):
 
 
 class PotokS(BaseSTCIP):
-    get_val_stage = {
-        str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
+    converted_values_flash_dark = {
+        '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
+        '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
     }
-    # set_val_stage = {
-    #     str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
-    # }
 
-    set_val_stage = {
-        str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))
-    }
+    # get_val_stage = {
+    #     str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
+    # }
+    # # set_val_stage = {
+    # #     str(k) if k < 65 else 'ЛОКАЛ': str(v) if k < 65 else '0' for k, v in zip(range(1, 68), range(2, 69))
+    # # }
+    #
+    # set_val_stage = {
+    #     str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))
+    # }
 
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
         self.set_controller_type()
 
     """ GET REQUEST """
+
+    @staticmethod
+    def convert_val_to_num_stage_get_req(val: str) -> int | None:
+
+        values = {
+            str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
+        }
+        return values.get(val)
+
+    @staticmethod
+    def convert_val_to_num_stage_set_req(val: str) -> int | None:
+        values = {str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))}
+        return values.get(val)
 
     def _mode_define(self, equipment_status: str, plan: str, status_mode: str) -> str:
         """ Определяет текщий ружим ДК.
@@ -1271,6 +1311,47 @@ class PotokS(BaseSTCIP):
         else:
             val_mode = '--'
         return self.statusMode.get(val_mode)
+
+    def get_current_mode(self, varBinds: list) -> tuple:
+        equipment_status = plan = status_mode = stage = None
+        new_varBins = []
+        for data in varBinds:
+            oid, val = data[0].__str__(), data[1].prettyPrint()
+            if oid in Oids.get_state_potokS_oids.value:
+                if oid == Oids.swarcoUTCStatusEquipment.value:
+                    equipment_status = val
+                elif oid == Oids.swarcoUTCTrafftechPhaseStatus.value:
+                    stage = self.convert_val_to_num_stage_get_req(val)
+                elif oid == Oids.swarcoUTCTrafftechPlanCurrent.value:
+                    plan = val
+                elif oid == Oids.potokS_UTCStatusMode.value:
+                    status_mode = val
+            else:
+                new_varBins.append(data)
+        mode = self._mode_define(equipment_status, plan, status_mode)
+        curr_state = {
+            EntityJsonResponce.CURRENT_MODE.value: mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+        }
+        return new_varBins, curr_state
+
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+
+        if get_mode:
+            if oids:
+                processed_oids = {oid.value for oid in oids} | Oids.get_state_potokS_oids.value
+            else:
+                processed_oids = Oids.get_state_swarco_oids.value
+            self.get_mode_flag = True
+        else:
+            processed_oids = {oid.value for oid in oids}
+
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=processed_oids
+        )
 
     def parse_varBinds_get_state(self, varBinds: list) -> tuple:
 
