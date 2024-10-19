@@ -78,15 +78,39 @@ controller_management.Oids.swarcoUTCTrafftechPlanSource,
 
 
 
-h3 = controller_management.SwarcoSTCIP('10.179.56.73')
-
-# errInd, varBinds = asyncio.run(h3.get_request_base(
-#     ip_adress=h3.ip_adress,
-#     community=h3.community_read,
-#     oids=oids))
-errInd, varBinds = asyncio.run(h3.get_request(get_mode=True, oids=oids))
-# h3.parse_varBinds_get_state(varBinds)
+h3 = controller_management.PeekWeb('10.45.154.19')
+errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 logger.debug(h3.create_json(errInd, varBinds))
+
+# async def main():
+#     ip = [
+#         '10.179.68.177', '10.179.58.105', '10.179.59.1', '10.179.112.233', '10.179.59.241',
+#         '10.45.154.11', '10.45.154.11', '10.45.154.11', '10.45.154.11'
+#     ]
+#     hosts = [controller_management.PotokS(ip_) for ip_ in ip]
+#     print('start')
+#     start = time.time()
+#     res = await asyncio.gather(*[host.get_request(get_mode=True) for host in hosts])
+#     print(f'end_time = {time.time() - start}')
+#     return hosts, res
+# hosts, res = asyncio.run(main())
+# start = time.time()
+# print('start')
+# for h, r in zip(hosts, res):
+#     logger.debug(h.create_json(r[0], r[1]))
+# print(f'end_time create_json= {time.time() - start}')
+
+
+
+
+
+
+
+
+
+
+
+
 # res_json = h3.parse_varBinds_common(varBinds)
 # res2 = h3.create_json(errInd, varBinds)
 # logger.debug(res_json)

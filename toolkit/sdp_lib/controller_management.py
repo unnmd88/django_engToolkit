@@ -327,6 +327,10 @@ class BaseCommon(ABC):
         errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
         json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
 
+        if errorIndication:
+            self.get_mode_flag = False
+            return {self.ip_adress: json}
+
         if not errorIndication:
             if self.get_mode_flag:
                 varBinds, curr_state = self.get_current_mode(varBinds)
@@ -490,7 +494,7 @@ class BaseSTCIP(BaseCommon):
 
                 processed_oids = {oid.value for oid in oids} | oids_get_req
             else:
-                processed_oids = Oids.get_state_swarco_oids.value
+                processed_oids = Oids.get_state_potokS_oids.value
             self.get_mode_flag = True
         else:
             processed_oids = {oid.value for oid in oids}
@@ -1336,105 +1340,40 @@ class PotokS(BaseSTCIP):
         }
         return new_varBins, curr_state
 
-    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+    # def parse_varBinds_get_state(self, varBinds: list) -> tuple:
+    #
+    #     equipment_status, status_mode, stage, det_count, plan, *rest = [data[1].prettyPrint() for data in varBinds]
+    #     mode = self._mode_define(equipment_status, plan, status_mode)
+    #
+    #     get_mode_data = (
+    #         mode,
+    #         self.get_val_stage.get(stage),
+    #         int(plan) if plan.isdigit() else plan,
+    #         int(det_count) if det_count.isdigit() else det_count,
+    #     )
+    #     return get_mode_data
 
-        if get_mode:
-            if oids:
-                processed_oids = {oid.value for oid in oids} | Oids.get_state_potokS_oids.value
-            else:
-                processed_oids = Oids.get_state_swarco_oids.value
-            self.get_mode_flag = True
-        else:
-            processed_oids = {oid.value for oid in oids}
-
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=processed_oids
-        )
-
-    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
-
-        equipment_status, status_mode, stage, det_count, plan, *rest = [data[1].prettyPrint() for data in varBinds]
-        mode = self._mode_define(equipment_status, plan, status_mode)
-
-        get_mode_data = (
-            mode,
-            self.get_val_stage.get(stage),
-            int(plan) if plan.isdigit() else plan,
-            int(det_count) if det_count.isdigit() else det_count,
-        )
-        return get_mode_data
-
-    async def get_current_state(self, timeout=0, retries=0) -> tuple:
-        """
-        Метод запроса значений необходимых оидов для получения текущего состояния ДК
-        :param retries:
-        :param timeout:
-        :return tuple: (errorIndication, varBinds)
-        """
-        self.type_request = EntityJsonResponce.TYPE_GET_STATE
-        self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_S_BODY.value
-        logger.debug(f'перед await get_current_mode')
-        oids = [
-            Oids.swarcoUTCStatusEquipment,
-            Oids.potokUTCStatusMode,
-            Oids.swarcoUTCTrafftechPhaseStatus,
-            Oids.swarcoUTCDetectorQty,
-            Oids.swarcoUTCTrafftechPlanCurrent,
-        ]
-        return await self.get_request_base(self.ip_adress,
-                                           self.community_read,
-                                           oids,
-                                           timeout=timeout, retries=retries)
-
-    async def get_potokUTCStatusMode(self, timeout=0, retries=0):
-        """
-        Возвращает статусы работы ДК:
-        |----0 -> нет информации
-        |----8 -> адаптива (А)
-        |----10 -> ручное управление (Р)
-        |----11 -> удаленное управление (Ц)
-        |----12 -> фикс (Ф или А)
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return Возвращает значение текущего статуса
-        """
-        oids = [ObjectType(ObjectIdentity(self.potokUTCStatusMode))]
-        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def get_stage(self, timeout=0, retries=0):
-        """
-        Возвращает номер текущей фазы
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return: номер фазы
-        """
-
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
-                                             retries=retries)
-        return [self.get_val_stage.get(result[0])]
-
-    async def get_swarcoUTCSetGetLocal(self, timeout=0, retries=0):
-        """
-        Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
-        """
-        oids = [ObjectType(ObjectIdentity(self.potokUTCSetGetLocal))]
-        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def get_potokUTCprohibitionManualPanel(self, timeout=0, retries=0):
-        """
-        Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return: Возвращает локальный режим(1 -> ВКЛ, 0 -> ВЫКЛ) swarcoUTCSetGetLocal
-        """
-        oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel))]
-        return await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+    # async def get_current_state(self, timeout=0, retries=0) -> tuple:
+    #     """
+    #     Метод запроса значений необходимых оидов для получения текущего состояния ДК
+    #     :param retries:
+    #     :param timeout:
+    #     :return tuple: (errorIndication, varBinds)
+    #     """
+    #     self.type_request = EntityJsonResponce.TYPE_GET_STATE
+    #     self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_S_BODY.value
+    #     logger.debug(f'перед await get_current_mode')
+    #     oids = [
+    #         Oids.swarcoUTCStatusEquipment,
+    #         Oids.potokUTCStatusMode,
+    #         Oids.swarcoUTCTrafftechPhaseStatus,
+    #         Oids.swarcoUTCDetectorQty,
+    #         Oids.swarcoUTCTrafftechPlanCurrent,
+    #     ]
+    #     return await self.get_request_base(self.ip_adress,
+    #                                        self.community_read,
+    #                                        oids,
+    #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
@@ -2959,18 +2898,6 @@ class PeekWeb(BaseCommon):
         GET_CURRENT_STATE: '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
     }
 
-    # type_set_request_man_stage = 'type_set_request_man_stage'
-    # type_set_request_man_flash = 'type_set_request_man_flash'
-    # type_set_request_man_flash_dark_allred = 'type_set_request_man_flash_dark_allred'
-    # type_set_request_cp_red = 'type_set_request_cp_red'
-    #
-    # type_set_request_user_parameter = 'type_set_request_user_parameter'
-    # reset_man = 'reset_man'
-
-    # TIMEOUT_ERROR_MSG = 'ConnectTimeoutError'
-    # TYPE_CONTROLLER_ERROR_MSG = 'Type controller error'
-    # SET_VAL_TO_WEB_ERROR_MSG = 'Error setting the value on the web'
-
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
     }
@@ -2980,21 +2907,15 @@ class PeekWeb(BaseCommon):
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-    # base_json_entity = (
-    #     EntityJsonResponce.REQUEST_ERRORS.value,
-    #     EntityJsonResponce.TYPE_CONTROLLER.value,
-    #     EntityJsonResponce.NUM_HOST.value,
+    # JSON_GET_STATE_BODY = (
+    #     EntityJsonResponce.CURRENT_MODE.value,
+    #     EntityJsonResponce.CURRENT_STAGE.value,
+    #     EntityJsonResponce.CURRENT_PLAN.value,
+    #     EntityJsonResponce.CURRENT_PARAM_PLAN.value,
+    #     EntityJsonResponce.CURRENT_TIME.value,
+    #     EntityJsonResponce.CURRENT_ERRORS.value,
+    #     EntityJsonResponce.CURRENT_STATE.value
     # )
-
-    JSON_GET_STATE_BODY = (
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.CURRENT_PARAM_PLAN.value,
-        EntityJsonResponce.CURRENT_TIME.value,
-        EntityJsonResponce.CURRENT_ERRORS.value,
-        EntityJsonResponce.CURRENT_STATE.value
-    )
 
     JSON_SET_COMMAND_BODY = (
         EntityJsonResponce.RESULT.value,
@@ -3017,80 +2938,6 @@ class PeekWeb(BaseCommon):
         self.controller_type = AvailableControllers.PEEK.value
         self.inputs = {}
         self.user_parameters = {}
-
-    # def _parse_Varbinds_get_state(self, content):
-    #
-    #     error_request, _ = self._check_errors_after_web_request(content, EntityJsonResponce.TYPE_WEB_REQUEST_SET)
-    #     #
-    #     #
-    #     # if type(content) == str and len(content) > 100:
-    #     #     error_request = None
-    #     # elif content == TimeoutError:
-    #     #     error_request = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value
-    #     # elif content == TypeError:
-    #     #     error_request = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value
-    #     # else:
-    #     #     raise ValueError
-    #     stage = plan = param_plan = current_time = current_err = current_state = current_mode = None
-    #     if error_request is None:
-    #         content = [
-    #             line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-    #         ]
-    #         mode, stage = content[6].split('(')
-    #         stage = int(stage.replace(')', ''))
-    #         plan = re.sub('[^0-9]', '', content[0])
-    #         plan = int(plan) if plan.isdigit() else plan
-    #         param_plan = int(content[1]) if content[1].isdigit() else content[1]
-    #         current_time = content[2]
-    #         current_err = content[3]
-    #         current_state = content[4]
-    #         current_mode = self.statusMode.get(mode)
-    #
-    #     processed_data = (
-    #         error_request,
-    #         AvailableControllers.PEEK.value,
-    #         self.host_id,
-    #         current_mode,
-    #         stage,
-    #         plan,
-    #         param_plan,
-    #         current_time,
-    #         current_err,
-    #         current_state
-    #     )
-    #     return processed_data
-    #
-    #     return BaseCommon.make_json_responce(self.ip_adress,
-    #                                          json_entity=self.base_json_entity + self.JSON_GET_STATE_BODY,
-    #                                          varBinds=processed_data,
-    #                                          host=self
-    #                                          )
-
-    def parse_varBinds_get_state(self, content):
-
-        content = [
-            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-        ]
-        mode, stage = content[6].split('(')
-        stage = int(stage.replace(')', ''))
-        plan = re.sub('[^0-9]', '', content[0])
-        plan = int(plan) if plan.isdigit() else plan
-        param_plan = int(content[1]) if content[1].isdigit() else content[1]
-        current_time = content[2]
-        current_err = content[3]
-        current_state = content[4]
-        current_mode = self.statusMode.get(mode)
-
-        processed_data = (
-            current_mode,
-            stage,
-            plan,
-            param_plan,
-            current_time,
-            current_err,
-            current_state
-        )
-        return processed_data
 
     def parse_inps_and_user_param_content(self, content):
 
@@ -3125,6 +2972,32 @@ class PeekWeb(BaseCommon):
             raise ValueError
         return error_request, result_text_message
 
+    def get_current_mode(self, content: str):
+        content = [
+            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+        ]
+        mode, stage = content[6].split('(')
+        stage = int(stage.replace(')', ''))
+        plan = re.sub('[^0-9]', '', content[0])
+        plan = int(plan) if plan.isdigit() else plan
+        param_plan = int(content[1]) if content[1].isdigit() else content[1]
+        current_time = content[2]
+        current_err = content[3]
+        current_state = content[4]
+        current_mode = self.statusMode.get(mode)
+
+        processed_data = {
+            EntityJsonResponce.CURRENT_MODE.value: current_mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+            EntityJsonResponce.CURRENT_PARAM_PLAN.value:param_plan,
+            EntityJsonResponce.CURRENT_TIME.value: current_time,
+            EntityJsonResponce.CURRENT_ERRORS.value: current_err,
+            EntityJsonResponce.CURRENT_STATE.value: current_state,
+        }
+
+        return [],  processed_data
+
     async def get_content_from_web(self, route_type, timeout=1) -> tuple:
         url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
 
@@ -3137,9 +3010,9 @@ class PeekWeb(BaseCommon):
                     logger.debug('s.status : %s', s.status)
                     content = await s.text()
                     errorIndication = None
-            logger.debug('после content = await s.text()')
-            logger.debug(content)
-            logger.debug(f'errorIndication: {errorIndication}')
+            # logger.debug('после content = await s.text()')
+            # logger.debug(content)
+            # logger.debug(f'errorIndication: {errorIndication}')
 
         except aiohttp.client_exceptions.ClientConnectorError:
             errorIndication, content = aiohttp.client_exceptions.ClientConnectorError, []
@@ -3150,16 +3023,17 @@ class PeekWeb(BaseCommon):
 
         return errorIndication, content
 
-    async def get_current_state(self, timeout=1) -> tuple:
+    async def get_request(self, get_mode: bool, timeout=1) -> tuple:
         """
         Метод запроса контента web страницы получения текущего состояния ДК
+        :param get_mode:
         :param timeout:
         :return tuple: (errorIndication, varBinds)
         """
-        self.type_request = EntityJsonResponce.TYPE_GET_STATE
-        self.json_body_second_part = JsonBody.JSON_GET_STATE_PEEK_BODY.value
+        self.get_mode_flag = True
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
         return errorIndication, content
+
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
@@ -3398,35 +3272,35 @@ class PeekWeb(BaseCommon):
         # return await self.main_async(inputs_to_set,
         #                              self.type_set_request_man_flash_dark_allred,
         #                              True if actuator_val == self.ACTUATOR_RESET else False)
-
-    async def get_data_from_web2(self, path_to_hvi, type, session, data=None):
-        async def get_request(s):
-            url = f'http://{self.ip_adress}{path_to_hvi}'
-            elements = {}
-            async with s.get(url=url) as response:
-                resp_result = await response.text()
-
-                for line in (
-                        line.split(';')[1:] for line in resp_result.splitlines() if line.startswith(':D')
-                ):
-                    index, num, name, val1, val2, val3 = line
-                    # val1, val2 и val3 зависят от типа получаемых данных.
-                    # если получаем ВВОДЫ:
-                    # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
-                    # если Параметры программы:
-                    # val1 -> Значение, val2 -> Мин. val3 -> Макс
-                    elements[name] = index, val1, val2, val3
-
-                    print(f'ner_line = {line}')
-                print(f'elements = {elements}')
-                return elements
-
-        if session is None:
-            timeout = aiohttp.ClientTimeout(3)
-            async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
-                return await get_request(session)
-        else:
-            return await get_request(session)
+    #
+    # async def get_data_from_web2(self, path_to_hvi, type, session, data=None):
+    #     async def get_request(s):
+    #         url = f'http://{self.ip_adress}{path_to_hvi}'
+    #         elements = {}
+    #         async with s.get(url=url) as response:
+    #             resp_result = await response.text()
+    #
+    #             for line in (
+    #                     line.split(';')[1:] for line in resp_result.splitlines() if line.startswith(':D')
+    #             ):
+    #                 index, num, name, val1, val2, val3 = line
+    #                 # val1, val2 и val3 зависят от типа получаемых данных.
+    #                 # если получаем ВВОДЫ:
+    #                 # val1 -> Состояние val2 -> Время, val3 -> АКТУАТОР
+    #                 # если Параметры программы:
+    #                 # val1 -> Значение, val2 -> Мин. val3 -> Макс
+    #                 elements[name] = index, val1, val2, val3
+    #
+    #                 print(f'ner_line = {line}')
+    #             print(f'elements = {elements}')
+    #             return elements
+    #
+    #     if session is None:
+    #         timeout = aiohttp.ClientTimeout(3)
+    #         async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+    #             return await get_request(session)
+    #     else:
+    #         return await get_request(session)
 
         # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
         # {'par_name': 'PARM.R1/1', 'par_value': '0'}
