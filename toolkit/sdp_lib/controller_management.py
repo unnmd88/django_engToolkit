@@ -331,51 +331,6 @@ class BaseCommon(ABC):
         self.get_mode_flag = False
         return {self.ip_adress: json}
 
-
-    async def get_request_archive(self,
-                                  ip_adress: str,
-                                  community: str,
-                                  oids: list | tuple,
-                                  json_responce: bool = False,
-                                  timeout: int = 0,
-                                  retries: int = 0):
-        """
-        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
-        :param type_controller:
-        :param json_responce:
-        :arg ip_adress: ip хоста
-        :arg community: коммьюнити хоста
-        :arg oids: List или Tuple оидов
-        :arg timeout: таймаут запроса, в секундах
-        :arg retries: количество попыток запроса
-        :return: list при успешном запросе, иначе errorIndication
-        """
-        # print(f'get_request ')
-        # print(f'oids : {oids} ')
-
-        errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-            SnmpEngine(),
-            CommunityData(community),
-            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            *oids
-        )
-
-        # logging.debug(
-        #     f'errorIndication: {errorIndication.__str__()}\n'
-        #     f'errorStatus: {errorStatus}\n'
-        #     f'errorIndex: {errorIndex}\n'
-        #     f'varBinds: {varBinds}\n'
-        # )
-        # print(f'errorIndication .__str__: {errorIndication.__str__()}')
-        # print(f'errorIndication: {errorIndication}')
-        # print(f'errorIndication type : {type(errorIndication)}')
-        # print(f'errorStatus: {errorStatus}')
-        # print(f'errorIndex: {errorIndex}')
-        # print(f'varBinds: {varBinds}')
-
-        return errorIndication, varBinds
-
     async def get_request_base(self,
                                ip_adress: str,
                                community: str,
@@ -487,49 +442,15 @@ class BaseCommon(ABC):
             # print(f'res -> {res}')
         return errorIndication.__str__()
 
-
     @staticmethod
     def parse_varBinds_common(varBinds: list) -> dict:
-
         vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
         logger.debug(f'vb: {vb}')
         return vb
 
-
     @abc.abstractmethod
     def get_current_mode(self, *args):
         pass
-    # def parse_responce(self, errorIndication, varBinds, responce_for_get_state, controller_type):
-    #
-    #
-    #     if responce_for_get_state:
-    #         # stage = plan = num_logics = mode = None
-    #         # if error_request is None:
-    #         #     varBinds = [data[1].prettyPrint() for data in varBinds]
-    #         #     equipment_status = varBinds[0]
-    #         #     stage = self.get_val_stage.get(varBinds[1])
-    #         #     plan = varBinds[2]
-    #         #     num_logics = varBinds[3]
-    #         #     softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
-    #         #     mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-    #         #
-    #         # get_mode_data = (
-    #         #     mode,
-    #         #     stage,
-    #         #     int(plan) if error_request is None and plan.isdigit() else plan,
-    #         #     int(num_logics) if error_request is None and num_logics.isdigit() else num_logics,
-    #         # )
-    #         keys_json, values_json = self.make_get_mode_data_for_json(varBinds,
-    #                                                                         common_data)
-    #     else:
-    #         keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value,
-    #                                     (name_oid for name_oid, _ in varBinds))
-    #         values_json = itertools.chain(common_data, (val for _, val in varBinds))
-    #     return zip(keys_json, values_json)
-    #     return BaseCommon.make_json_responce(self.ip_adress,
-    #                                          json_entity=JsonBody.BASE_JSON_BODY.value + self.JSON_GET_STATE_BODY,
-    #                                          varBinds=processed_data,
-    #                                          )
 
 
 class BaseSTCIP(BaseCommon):
@@ -1132,19 +1053,11 @@ class BaseUG405(BaseCommon):
 
 
 class SwarcoSTCIP(BaseSTCIP):
-    # get_val_stage = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
-    set_val_stage = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
-
-    # JSON_GET_STATE_BODY = (
-    #     EntityJsonResponce.CURRENT_MODE.value,
-    #     EntityJsonResponce.CURRENT_STAGE.value,
-    #     EntityJsonResponce.CURRENT_PLAN.value,
-    #     EntityJsonResponce.NUM_DET_LOGICS.value,
-    # )
 
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
@@ -1153,33 +1066,14 @@ class SwarcoSTCIP(BaseSTCIP):
 
     """ GET REQUEST """
     @staticmethod
-    def get_val_stage(val: str) -> int | None:
+    def convert_val_to_num_stage_get_req(val: str) -> int | None:
         values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
         return values.get(val)
 
-    async def get_request(self, oids: tuple | list, get_mode: bool = False) -> tuple:
-
-        if get_mode:
-            oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
-        # print(type(Oids.swarco_get_state))
-        # print(type(Oids.swarco_get_state.name))
-        # print(type(Oids.swarco_get_state.value))
-        # print(Oids.swarco_get_state.value)
-        #
-        # for o in Oids.swarco_get_state.value:
-        #     print(f'это {Oids(o)}')
-        #     oids_set = {oid.value for oid in oids}
-        # for o in oids_set:
-        #     print(f'это o {Oids(o)}')
-            self.get_mode_flag = True
-
-        logger.debug(f'oids перед get_request_base: {oids}')
-
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=oids
-        )
+    @staticmethod
+    def convert_val_to_num_stage_set_req(val: str) -> int | None:
+        values = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
+        return values.get(val)
 
     def _mode_define(self, equipment_status: str, plan: str, softstat180_181: str, num_logics: str) -> str:
         """ Определяет текщий ружим ДК.
@@ -1213,51 +1107,16 @@ class SwarcoSTCIP(BaseSTCIP):
         # logger.info(f"self.statusMode.get(val_mode): {self.statusMode.get(val_mode)}")
         return self.statusMode.get(val_mode)
 
-    # def parse_varBinds_get_state(self, varBinds):
-    #
-    #     equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
-    #     softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
-    #     mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-    #
-    #     # varBinds = [data[1].prettyPrint() for data in varBinds]
-    #     # equipment_status = varBinds[0]
-    #     # stage = self.get_val_stage.get(varBinds[1])
-    #     # plan = varBinds[2]
-    #     # num_logics = varBinds[3]
-    #     # softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
-    #     # mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-    #
-    #     # self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
-    #
-    #     get_mode_data = (
-    #         mode,
-    #         self.get_val_stage.get(stage),
-    #         int(plan) if plan.isdigit() else plan,
-    #         int(num_logics) if num_logics.isdigit() else num_logics,
-    #     )
-    #     return get_mode_data
-    #
-    #     # get_mode_data = (
-    #     #     mode,
-    #     #     stage,
-    #     #     int(plan) if plan.isdigit() else plan,
-    #     #     int(num_logics) if num_logics.isdigit() else num_logics,
-    #     # )
-    #     # keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value, JsonBody.JSON_GET_MODE_SWARCO_BODY.value)
-    #     # values_json = itertools.chain(common_data, get_mode_data)
-    #     # return keys_json, values_json
-
     def get_current_mode(self, varBinds: list) -> tuple:
         equipment_status = plan = softstat180_181 = num_logics = stage = None
         new_varBins = []
         for data in varBinds:
-            # oid, val = data
             oid, val = data[0].__str__(), data[1].prettyPrint()
             if oid in Oids.get_state_swarco_oids.value:
                 if oid == Oids.swarcoUTCStatusEquipment.value:
                     equipment_status = val
                 elif oid == Oids.swarcoUTCTrafftechPhaseStatus.value:
-                    stage = self.get_val_stage(val)
+                    stage = self.convert_val_to_num_stage_get_req(val)
                 elif oid == Oids.swarcoUTCTrafftechPlanCurrent.value:
                     plan = val
                 elif oid == Oids.swarcoUTCDetectorQty.value:
@@ -1266,106 +1125,63 @@ class SwarcoSTCIP(BaseSTCIP):
                     softstat180_181 = val[179:181] if len(val) > 180 else None
             else:
                 new_varBins.append(data)
-        # logger.info(f'equipment_status: {equipment_status}')
         logger.info(f'len_vb posle: {len(varBinds)}')
-        # logger.info(f'stage: {stage}')
-        # logger.info(f'plan: {plan}')
-        # logger.info(f'num_logics: {num_logics}')
-        # logger.info(f'softstat180_181: {softstat180_181}')
-
-
-
         mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-        # logger.info(f'mode: {mode}')
         curr_state = {
             EntityJsonResponce.CURRENT_MODE.value: mode,
             EntityJsonResponce.CURRENT_STAGE.value: stage,
             EntityJsonResponce.CURRENT_PLAN.value: plan,
         }
-
-        for oid, val in varBinds:
-            print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
+        # for oid, val in varBinds:
+        #     print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
         return new_varBins, curr_state
 
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
 
-            # print(f'oid.__str__() {oid.__str__()}')
-            # print(f'val.prettyPrint() {val.prettyPrint()}')
-        return
-
-
-        return ((f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]', val.prettyPrint())
-                for oid, val in varBinds)
-
-        equipment_status, stage, plan, num_logics, softstat180_181, *rest = [data[1].prettyPrint() for data in varBinds]
-        softstat180_181 = softstat180_181[179:181] if len(softstat180_181) > 180 else 'no_data'
-        mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-
-        # varBinds = [data[1].prettyPrint() for data in varBinds]
-        # equipment_status = varBinds[0]
-        # stage = self.get_val_stage.get(varBinds[1])
-        # plan = varBinds[2]
-        # num_logics = varBinds[3]
-        # softstat180_181 = varBinds[4][179:181] if len(varBinds[4]) > 180 else 'no_data'
-        # mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
-
-        # self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
-
-        get_mode_data = (
-            mode,
-            self.get_val_stage.get(stage),
-            int(plan) if plan.isdigit() else plan,
-            int(num_logics) if num_logics.isdigit() else num_logics,
+        if get_mode:
+            if oids:
+                processed_oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
+            else:
+                processed_oids = Oids.get_state_swarco_oids.value
+            self.get_mode_flag = True
+        else:
+            processed_oids = {oid.value for oid in oids}
+        logger.debug(f'oids перед get_request_base: {processed_oids}')
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=processed_oids
         )
-        return get_mode_data
 
-        # get_mode_data = (
-        #     mode,
-        #     stage,
-        #     int(plan) if plan.isdigit() else plan,
-        #     int(num_logics) if num_logics.isdigit() else num_logics,
-        # )
-        # keys_json = itertools.chain(JsonBody.BASE_JSON_BODY.value, JsonBody.JSON_GET_MODE_SWARCO_BODY.value)
-        # values_json = itertools.chain(common_data, get_mode_data)
-        # return keys_json, values_json
 
-    async def get_current_state(self, timeout=0, retries=0) -> tuple:
-        """
-        Метод запроса значений необходимых оидов для получения текущего состояния ДК
-        :param timeout:
-        :return tuple: (errorIndication, varBinds)
-        """
-        self.type_request = EntityJsonResponce.TYPE_GET_STATE
-        self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
-        logger.debug(f'перед await get_current_mode')
-        # oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCStatusEquipment.value)),
-        #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseStatus.value)),
-        #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCurrent.value)),
-        #         ObjectType(ObjectIdentity(Oids.swarcoUTCDetectorQty.value)),
-        #         ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value)),
-        #         ]
-        oids = [
-            Oids.swarcoUTCStatusEquipment,
-            Oids.swarcoUTCTrafftechPhaseStatus,
-            Oids.swarcoUTCTrafftechPlanCurrent,
-            Oids.swarcoUTCDetectorQty,
-            Oids.swarcoSoftIOStatus,
-        ]
-        return await self.get_request_base(self.ip_adress,
-                                           self.community_read,
-                                           oids,
-                                           timeout=timeout, retries=retries)
 
-    async def get_stage(self, timeout=0, retries=0):
-        """
-        Возвращает номер текущей фазы
-        :param timeout: таймаут подключения
-        :param retries: количество попыток подключения
-        :return: номер фазы
-        """
-        oids = [ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseStatus))]
-        result = await self.get_request_base(self.ip_adress, self.community_write, oids, timeout=timeout,
-                                             retries=retries)
-        return [self.get_val_stage.get(result[0])]
+
+    # async def get_current_state(self, timeout=0, retries=0) -> tuple:
+    #     """
+    #     Метод запроса значений необходимых оидов для получения текущего состояния ДК
+    #     :param timeout:
+    #     :return tuple: (errorIndication, varBinds)
+    #     """
+    #     self.type_request = EntityJsonResponce.TYPE_GET_STATE
+    #     self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
+    #     logger.debug(f'перед await get_current_mode')
+    #     # oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCStatusEquipment.value)),
+    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseStatus.value)),
+    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCurrent.value)),
+    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCDetectorQty.value)),
+    #     #         ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value)),
+    #     #         ]
+    #     oids = [
+    #         Oids.swarcoUTCStatusEquipment,
+    #         Oids.swarcoUTCTrafftechPhaseStatus,
+    #         Oids.swarcoUTCTrafftechPlanCurrent,
+    #         Oids.swarcoUTCDetectorQty,
+    #         Oids.swarcoSoftIOStatus,
+    #     ]
+    #     return await self.get_request_base(self.ip_adress,
+    #                                        self.community_read,
+    #                                        oids,
+    #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
@@ -1380,7 +1196,7 @@ class SwarcoSTCIP(BaseSTCIP):
             ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
         ]
         result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-        return [str(self.get_val_stage.get(result[0]))]
+        return [str(self.convert_val_to_num_stage_get_req.get(result[0]))]
         # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
     async def set_flash(self, value='0', timeout=0, retries=0):
@@ -2657,7 +2473,7 @@ class GetDataControllerManagement:
             return f'Сбой получения данных. Проверьте ДК'
 
         equipment_status = str(varBinds[0])
-        stage = obj.get_val_stage.get(str(varBinds[1]))
+        stage = obj.convert_val_to_num_stage_get_req.get(str(varBinds[1]))
         plan = str(varBinds[2])
         num_logics = str(varBinds[3])
         softstat180_181 = str(varBinds[4])[179:181] if len(varBinds[4]) > 180 else 'no_data'
@@ -2736,7 +2552,7 @@ class GetDataControllerManagement:
 
         equipment_status = str(varBinds[0])
         status_mode = str(varBinds[1])
-        stage = obj.get_val_stage.get(str(varBinds[2]))
+        stage = obj.convert_val_to_num_stage_get_req.get(str(varBinds[2]))
         det_count = str(varBinds[3])
         plan = str(varBinds[4])
 

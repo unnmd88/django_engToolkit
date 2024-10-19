@@ -84,7 +84,7 @@ h3 = controller_management.SwarcoSTCIP('10.179.56.73')
 #     ip_adress=h3.ip_adress,
 #     community=h3.community_read,
 #     oids=oids))
-errInd, varBinds = asyncio.run(h3.get_request(oids=oids, get_mode=True))
+errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 # h3.parse_varBinds_get_state(varBinds)
 logger.debug(h3.create_json(errInd, varBinds))
 # res_json = h3.parse_varBinds_common(varBinds)
