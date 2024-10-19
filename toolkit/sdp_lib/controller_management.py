@@ -197,20 +197,20 @@ class Oids(Enum):
     utcType2OutstationTime = '1.3.6.1.4.1.13267.3.2.3.2.0'
     utcType2ScootDetectorCount = '1.3.6.1.4.1.13267.3.2.3.1.0'
     # -- Control Bits --#(Spec PotokP)
-    PotokP_utcControRestartProgramm = '1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
+    potokP_utcControRestartProgramm = '1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
     # -- Reply Bits --#(Spec PotokP)
-    PotokP_utcReplyPlanStatus = '1.3.6.1.4.1.13267.1.2.9.1.3'
-    PotokP_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
-    PotokP_utcReplyDarkStatus = '1.3.6.1.4.1.13267.3.2.5.1.1.45'
-    PotokP_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
-    PotokP_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
-    PotokP_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
-    PotokP_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
+    potokP_utcReplyPlanStatus = '1.3.6.1.4.1.13267.1.2.9.1.3'
+    potokP_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
+    potokP_utcReplyDarkStatus = '1.3.6.1.4.1.13267.3.2.5.1.1.45'
+    potokP_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
+    potokP_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
+    potokP_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
+    potokP_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     scn_required_oids = {
-        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, PotokP_utcReplyPlanStatus,
-        PotokP_utcReplyPlanSource, PotokP_utcReplyPlanSource, PotokP_utcReplyDarkStatus, PotokP_utcReplyLocalAdaptiv,
-        PotokP_utcReplyHardwareErr, PotokP_utcReplySoftwareErr, PotokP_utcReplyElectricalCircuitErr,
+        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potokP_utcReplyPlanStatus,
+        potokP_utcReplyPlanSource, potokP_utcReplyPlanSource, potokP_utcReplyDarkStatus, potokP_utcReplyLocalAdaptiv,
+        potokP_utcReplyHardwareErr, potokP_utcReplySoftwareErr, potokP_utcReplyElectricalCircuitErr,
         utcReplyMC, utcReplyCF
     }
 
@@ -227,6 +227,18 @@ class Oids(Enum):
         swarcoUTCTrafftechPhaseStatus,
         swarcoUTCTrafftechPlanCurrent,
         potokS_UTCStatusMode,
+    }
+
+    get_state_potokP_oids = {
+        utcType2OperationMode,
+        utcReplyCF,
+        utcReplyFR,
+        potokP_utcReplyDarkStatus,
+        utcReplyMC,
+        potokP_utcReplyPlanStatus,
+        utcReplyGn,
+        utcReplyDF,
+        potokP_utcReplyLocalAdaptiv,
     }
 
 
@@ -362,8 +374,8 @@ class BaseCommon(ABC):
         # print(f'get_request ')
         # print(f'oids : {oids} ')
         logger.debug(f'oids before: {oids}')
-        # if isinstance(self, (PotokP, PeekUG405)):
-        #     oids = self.checking_the_need_for_scn(oids)
+        if isinstance(self, (PotokP, PeekUG405)):
+            oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
         #     oids = [oid.value for oid in oids]
 
@@ -390,8 +402,33 @@ class BaseCommon(ABC):
 
         return errorIndication, varBinds
 
-    async def get_request(self, *args, **kwargs):
-        pass
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+
+        if isinstance(self, SwarcoSTCIP):
+            oids_get_req: set = Oids.get_state_swarco_oids.value
+        elif isinstance(self, PotokS):
+            oids_get_req: set = Oids.get_state_potokS_oids.value
+        elif isinstance(self, PotokP):
+            oids_get_req: set = Oids.get_state_potokP_oids.value
+        else:
+            oids_get_req = set()
+
+        if get_mode:
+            self.get_mode_flag = True
+            if oids:
+                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | oids_get_req
+            else:
+                processed_oids = oids_get_req
+        else:
+            if oids:
+                processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
+            else:
+                return None, []
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=processed_oids
+        )
 
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
@@ -481,29 +518,29 @@ class BaseSTCIP(BaseCommon):
 
     """ GET REQUEST """
 
-    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-
-        if get_mode:
-            if oids:
-                if isinstance(self, SwarcoSTCIP):
-                    oids_get_req: set = Oids.get_state_swarco_oids.value
-                elif isinstance(self, PotokS):
-                    oids_get_req: set = Oids.get_state_potokS_oids.value
-                else:
-                    raise TypeError
-
-                processed_oids = {oid.value for oid in oids} | oids_get_req
-            else:
-                processed_oids = Oids.get_state_potokS_oids.value
-            self.get_mode_flag = True
-        else:
-            processed_oids = {oid.value for oid in oids}
-
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=processed_oids
-        )
+    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+    #
+    #     if get_mode:
+    #         if oids:
+    #             if isinstance(self, SwarcoSTCIP):
+    #                 oids_get_req: set = Oids.get_state_swarco_oids.value
+    #             elif isinstance(self, PotokS):
+    #                 oids_get_req: set = Oids.get_state_potokS_oids.value
+    #             else:
+    #                 raise TypeError
+    #
+    #             processed_oids = {oid.value for oid in oids} | oids_get_req
+    #         else:
+    #             processed_oids = Oids.get_state_potokS_oids.value
+    #         self.get_mode_flag = True
+    #     else:
+    #         processed_oids = {oid.value for oid in oids}
+    #
+    #     return await self.get_request_base(
+    #         ip_adress=self.ip_adress,
+    #         community=self.community_read,
+    #         oids=processed_oids
+    #     )
 
     async def get_swarcoUTCStatusEquipment(self, timeout=0, retries=0):
         """
@@ -697,7 +734,8 @@ class BaseSTCIP(BaseCommon):
 
 
 class BaseUG405(BaseCommon):
-    community = os.getenv('communityUG405_r')
+    community_read = os.getenv('communityUG405_r')
+    community_write = os.getenv('communityUG405_w')
 
     # Ключи, прописанные вручную, рабочая версия
     # set_stage_UG405_peek_values = {'1': '01', '2': '02', '3': '04', '4': '08',
@@ -807,6 +845,50 @@ class BaseUG405(BaseCommon):
         logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
         if result:
             return self.convert_scn(val)
+
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+
+        if isinstance(self, SwarcoSTCIP):
+            oids_get_req: set = Oids.get_state_swarco_oids.value
+        elif isinstance(self, PotokS):
+            oids_get_req: set = Oids.get_state_potokS_oids.value
+        elif isinstance(self, PotokP):
+            oids_get_req: set = Oids.get_state_potokP_oids.value
+        else:
+            oids_get_req = set()
+
+        if get_mode:
+            if oids:
+                processed_oids = {oid.value for oid in oids} | oids_get_req
+            else:
+                processed_oids = oids_get_req
+        else:
+            processed_oids = {oid.value for oid in oids}
+
+        # if get_mode:
+        #     self.get_mode_flag = True
+        #     if oids:
+        #         if isinstance(self, SwarcoSTCIP):
+        #             oids_get_req: set = Oids.get_state_swarco_oids.value
+        #         elif isinstance(self, PotokS):
+        #             oids_get_req: set = Oids.get_state_potokS_oids.value
+        #         elif isinstance(self, PotokP):
+        #             oids_get_req: set = Oids.get_state_potokP_oids.value
+        #         else:
+        #             raise TypeError
+        #
+        #         processed_oids = {oid.value for oid in oids} | oids_get_req
+        #     else:
+        #         processed_oids = Oids.get_state_potokS_oids.value
+        #     self.get_mode_flag = True
+        # else:
+        #     processed_oids = {oid.value for oid in oids}
+
+        return await self.get_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_read,
+            oids=processed_oids
+        )
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -1503,43 +1585,77 @@ class PotokP(BaseUG405):
     # self.set_controller_type()
     # print(f'scn: {scn}')
 
+    # @staticmethod
+    # def make_val_stages_for_get_stage_UG405_potok(option):
+    #     """ В зависимости от опции функция формирует словарь с номером и значением фазы
+    #     """
+    #     # print(f'option: {option}')
+    #     if option == 'get':
+    #         mask_after_8stages_get = ['01', '02', '04', '08', '10', '20', '40', '80']
+    #         stages = ['01', '02', '04', '08', '10', '6', '@', '80']
+    #
+    #         # одна итерация цикла 8 фаз. В stages изначально уже лежат 8 фаз
+    #         # поэтому range(7) -> 8 + 7 * 8 = 64. тогда range(8) -> 8 + 8 * 8, range(9) -> 8 + 9 * 8 и т.д.
+    #         for i in range(7):
+    #             temp_lst = [
+    #                 f'{el}{"00" * (i + 1)}' if el != '40' else f'{el}{"00" * (i + 1)}@' for el in mask_after_8stages_get
+    #             ]
+    #             stages = stages + temp_lst
+    #         # print(stages)
+    #
+    #         get_val_stage_UG405_POTOK = {k: v for v, k in enumerate(stages, 1)}
+    #         return get_val_stage_UG405_POTOK
+    #         # print(get_val_stage_UG405_POTOK)
+    #     elif option == 'set':
+    #         stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
+    #         return {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
+    #         # mask_after_8stages_set = ['01', '02', '04', '08', '10', '20', '40', '80']
+    #         # # stgs = [f'{i}{j*"00"}' for i in mask_after_8stages_set for j in range(8)]
+    #         # stages = [f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set for i in range(7)]
+    #         #
+    #         # for i in range(7):
+    #         #     temp_lst = [
+    #         #         f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set
+    #         #     ]
+    #         #     stages = stages + temp_lst
+    #         # set_val_stage_UG405_POTOK = {str(k): v for k, v in enumerate(stages, 1)}
+    #         # # print(set_val_stage_UG405_POTOK)
+    #         # return set_val_stage_UG405_POTOK
+
+
+    # @staticmethod
+    # def convert_val_to_num_stage_get_req(val: str) -> int | None:
+    #
+    #     mask_after_8stages_get = ['01', '02', '04', '08', '10', '20', '40', '80']
+    #     stages = ['01', '02', '04', '08', '10', '6', '@', '80']
+    #
+    #     # одна итерация цикла 8 фаз. В stages изначально уже лежат 8 фаз
+    #     # поэтому range(7) -> 8 + 7 * 8 = 64. тогда range(8) -> 8 + 8 * 8, range(9) -> 8 + 9 * 8 и т.д.
+    #     for i in range(7):
+    #         temp_lst = [
+    #             f'{el}{"00" * (i + 1)}' if el != '40' else f'{el}{"00" * (i + 1)}@' for el in mask_after_8stages_get
+    #         ]
+    #         stages = stages + temp_lst
+    #     # print(stages)
+    #     values = {k: v for v, k in enumerate(stages, 1)}
+    #     return values.get(val)
+
     @staticmethod
-    def make_val_stages_for_get_stage_UG405_potok(option):
-        """ В зависимости от опции функция формирует словарь с номером и значением фазы
-        """
-        # print(f'option: {option}')
-        if option == 'get':
-            mask_after_8stages_get = ['01', '02', '04', '08', '10', '20', '40', '80']
-            stages = ['01', '02', '04', '08', '10', '6', '@', '80']
+    def convert_val_to_num_stage_get_req(val: str):
+        if val not in (' ', '@'):
+            return int(math.log2(int(val, 16))) + 1
+        elif val == ' ':
+            return 6
+        elif val == '@':
+            return 7
+        else:
+            raise ValueError
+    @staticmethod
+    def convert_val_to_num_stage_set_req(val: str) -> int | None:
 
-            # одна итерация цикла 8 фаз. В stages изначально уже лежат 8 фаз
-            # поэтому range(7) -> 8 + 7 * 8 = 64. тогда range(8) -> 8 + 8 * 8, range(9) -> 8 + 9 * 8 и т.д.
-            for i in range(7):
-                temp_lst = [
-                    f'{el}{"00" * (i + 1)}' if el != '40' else f'{el}{"00" * (i + 1)}@' for el in mask_after_8stages_get
-                ]
-                stages = stages + temp_lst
-            # print(stages)
-
-            get_val_stage_UG405_POTOK = {k: v for v, k in enumerate(stages, 1)}
-            return get_val_stage_UG405_POTOK
-            # print(get_val_stage_UG405_POTOK)
-        elif option == 'set':
-            stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
-            return {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
-            # mask_after_8stages_set = ['01', '02', '04', '08', '10', '20', '40', '80']
-            # # stgs = [f'{i}{j*"00"}' for i in mask_after_8stages_set for j in range(8)]
-            # stages = [f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set for i in range(7)]
-            #
-            # for i in range(7):
-            #     temp_lst = [
-            #         f'{el}{"00" * (i + 1)}' for el in mask_after_8stages_set
-            #     ]
-            #     stages = stages + temp_lst
-            # set_val_stage_UG405_POTOK = {str(k): v for k, v in enumerate(stages, 1)}
-            # # print(set_val_stage_UG405_POTOK)
-            # return set_val_stage_UG405_POTOK
-
+        stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
+        values = {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
+        return values.get(val)
     # Значения фаз для для UG405 Potok
     # val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
@@ -1558,17 +1674,55 @@ class PotokP(BaseUG405):
     # potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
+    ##########################
 
-    @staticmethod
-    def convert_val_stage_to_num_stage(value):
-        if value not in (' ', '@'):
-            return int(math.log2(int(value, 16))) + 1
-        elif value == ' ':
-            return 6
-        elif value == '@':
-            return 7
-        else:
-            raise ValueError
+    def get_current_mode(self, varBinds: list) -> tuple:
+        utcType2OperationMode = hasErrors = isFlash = isDark = isManual = plan = stage = \
+            hasDetErrors = localAdaptiv = None
+
+        # Oids.utcType2OperationMode,
+        # Oids.utcReplyCF,
+        # Oids.utcReplyFR,
+        # Oids.potok_utcReplyDarkStatus,
+        # Oids.utcReplyMC,
+        # Oids.potok_utcReplyPlanStatus,
+        # Oids.utcReplyGn,
+        # Oids.utcReplyDF,
+        # Oids.potok_utcReplyLocalAdaptiv,
+
+        new_varBins = []
+        for data in varBinds:
+            oid, val = data[0].__str__(), data[1].prettyPrint()
+            if oid in Oids.get_state_potokP_oids.value:
+                if oid in Oids.utcType2OperationMode.value:
+                    utcType2OperationMode = val
+                elif oid in Oids.utcReplyCF.value:
+                    hasErrors = val
+                elif oid in Oids.utcReplyFR.value:
+                    isFlash = val
+                elif oid in Oids.potokP_utcReplyDarkStatus.value:
+                    isDark = val
+                elif oid in Oids.utcReplyMC.value:
+                    isManual = val
+                elif oid in Oids.potokP_utcReplyPlanStatus.value:
+                    plan = val
+                elif oid in Oids.utcReplyGn.value:
+                    stage = self.convert_val_to_num_stage_get_req(val)
+                elif oid in Oids.utcReplyDF.value:
+                    hasDetErrors = val
+                elif oid in Oids.potokP_utcReplyLocalAdaptiv.value:
+                    localAdaptiv = val
+            else:
+                new_varBins.append(data)
+
+        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
+        curr_state = {
+            EntityJsonResponce.CURRENT_MODE.value: mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+        }
+        return new_varBins, curr_state
+    ##########################
 
     def _mode_define(self, utcType2OperationMode: str, isFlash: str, isDark: str,
                      isManual: str, plan: str, hasDetErrors: str, localAdaptiv: str) -> str:
@@ -1637,7 +1791,7 @@ class PotokP(BaseUG405):
 
         get_mode_data = (
             mode,
-            self.convert_val_stage_to_num_stage(val_stage),
+            self.convert_val_to_num_stage_get_req(val_stage),
             int(plan) if plan.isdigit() else plan,
             bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors,
         )
@@ -1683,6 +1837,11 @@ class PotokP(BaseUG405):
                                            oids,
                                            timeout=timeout, retries=retries)
 
+
+
+
+
+#########################################################
     # def foo(self):
     #     utcType2OperationMode = str(varBinds[0])
     #     hasErrors = str(varBinds[1])
@@ -1847,7 +2006,7 @@ class PotokP(BaseUG405):
         """
         oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
         res = await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return [self.convert_val_stage_to_num_stage(res[0])]
+        return [self.convert_val_to_num_stage_get_req(res[0])]
 
     async def get_dark(self, timeout=0, retries=0):
         """
@@ -1899,8 +2058,7 @@ class PotokP(BaseUG405):
     async def set_stage(self, value='0', timeout=0, retries=0):
 
         if str(value) != '0':
-            stages = self.make_val_stages_for_get_stage_UG405_potok('set')
-            val = stages.get(value)
+            val = self.convert_val_to_num_stage_set_req(value)
             oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
                     ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
                     ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
@@ -2627,7 +2785,7 @@ class GetDataControllerManagement:
         isDark = str(varBinds[3])
         isManual = str(varBinds[4])
         plan = str(varBinds[5])
-        stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
+        stage = obj.convert_val_to_num_stage_get_req(str(varBinds[0]))
         hasDetErrors = str(varBinds[7])
         localAdaptiv = str(varBinds[8])
 

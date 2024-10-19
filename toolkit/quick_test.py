@@ -60,13 +60,13 @@ swarco16 = '10.45.154.16'
 # res = asyncio.run(h2.get_current_state())
 
 oids = [
-    controller_management.Oids.swarcoUTCDetectorQty,
-    controller_management.Oids.swarcoUTCTrafftechPhaseStatus,
-    controller_management.Oids.swarcoUTCTrafftechPlanSource,
-controller_management.Oids.swarcoUTCTrafftechPlanSource,
-controller_management.Oids.swarcoUTCTrafftechPlanSource,
-controller_management.Oids.swarcoUTCTrafftechPlanSource,
-controller_management.Oids.swarcoUTCTrafftechPlanSource,
+    controller_management.Oids.swarcoUTCDetectorQty.value,
+    controller_management.Oids.swarcoUTCTrafftechPhaseStatus.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
     controller_management.Oids.utcControlFF,
     controller_management.Oids.swarcoSoftIOStatus,
 ]
@@ -78,7 +78,7 @@ controller_management.Oids.swarcoUTCTrafftechPlanSource,
 
 
 
-h3 = controller_management.PeekWeb('10.45.154.19')
+h3 = controller_management.PotokP('10.179.56.217', scn='CO297')
 errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 logger.debug(h3.create_json(errInd, varBinds))
 
