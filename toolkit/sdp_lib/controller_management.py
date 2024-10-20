@@ -330,7 +330,7 @@ class BaseCommon:
         part_of_json = {}
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
-            if isinstance(self, (PotokP, PeekWeb)):
+            if isinstance(self, (PotokP, PeekUG405)):
                 if oid.endswith(self.scn):
                     oid = oid.replace(self.scn, '')
             oid_name, oid_val = Oids(oid).name, Oids(oid).value
@@ -382,8 +382,8 @@ class BaseSNMP(BaseCommon):
         # print(f'get_request ')
         # print(f'oids : {oids} ')
         logger.debug(f'oids before: {oids}')
-        if isinstance(self, (PotokP, PeekUG405)):
-            oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
+        # if isinstance(self, (PotokP, PeekUG405)):
+        #     oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
         #     oids = [oid.value for oid in oids]
         self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
@@ -411,21 +411,51 @@ class BaseSNMP(BaseCommon):
 
         return errorIndication, varBinds
 
-    async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
-        """
-        """
+    async def getNext_request_base(self,
+                                   ip_adress: str,
+                                   community: str,
+                                   oids: Iterable,
+                                   timeout: int = 0,
+                                   retries: int = 0):
+
+        logger.debug(f'getNext_request_base oids: {oids}')
+        self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
         errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
             SnmpEngine(),
             CommunityData(community),
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *oids
+            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
-        if not errorIndication:
-            return True, varBinds[0][0].prettyPrint()
-        return False, errorIndication.__str__()
+        # logging.debug(
+        #     f'errorIndication: {errorIndication.__str__()}\n'
+        #     f'errorStatus: {errorStatus}\n'
+        #     f'errorIndex: {errorIndex}\n'
+        #     f'varBinds: {varBinds}\n'
+        # )
+        # print(f'errorIndication .__str__: {errorIndication.__str__()}')
+        # print(f'errorIndication: {errorIndication}')
+        # print(f'errorIndication type : {type(errorIndication)}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
+        return errorIndication, varBinds
 
-    async def set_request(self, ip_adress: str, community: str, oids: list | tuple,
+
+    # async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
+    #     """
+    #     """
+    #
+    #     errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
+    #         SnmpEngine(),
+    #         CommunityData(community),
+    #         UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+    #         ContextData(),
+    #         *oids
+    #     )
+    #     return errorIndication, varBinds
+
+    async def set_request_base(self, ip_adress: str, community: str, oids: list | tuple,
                           timeout: int = 0, retries: int = 0) -> str | list:
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
@@ -470,33 +500,15 @@ class BaseSNMP(BaseCommon):
             # print(f'res -> {res}')
         return errorIndication.__str__()
 
-    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-    #
-    #     if isinstance(self, SwarcoSTCIP):
-    #         oids_get_req: set = Oids.get_state_swarco_oids.value
-    #     elif isinstance(self, PotokS):
-    #         oids_get_req: set = Oids.get_state_potokS_oids.value
-    #     elif isinstance(self, PotokP):
-    #         oids_get_req: set = Oids.get_state_potokP_oids.value
-    #     else:
-    #         oids_get_req = set()
-    #
-    #     if get_mode:
-    #         self.get_mode_flag = True
-    #         if oids:
-    #             processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | oids_get_req
-    #         else:
-    #             processed_oids = oids_get_req
-    #     else:
-    #         if oids:
-    #             processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
-    #         else:
-    #             return None, []
-    #     return await self.get_request_base(
-    #         ip_adress=self.ip_adress,
-    #         community=self.community_read,
-    #         oids=processed_oids
-    #     )
+
+
+
+
+
+
+
+
+
     def create_data_for_get_req(self,
                                 oids: list | tuple | set,
                                 get_mode: bool,
@@ -508,7 +520,7 @@ class BaseSNMP(BaseCommon):
                        режим, фаза, план
         :return processed_oids: финальная коллекция оидов, которые будут отправлены хосту в get запросе(snmp)
         """
-        logger.debug(f'processed_oids = self.get_state_oids: {self.get_state_oids}')
+        # logger.debug(f'processed_oids = self.get_state_oids: {self.get_state_oids}')
 
         if get_mode:
             self.get_mode_flag = True
@@ -611,6 +623,30 @@ class BaseUG405(BaseSNMP):
         self.scn = asyncio.run(self.get_scn()) if scn is None else self.convert_scn(scn)
         self.host_id = host_id
 
+    # @staticmethod
+    # def convert_scn(scn: str) -> str:
+    #     """ Функция получает на вход строку, которую необходимо конвертировать в SCN
+    #         для управления и мониторинга по протоколу UG405.
+    #         Например: convert_scn(CO1111)
+    #     """
+    #     # print(f'scn : {scn}')
+    #     logger.debug(f'def convert_scn(scn): {scn}')
+    #
+    #     if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
+    #         try:
+    #             scn = re.search('"(.+?)"', scn).group(1)
+    #             len_scn = str(len(scn)) + '.'
+    #             convert_to_ASCII = [str(ord(c)) for c in scn]
+    #             scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
+    #             return scn
+    #         except AttributeError:
+    #             scn = ''
+    #         return scn
+    #
+    #     len_scn = str(len(scn)) + '.'
+    #     convert_to_ASCII = [str(ord(c)) for c in scn]
+    #     return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
+
     @staticmethod
     def convert_scn(scn: str) -> str:
         """ Функция получает на вход строку, которую необходимо конвертировать в SCN
@@ -619,21 +655,7 @@ class BaseUG405(BaseSNMP):
         """
         # print(f'scn : {scn}')
         logger.debug(f'def convert_scn(scn): {scn}')
-
-        if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
-            try:
-                scn = re.search('"(.+?)"', scn).group(1)
-                len_scn = str(len(scn)) + '.'
-                convert_to_ASCII = [str(ord(c)) for c in scn]
-                scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-                return scn
-            except AttributeError:
-                scn = ''
-            return scn
-
-        len_scn = str(len(scn)) + '.'
-        convert_to_ASCII = [str(ord(c)) for c in scn]
-        return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
+        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
 
     def add_scn_to_oids(self, oids: set | tuple | list) -> set:
 
@@ -648,20 +670,57 @@ class BaseUG405(BaseSNMP):
                 new_oids.add(oid)
         return new_oids
 
+    @staticmethod
+    def convert_val_to_num_stage_get_req(val: str):
+        try:
+            if val not in (' ', '@'):
+                return int(math.log2(int(val, 16))) + 1
+            elif val == ' ':
+                return 6
+            elif val == '@':
+                return 7
+            else:
+                return None
+        except ValueError:
+            return None
+
+    # async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
+    #     """
+    #     """
+    #     errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
+    #         SnmpEngine(),
+    #         CommunityData(community),
+    #         UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+    #         ContextData(),
+    #         *oids
+    #     )
+    #     return errorIndication, varBinds
 
     """ GET REQUEST """
 
     async def get_scn(self):
 
         if isinstance(self, PeekUG405):
-            result = await self.getNext_request(self.ip_adress,
-                                                     self.community,
-                                                     [ObjectType(
-                                                     ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
-                                                     )
+            logger.debug('comm: %s', self.community_read)
+
+            errorIndication, varBinds = await self.getNext_request_base(self.ip_adress,
+                                                                        self.community_read,
+                                                                        [Oids.utcType2Reply.value])
+            if errorIndication is None and varBinds:
+                oid = varBinds[0][0][0].__str__()
+                replace_fragment = Oids.utcReplyGn.value
+                if replace_fragment in oid:
+                    logger.debug(f'final_scn: {oid.replace(replace_fragment, "")}')
+                    return oid.replace(replace_fragment, "")
+            return ''
+
         elif isinstance(self, PotokP):
             logging.debug(f'get_scn: {self}')
             result = await self.get_request_base(self.ip_adress, self.community_read, (Oids.utcReplySiteID.value,))
+        else:
+            return ''
+
+
         val = result[1][0][1].prettyPrint()
         return self.convert_scn(val)
 
@@ -1452,15 +1511,7 @@ class PotokP(BaseUG405):
     #     # print(stages)
     #     values = {k: v for v, k in enumerate(stages, 1)}
     #     return values.get(val)
-    @staticmethod
-    def convert_scn(scn: str) -> str:
-        """ Функция получает на вход строку, которую необходимо конвертировать в SCN
-            для управления и мониторинга по протоколу UG405.
-            Например: convert_scn(CO1111)
-        """
-        # print(f'scn : {scn}')
-        logger.debug(f'def convert_scn(scn): {scn}')
-        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+
 
         # if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
         #     try:
@@ -1477,19 +1528,7 @@ class PotokP(BaseUG405):
         # convert_to_ASCII = [str(ord(c)) for c in scn]
         # return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
-    @staticmethod
-    def convert_val_to_num_stage_get_req(val: str):
-        try:
-            if val not in (' ', '@'):
-                return int(math.log2(int(val, 16))) + 1
-            elif val == ' ':
-                return 6
-            elif val == '@':
-                return 7
-            else:
-                return None
-        except ValueError:
-            return None
+
 
     @staticmethod
     def convert_val_to_num_stage_set_req(val: str) -> int | None:
@@ -2024,6 +2063,11 @@ class PeekUG405(BaseUG405):
     #                    peek_utcType2OperationModeTimeout: '.1.3.6.1.4.1.13267.3.2.2.4.0',
     #                    peek_utcType2OperationMode: '.1.3.6.1.4.1.13267.3.2.4.1.0'
     #                    }
+
+    def __init__(self, ip_adress, host_id=None, scn=None):
+        super().__init__(ip_adress, scn, host_id)
+        self.set_controller_type()
+        print(f'scn: {scn}')
 
     """ GET REQUEST """
 

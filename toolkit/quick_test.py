@@ -63,10 +63,10 @@ oids = [
     controller_management.Oids.swarcoUTCDetectorQty.value,
     controller_management.Oids.swarcoUTCTrafftechPhaseStatus.value,
     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
     controller_management.Oids.utcControlFF,
     controller_management.Oids.swarcoSoftIOStatus,
 ]
@@ -78,9 +78,10 @@ controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
 
 
 
-h3 = controller_management.PotokP('10.179.59.217')
+h3 = controller_management.PeekUG405('10.179.57.41')
+
 errInd, varBinds = asyncio.run(h3.get_request([controller_management.Oids.utcReplyGn,
-                                               controller_management.Oids.utcType2OperationMode], get_mode=True))
+                                               controller_management.Oids.utcType2OperationMode]))
 logger.debug(h3.create_json(errInd, varBinds))
 
 # async def main():
