@@ -214,20 +214,12 @@ class Oids(Enum):
         utcReplyMC, utcReplyCF
     }
 
-    get_state_swarco_oids = {
-        swarcoUTCStatusEquipment,
-        swarcoUTCTrafftechPhaseStatus,
-        swarcoUTCTrafftechPlanCurrent,
-        swarcoUTCDetectorQty,
-        swarcoSoftIOStatus,
-    }
-
-    get_state_potokS_oids = {
-        swarcoUTCStatusEquipment,
-        swarcoUTCTrafftechPhaseStatus,
-        swarcoUTCTrafftechPlanCurrent,
-        potokS_UTCStatusMode,
-    }
+    # get_state_potokS_oids = {
+    #     swarcoUTCStatusEquipment,
+    #     swarcoUTCTrafftechPhaseStatus,
+    #     swarcoUTCTrafftechPlanCurrent,
+    #     potokS_UTCStatusMode,
+    # }
 
     get_state_potokP_oids = {
         utcType2OperationMode,
@@ -353,8 +345,6 @@ class BaseCommon(ABC):
         self.get_mode_flag = False
         return {self.ip_adress: json}
 
-
-
     async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
         """
         """
@@ -476,28 +466,46 @@ class BaseSNMP(BaseCommon):
 
         return errorIndication, varBinds
 
+    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+    #
+    #     if isinstance(self, SwarcoSTCIP):
+    #         oids_get_req: set = Oids.get_state_swarco_oids.value
+    #     elif isinstance(self, PotokS):
+    #         oids_get_req: set = Oids.get_state_potokS_oids.value
+    #     elif isinstance(self, PotokP):
+    #         oids_get_req: set = Oids.get_state_potokP_oids.value
+    #     else:
+    #         oids_get_req = set()
+    #
+    #     if get_mode:
+    #         self.get_mode_flag = True
+    #         if oids:
+    #             processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | oids_get_req
+    #         else:
+    #             processed_oids = oids_get_req
+    #     else:
+    #         if oids:
+    #             processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
+    #         else:
+    #             return None, []
+    #     return await self.get_request_base(
+    #         ip_adress=self.ip_adress,
+    #         community=self.community_read,
+    #         oids=processed_oids
+    #     )
+    def create_data_for_get_req(self, *args) -> Iterable:
+        pass
+
+    def create_data_for_set_req(self, *args) -> Iterable:
+        pass
+
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
 
-        if isinstance(self, SwarcoSTCIP):
-            oids_get_req: set = Oids.get_state_swarco_oids.value
-        elif isinstance(self, PotokS):
-            oids_get_req: set = Oids.get_state_potokS_oids.value
-        elif isinstance(self, PotokP):
-            oids_get_req: set = Oids.get_state_potokP_oids.value
-        else:
-            oids_get_req = set()
+        if not oids and not get_mode:
+            return None, []
 
-        if get_mode:
-            self.get_mode_flag = True
-            if oids:
-                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | oids_get_req
-            else:
-                processed_oids = oids_get_req
-        else:
-            if oids:
-                processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
-            else:
-                return None, []
+        processed_oids = self.create_data_for_get_req(oids, get_mode)
+
         return await self.get_request_base(
             ip_adress=self.ip_adress,
             community=self.community_read,
@@ -523,29 +531,19 @@ class BaseSTCIP(BaseSNMP):
 
     """ GET REQUEST """
 
-    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-    #
-    #     if get_mode:
-    #         if oids:
-    #             if isinstance(self, SwarcoSTCIP):
-    #                 oids_get_req: set = Oids.get_state_swarco_oids.value
-    #             elif isinstance(self, PotokS):
-    #                 oids_get_req: set = Oids.get_state_potokS_oids.value
-    #             else:
-    #                 raise TypeError
-    #
-    #             processed_oids = {oid.value for oid in oids} | oids_get_req
-    #         else:
-    #             processed_oids = Oids.get_state_potokS_oids.value
-    #         self.get_mode_flag = True
-    #     else:
-    #         processed_oids = {oid.value for oid in oids}
-    #
-    #     return await self.get_request_base(
-    #         ip_adress=self.ip_adress,
-    #         community=self.community_read,
-    #         oids=processed_oids
-    #     )
+    def create_data_for_get_req(self, oids: list | tuple | set, get_mode: bool) -> set:
+        logger.debug(f'processed_oids = self.get_state_oids: {self.get_state_oids}')
+
+        if get_mode:
+            self.get_mode_flag = True
+            if oids:
+                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
+            else:
+                processed_oids = self.get_state_oids
+        else:
+            processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
+
+        return processed_oids
 
     async def get_swarcoUTCStatusEquipment(self, timeout=0, retries=0):
         """
@@ -811,26 +809,6 @@ class BaseUG405(BaseSNMP):
 
     """ GET REQUEST """
 
-    # async def get_scn(self, obj):
-    #
-    #     if isinstance(obj, PeekUG405):
-    #         result, val = await self.getNext_request(self.ip_adress,
-    #                                                  self.community,
-    #                                                  [ObjectType(
-    #                                                   ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
-    #                                                  )
-    #     elif isinstance(obj, PotokP):
-    #         logging.debug(f'get_scn: {obj}')
-    #         r = await self.get_utcReplySiteID()
-    #         logging.debug(f'res: {r}')
-    #         val = r[0]
-    #         result = True if val else False
-    #     else:
-    #         raise TypeError
-    #
-    #     if result:
-    #         return BaseUG405.convert_scn(val)
-
     async def get_scn(self):
 
         if isinstance(self, PeekUG405):
@@ -850,50 +828,6 @@ class BaseUG405(BaseSNMP):
         logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
         if result:
             return self.convert_scn(val)
-
-    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-
-        if isinstance(self, SwarcoSTCIP):
-            oids_get_req: set = Oids.get_state_swarco_oids.value
-        elif isinstance(self, PotokS):
-            oids_get_req: set = Oids.get_state_potokS_oids.value
-        elif isinstance(self, PotokP):
-            oids_get_req: set = Oids.get_state_potokP_oids.value
-        else:
-            oids_get_req = set()
-
-        if get_mode:
-            if oids:
-                processed_oids = {oid.value for oid in oids} | oids_get_req
-            else:
-                processed_oids = oids_get_req
-        else:
-            processed_oids = {oid.value for oid in oids}
-
-        # if get_mode:
-        #     self.get_mode_flag = True
-        #     if oids:
-        #         if isinstance(self, SwarcoSTCIP):
-        #             oids_get_req: set = Oids.get_state_swarco_oids.value
-        #         elif isinstance(self, PotokS):
-        #             oids_get_req: set = Oids.get_state_potokS_oids.value
-        #         elif isinstance(self, PotokP):
-        #             oids_get_req: set = Oids.get_state_potokP_oids.value
-        #         else:
-        #             raise TypeError
-        #
-        #         processed_oids = {oid.value for oid in oids} | oids_get_req
-        #     else:
-        #         processed_oids = Oids.get_state_potokS_oids.value
-        #     self.get_mode_flag = True
-        # else:
-        #     processed_oids = {oid.value for oid in oids}
-
-        return await self.get_request_base(
-            ip_adress=self.ip_adress,
-            community=self.community_read,
-            oids=processed_oids
-        )
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -1174,6 +1108,14 @@ class SwarcoSTCIP(BaseSTCIP):
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
 
+    get_state_oids = {
+        Oids.swarcoUTCStatusEquipment.value,
+        Oids.swarcoUTCTrafftechPhaseStatus.value,
+        Oids.swarcoUTCTrafftechPlanCurrent.value,
+        Oids.swarcoUTCDetectorQty.value,
+        Oids.swarcoSoftIOStatus.value,
+    }
+
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
         self.set_controller_type()
@@ -1228,7 +1170,7 @@ class SwarcoSTCIP(BaseSTCIP):
         new_varBins = []
         for data in varBinds:
             oid, val = data[0].__str__(), data[1].prettyPrint()
-            if oid in Oids.get_state_swarco_oids.value:
+            if oid in self.get_state_oids:
                 if oid == Oids.swarcoUTCStatusEquipment.value:
                     equipment_status = val
                 elif oid == Oids.swarcoUTCTrafftechPhaseStatus.value:
@@ -1356,6 +1298,12 @@ class PotokS(BaseSTCIP):
     # set_val_stage = {
     #     str(k): str(v) if k > 0 else '0' for k, v in zip(range(65), range(1, 66))
     # }
+    get_state_oids = {
+        Oids.swarcoUTCStatusEquipment.value,
+        Oids.swarcoUTCTrafftechPhaseStatus.value,
+        Oids.swarcoUTCTrafftechPlanCurrent.value,
+        Oids.potokS_UTCStatusMode.value,
+    }
 
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
@@ -1408,7 +1356,7 @@ class PotokS(BaseSTCIP):
         new_varBins = []
         for data in varBinds:
             oid, val = data[0].__str__(), data[1].prettyPrint()
-            if oid in Oids.get_state_potokS_oids.value:
+            if oid in self.get_state_oids:
                 if oid == Oids.swarcoUTCStatusEquipment.value:
                     equipment_status = val
                 elif oid == Oids.swarcoUTCTrafftechPhaseStatus.value:
@@ -1627,7 +1575,6 @@ class PotokP(BaseUG405):
     #         # # print(set_val_stage_UG405_POTOK)
     #         # return set_val_stage_UG405_POTOK
 
-
     # @staticmethod
     # def convert_val_to_num_stage_get_req(val: str) -> int | None:
     #
@@ -1655,12 +1602,14 @@ class PotokP(BaseUG405):
             return 7
         else:
             raise ValueError
+
     @staticmethod
     def convert_val_to_num_stage_set_req(val: str) -> int | None:
 
         stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
         values = {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
         return values.get(val)
+
     # Значения фаз для для UG405 Potok
     # val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
@@ -1679,6 +1628,7 @@ class PotokP(BaseUG405):
     # potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
+
     ##########################
 
     def get_current_mode(self, varBinds: list) -> tuple:
@@ -1727,6 +1677,7 @@ class PotokP(BaseUG405):
             EntityJsonResponce.CURRENT_PLAN.value: plan,
         }
         return new_varBins, curr_state
+
     ##########################
 
     def _mode_define(self, utcType2OperationMode: str, isFlash: str, isDark: str,
@@ -1842,11 +1793,7 @@ class PotokP(BaseUG405):
                                            oids,
                                            timeout=timeout, retries=retries)
 
-
-
-
-
-#########################################################
+    #########################################################
     # def foo(self):
     #     utcType2OperationMode = str(varBinds[0])
     #     hasErrors = str(varBinds[1])
@@ -3153,13 +3100,13 @@ class PeekWeb(BaseCommon):
             EntityJsonResponce.CURRENT_MODE.value: current_mode,
             EntityJsonResponce.CURRENT_STAGE.value: stage,
             EntityJsonResponce.CURRENT_PLAN.value: plan,
-            EntityJsonResponce.CURRENT_PARAM_PLAN.value:param_plan,
+            EntityJsonResponce.CURRENT_PARAM_PLAN.value: param_plan,
             EntityJsonResponce.CURRENT_TIME.value: current_time,
             EntityJsonResponce.CURRENT_ERRORS.value: current_err,
             EntityJsonResponce.CURRENT_STATE.value: current_state,
         }
 
-        return [],  processed_data
+        return [], processed_data
 
     async def get_content_from_web(self, route_type, timeout=1) -> tuple:
         url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
@@ -3196,7 +3143,6 @@ class PeekWeb(BaseCommon):
         self.get_mode_flag = True
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
         return errorIndication, content
-
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
@@ -3465,43 +3411,43 @@ class PeekWeb(BaseCommon):
     #     else:
     #         return await get_request(session)
 
-        # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
-        # {'par_name': 'PARM.R1/1', 'par_value': '0'}
-        # index, value = data_params
-        # if type == self.INPUTS:
-        #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-        #     url = f'http://{self.ip_adress}{self.url_set_inp}'
-        # elif type_set_request == self.type_set_request_user_parameter:
-        #     url = f'http://{self.ip_adress}{self.url_set_user_parameters}'
-        #     params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
-        # elif type_set_request == self.type_set_request_man_flash_dark_allred:
-        #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
-        #     url = f'http://{self.ip_adress}{self.url_set_inp}'
-        # else:
-        #     raise TypeError
-        #
-        # print(f'params: {params}')
+    # f'http://{self.ip_adress}/hvi?file=data.hvi&page=cell6710.hvi'
+    # {'par_name': 'PARM.R1/1', 'par_value': '0'}
+    # index, value = data_params
+    # if type == self.INPUTS:
+    #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
+    #     url = f'http://{self.ip_adress}{self.url_set_inp}'
+    # elif type_set_request == self.type_set_request_user_parameter:
+    #     url = f'http://{self.ip_adress}{self.url_set_user_parameters}'
+    #     params = {'par_name': f'PARM.R1/{index}', 'par_value': value}
+    # elif type_set_request == self.type_set_request_man_flash_dark_allred:
+    #     params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
+    #     url = f'http://{self.ip_adress}{self.url_set_inp}'
+    # else:
+    #     raise TypeError
+    #
+    # print(f'params: {params}')
 
-        # return [
-        #     line.split(';')[1:] for line in data.splitlines() if line.startswith(':D')
-        # ]
+    # return [
+    #     line.split(';')[1:] for line in data.splitlines() if line.startswith(':D')
+    # ]
 
-        # try:
-        #     with requests.Session() as session:
-        #         response = session.get(
-        #             url=f'http://{self.ip_adress}{self.url_inputs}',
-        #             headers=self.headers,
-        #             cookies=self.cookies,
-        #             timeout=2
-        #         )
-        #     inputs = (
-        #         line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
-        #     )
-        #     return inputs
-        # except requests.exceptions.ConnectTimeout as err:
-        #     return 'ConnectTimeoutError'
-        # except Exception as err:
-        #     return 'common'
+    # try:
+    #     with requests.Session() as session:
+    #         response = session.get(
+    #             url=f'http://{self.ip_adress}{self.url_inputs}',
+    #             headers=self.headers,
+    #             cookies=self.cookies,
+    #             timeout=2
+    #         )
+    #     inputs = (
+    #         line.split(';')[1:] for line in response.content.decode("utf-8").splitlines() if line.startswith(':D')
+    #     )
+    #     return inputs
+    # except requests.exceptions.ConnectTimeout as err:
+    #     return 'ConnectTimeoutError'
+    # except Exception as err:
+    #     return 'common'
 
 
 """ Arhive """

@@ -78,7 +78,7 @@ controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
 
 
 
-h3 = controller_management.PotokS('10.179.58.105')
+h3 = controller_management.PotokS('10.179.68.177')
 errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 logger.debug(h3.create_json(errInd, varBinds))
 
