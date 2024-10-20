@@ -15,7 +15,8 @@ import math
 from datetime import datetime
 import logging
 
-from enum import Enum, auto
+from enum import Enum
+import ipaddress
 import asyncio
 import paramiko
 import aiohttp
@@ -212,6 +213,8 @@ class BaseCommon:
     controller_type: str | None
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
+    matching_types_set_req: dict
+    scn_required_oids: dict
 
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
@@ -220,18 +223,6 @@ class BaseCommon:
         self.type_request_json = None
         self.type_curr_request = None
 
-    def checking_the_need_for_scn(self, oids: list | tuple) -> list | tuple:
-        print(f'Ooidse {oids}')
-        for i, oid in enumerate(oids):
-            print(f'Oids.scn_required_oids.value {Oids.scn_required_oids.value}')
-            if oid.value in Oids.scn_required_oids.value:
-                print(f'oid.value {oid.value}')
-                oids[i] = oid.value + self.scn
-            else:
-                oids[i] = oid.value
-        logger.debug(f'self.scn: {self.scn}')
-        logger.debug(f'oids after: {oids}')
-        return oids
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -373,22 +364,11 @@ class BaseSNMP(BaseCommon):
         # print(f'varBinds: {varBinds}')
         return errorIndication, varBinds
 
-
-    # async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
-    #     """
-    #     """
-    #
-    #     errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
-    #         SnmpEngine(),
-    #         CommunityData(community),
-    #         UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
-    #         ContextData(),
-    #         *oids
-    #     )
-    #     return errorIndication, varBinds
-
-    async def set_request_base(self, ip_adress: str, community: str, oids: list | tuple,
-                          timeout: int = 0, retries: int = 0) -> str | list:
+    async def set_request_base(self,
+                               ip_adress: str,
+                               community: str,
+                               oids: list | tuple | set,
+                               timeout: int = 0, retries: int = 0) -> tuple:
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
         :param ip_adress: ip хоста
@@ -404,7 +384,7 @@ class BaseSNMP(BaseCommon):
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
             # ObjectType(ObjectIdentity(oid), value),
-            *oids
+            *[oid for oid in oids]
         )
         logging.debug(
             f'errorIndication: {errorIndication.__str__()}\n'
@@ -413,24 +393,26 @@ class BaseSNMP(BaseCommon):
             f'varBinds: {varBinds}\n'
         )
 
+        return errorIndication, varBinds
+
         # print(f'errorIndication: {errorIndication.__str__()}')
         # print(f'errorStatus: {errorStatus}')
         # print(f'errorIndex: {errorIndex}')
         # print(f'varBinds: {varBinds}')
-        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-        # print(f'res -> {res}')
-        if not errorIndication and varBinds:
-            if varBinds:
-                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-
-                return [data[1].prettyPrint() for data in varBinds]
-            else:
-                return self.error_no_varBinds
-            # print(f'(len(varBinds): {len(varBinds)}')
-            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-            # res = [data[1].prettyPrint() for data in varBinds]
-            # print(f'res -> {res}')
-        return errorIndication.__str__()
+        # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        # # print(f'res -> {res}')
+        # if not errorIndication and varBinds:
+        #     if varBinds:
+        #         # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        #
+        #         return [data[1].prettyPrint() for data in varBinds]
+        #     else:
+        #         return self.error_no_varBinds
+        #     # print(f'(len(varBinds): {len(varBinds)}')
+        #     # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        #     # res = [data[1].prettyPrint() for data in varBinds]
+        #     # print(f'res -> {res}')
+        # return errorIndication.__str__()
 
 
 
@@ -468,8 +450,23 @@ class BaseSNMP(BaseCommon):
 
         return processed_oids
 
-    def create_data_for_set_req(self, *args) -> Iterable:
-        pass
+    def create_data_for_set_req(self, oids):
+        processed_oids = set()
+
+        logger.debug(f'create_data_for_set_req {oids}')
+
+        oids = list(oids.items()) if type(oids) == dict else oids
+        # return {(ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32('0')))}
+        for oid, val in oids:
+            if type(oid) == str:
+                processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
+            elif isinstance(oid, Oids):
+                oid = oid.value
+                processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
+
+        logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
+        return processed_oids
+
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
 
@@ -484,11 +481,24 @@ class BaseSNMP(BaseCommon):
             oids=processed_oids
         )
 
+    async def set_request(self, oids: tuple | list) -> tuple:
+        processed_oids = self.create_data_for_set_req(oids)
+
+        return await self.set_request_base(
+            ip_adress=self.ip_adress,
+            community=self.community_write,
+            oids=processed_oids
+        )
 
 class BaseSTCIP(BaseSNMP):
 
-    community_write = os.getenv('communitySTCIP_r')
-    community_read = os.getenv('communitySTCIP_w')
+    community_write = os.getenv('communitySTCIP_w')
+    community_read = os.getenv('communitySTCIP_r')
+
+    matching_types_set_req = {
+        Oids.swarcoUTCTrafftechPhaseCommand.value: Unsigned32,
+        Oids.swarcoUTCTrafftechPlanCommand.value: Unsigned32
+    }
 
     """ GET REQUEST """
 
@@ -541,7 +551,7 @@ class BaseUG405(BaseSNMP):
         Oids.potokP_utcReplyPlanSource.value, Oids.potokP_utcReplyDarkStatus.value,
         Oids.potokP_utcReplyLocalAdaptiv.value, Oids.potokP_utcReplyHardwareErr.value,
         Oids.potokP_utcReplySoftwareErr.value, Oids.potokP_utcReplyElectricalCircuitErr.value,
-        Oids.utcReplyMC.value, Oids.utcReplyCF.value
+        Oids.utcReplyMC.value, Oids.utcReplyCF.value, Oids.utcReplyVSn.value
     }
 
     # Ключи, прописанные вручную, рабочая версия
