@@ -78,7 +78,7 @@ oids = [
 
 
 
-h3 = controller_management.PeekUG405('10.179.57.41')
+h3 = controller_management.PotokP('10.179.39.33')
 
 errInd, varBinds = asyncio.run(h3.get_request([controller_management.Oids.utcReplyGn,
                                                controller_management.Oids.utcType2OperationMode]))

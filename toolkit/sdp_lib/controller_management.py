@@ -599,6 +599,7 @@ class BaseSTCIP(BaseSNMP):
 
 
 class BaseUG405(BaseSNMP):
+
     community_read = os.getenv('communityUG405_r')
     community_write = os.getenv('communityUG405_w')
 
@@ -737,15 +738,6 @@ class BaseUG405(BaseSNMP):
         # if result:
         #     return self.convert_scn(val)
 
-    async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
-        """
-        Возвращает значение OperationModeTimeout
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcType2OperationModeTimeout
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
@@ -770,193 +762,9 @@ class BaseUG405(BaseSNMP):
                                                   oids
                                                   )
 
-    async def get_utcType2VendorID(self, timeout=0, retries=0):
-        """
-        Возвращает значение OperationModeTimeout
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcType2OperationModeTimeout
-        """
-
-        oids = [ObjectType(ObjectIdentity(self.utcType2VendorID))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplySiteID(self, timeout=0, retries=0):
-        """
-        Возвращает значение OperationModeTimeout
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcType2OperationModeTimeout
-        """
-
-        oids = [ObjectType(ObjectIdentity(Oids.utcReplySiteID))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcType2OperationMode(self, timeout=0, retries=0):
-        """
-        Возвращает значение OperationModeTimeout
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcType2OperationMode
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplyGn(self, timeout=0, retries=0):
-        """
-        Возвращает значение фазы utcReplyGn в стоке hex формата
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return значение фазы utcReplyGn в стоке hex формата
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcControlTO(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcControlTO
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcControlTO
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcControlLO(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcControlLO
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcControlLO
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcControlLO + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcControlFF(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcControlFF
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcControlFF
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcControlFF + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcControlFn(self, timeout=0, retries=0):
-        """
-        Возвращает кортеж значений utcControlFn в виде "val: stage"
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return tuple: Возвращает текущее значение utcControlFn в виде "val: stage"
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcControlFn + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplyFR(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyFR ( Condition '1' confirms that the controller signals are in flashing
-        amber mode. This bit is only specified for export (non-UK) applications.)
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return tuple: Возвращает значение utcReplyFR (1 или 0)
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplyDF(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyDF ( Condition '1' confirms that the controller signals are in flashing
-        amber mode. This bit is only specified for export (non-UK) applications.)
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return tuple: Возвращает значение utcReplyDF (1 или 0)
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyDF + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplyMC(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyMC
-        Condition 1 confirms that Manual Control is either in operation or requested as specified in an
-        associated Works Specification.
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyMC
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyMC + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcReplyVSn(self, timeout=0, retries=0):
-        oids = [ObjectType(ObjectIdentity(self.utcReplyVSn + self.scn))]
-        # print('get_utcReplyVSn')
-        # print(f'scn: {self.scn}')
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcType2OutstationTime(self, timeout=0, retries=0):
-        oids = [ObjectType(ObjectIdentity(self.utcType2OutstationTime))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_utcType2ScootDetectorCount(self, timeout=0, retries=0):
-        oids = [ObjectType(ObjectIdentity(self.utcType2ScootDetectorCount))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_data_scoot(self, timeout=0, retries=0):
-        oids = [ObjectType(ObjectIdentity(self.utcType2ScootDetectorCount)),
-                ObjectType(ObjectIdentity(self.utcType2OutstationTime)),
-                ObjectType(ObjectIdentity(self.utcReplyVSn + self.scn))
-                ]
-        return await self.get_request_archive(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     """ archive methods(not usage) """
 
-    # def get_mode(self):
-    #     """
-    #     Возвращает текущий режим
-    #     '8': 'Адаптивный',
-    #     '10': 'Ручное управление',
-    #     '11': 'Удалённое управление',
-    #     '12': 'Фиксированный',
-    #     '--': 'Нет данных',
-    #     :return current mode
-    #     """
-    #
-    #     url = f'http://{self.ip_adress}{self.mask_url_get_data}'
-    #     session = requests.get(url)
-    #     data = bytes.decode(session.content, encoding='utf-8')
-    #
-    #     state = mode = None
-    #     for line in data.split('\n'):
-    #         if 'T_PLAN' in line:
-    #             self.plan = line.replace(':D;;##T_PLAN##;', '').replace('-', '').replace(' ', '')
-    #             print(f'self.plan: {self.plan}')
-    #         elif ':SUBTITLE' in line:
-    #             adress = line.replace(':SUBTITLE;Moscow:', '')
-    #             print(f'adress: {adress}')
-    #         elif 'T_STATE' in line:
-    #             state = line.replace(':D;;##T_STATE##;', '')
-    #             print(f'state: {state}')
-    #
-    #         elif 'T_MODE' in line:
-    #             mode, stage = line.replace(':D;;##T_MODE## (##T_STAGE##);', '').split()
-    #             self.stage = stage.replace('(', '').replace(')', '')
-    #             print(f'mode: {mode}, self.stage: {self.stage}')
-    #             break
-    #
-    #     print(f'if self.stage.isdigit(): {self.stage.isdigit()}')
-    #     print(f'int(self.stage) > 0: {int(self.stage) > 0}')
-    #     print(f'self.state_CONTROL: {self.state_CONTROL}')
-    #
-    #     if self.stage.isdigit() and int(self.stage) > 0 and state.strip() in self.state_CONTROL:
-    #         if mode == self.modeVA:
-    #             return '8'
-    #         elif mode == self.modeFT:
-    #             return '12'
-    #         elif mode == self.modeMAN:
-    #             return '10'
-    #         elif mode == self.modeUTC:
-    #             return '11'
-    #         else:
-    #             return '--'
 
     """ SET REQUEST """
 
