@@ -37,8 +37,10 @@ while True:
         for vb in varBinds:
             oid = vb[0].__str__()
             val = vb[1].prettyPrint()
-            if h1.scn in oid:
-                oid = oid.replace(h1.scn, '')
+            if isinstance(h1, (controller_management.PotokP, controller_management.PeekUG405)):
+                oid = h1.remove_scn_from_oid(oid)
+            # if h1.scn in oid:
+            #     oid = oid.replace(h1.scn, '')
             if controller_management.Oids(oid).name == controller_management.Oids.utcType2OutstationTime.name:
                 # print(f'Время ДК2: {convert_datetime(res[1])}')
                 print(f'{controller_management.Oids(oid).name}: {convert_datetime(val)}')

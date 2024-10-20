@@ -605,6 +605,14 @@ class BaseUG405(BaseSNMP):
                 new_oids.add(oid)
         return new_oids
 
+    def remove_scn_from_oid(self, oid: str) -> str:
+        """
+        Метод удаляет scn у оида если scn присутсвтует в нём.
+        :arg oid: оид, который необходимо проверить на наличие в нём scn
+        :return oid: возвращает оид без scn
+        """
+        return oid.replace(self.scn, '') if self.scn in oid else oid
+
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str):
         try:
@@ -756,7 +764,7 @@ class SwarcoSTCIP(BaseSTCIP):
         self.set_controller_type()
         self._get_current_state = False
 
-    """ GET REQUEST """
+
 
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str) -> int | None:
@@ -767,6 +775,8 @@ class SwarcoSTCIP(BaseSTCIP):
     def convert_val_to_num_stage_set_req(val: str) -> int | None:
         values = {'1': 2, '2': 3, '3': 4, '4': 5, '5': 6, '6': 7, '7': 8, '8': 1, 'ЛОКАЛ': 0, '0': 0}
         return values.get(val)
+
+    """ GET REQUEST """
 
     def _mode_define(self, equipment_status: str, plan: str, softstat180_181: str, num_logics: str) -> str:
         """ Определяет текщий ружим ДК.
@@ -829,64 +839,28 @@ class SwarcoSTCIP(BaseSTCIP):
         #     print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
         return new_varBins, curr_state
 
-    # async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-    #
-    #     if get_mode:
-    #         if oids:
-    #             processed_oids = {oid.value for oid in oids} | Oids.get_state_swarco_oids.value
-    #         else:
-    #             processed_oids = Oids.get_state_swarco_oids.value
-    #         self.get_mode_flag = True
-    #     else:
-    #         processed_oids = {oid.value for oid in oids}
-    #
-    #     return await self.get_request_base(
-    #         ip_adress=self.ip_adress,
-    #         community=self.community_read,
-    #         oids=processed_oids
-    #     )
-
-    # async def get_current_state(self, timeout=0, retries=0) -> tuple:
-    #     """
-    #     Метод запроса значений необходимых оидов для получения текущего состояния ДК
-    #     :param timeout:
-    #     :return tuple: (errorIndication, varBinds)
-    #     """
-    #     self.type_request = EntityJsonResponce.TYPE_GET_STATE
-    #     self.json_body_second_part = JsonBody.JSON_GET_STATE_SWARCO_BODY.value
-    #     logger.debug(f'перед await get_current_mode')
-    #     # oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCStatusEquipment.value)),
-    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseStatus.value)),
-    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCurrent.value)),
-    #     #         ObjectType(ObjectIdentity(Oids.swarcoUTCDetectorQty.value)),
-    #     #         ObjectType(ObjectIdentity(Oids.swarcoSoftIOStatus.value)),
-    #     #         ]
-    #     oids = [
-    #         Oids.swarcoUTCStatusEquipment,
-    #         Oids.swarcoUTCTrafftechPhaseStatus,
-    #         Oids.swarcoUTCTrafftechPlanCurrent,
-    #         Oids.swarcoUTCDetectorQty,
-    #         Oids.swarcoSoftIOStatus,
-    #     ]
-    #     return await self.get_request_base(self.ip_adress,
-    #                                        self.community_read,
-    #                                        oids,
-    #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
 
-    async def set_stage(self, value='0', timeout=0, retries=0):
+    async def set_stage(self, value='0', timeout=1, retries=2):
         """"
         Устанавливает  фазу.
         :param value:  Номер фазы в десятичном виде
         :return value: Номер фазы в десятичном виде
         """
-        converted_value_to_num_stage = self.set_val_stage.get(str(value))
-        oids = [
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
-        ]
-        result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-        return [str(self.convert_val_to_num_stage_get_req.get(result[0]))]
+        converted_val = self.convert_val_to_num_stage_set_req(value)
+        oids = (
+            ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(converted_val)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+
+        # converted_value_to_num_stage = self.set_val_stage.get(str(value))
+        # oids = [
+        #     ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
+        # ]
+        # result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+        # return [str(self.convert_val_to_num_stage_get_req.get(result[0]))]
         # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
     async def set_flash(self, value='0', timeout=0, retries=0):
