@@ -236,6 +236,7 @@ class Oids(Enum):
 
 
 class BaseCommon:
+
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -702,26 +703,14 @@ class BaseUG405(BaseSNMP):
 
         elif isinstance(self, PotokP):
             logging.debug(f'get_scn: {self}')
-            result = await self.get_request_base(self.ip_adress, self.community_read, (Oids.utcReplySiteID.value,))
+            errorIndication, varBinds = await self.get_request_base(self.ip_adress,
+                                                                    self.community_read,
+                                                                    (Oids.utcReplySiteID.value,))
+            if errorIndication is None and varBinds:
+                return self.convert_scn(varBinds[0][1].prettyPrint())
+            return ''
         else:
             return ''
-
-
-        val = result[1][0][1].prettyPrint()
-        return self.convert_scn(val)
-
-        # elif isinstance(self, PotokP):
-        #     logging.debug(f'get_scn: {self}')
-        #     r = await self.get_request_base(self.ip_adress, self.community_read, (Oids.utcReplySiteID.value, ))
-        #     logging.debug(f'res: {r}')
-        #     val = r[1][0][1].prettyPrint()
-        #     logger.warning(f'val++++++: {val}')
-        #     result = True if val else False
-        # else:
-        #     raise TypeError
-        # logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
-        # if result:
-        #     return self.convert_scn(val)
 
 
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
@@ -2426,15 +2415,6 @@ class PeekWeb(BaseCommon):
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-    # JSON_GET_STATE_BODY = (
-    #     EntityJsonResponce.CURRENT_MODE.value,
-    #     EntityJsonResponce.CURRENT_STAGE.value,
-    #     EntityJsonResponce.CURRENT_PLAN.value,
-    #     EntityJsonResponce.CURRENT_PARAM_PLAN.value,
-    #     EntityJsonResponce.CURRENT_TIME.value,
-    #     EntityJsonResponce.CURRENT_ERRORS.value,
-    #     EntityJsonResponce.CURRENT_STATE.value
-    # )
 
     JSON_SET_COMMAND_BODY = (
         EntityJsonResponce.RESULT.value,
@@ -2442,13 +2422,6 @@ class PeekWeb(BaseCommon):
         EntityJsonResponce.VALUE.value
     )
 
-    # def __new__(cls, ip_adress: str):
-    #     host = BaseUG405(ip_adress, scn=' ')
-    #     res = asyncio.run(host.get_utcReplySiteID())
-    #     logger.debug('__new__(cls, ip_adress: str): %s', res)
-    #     if res == 'Peek':
-    #         return super(PeekWeb, cls).__new__(cls)
-    #     return None
 
     def __init__(self, ip_adress: str, host_id: str = None):
         super().__init__(ip_adress, host_id)
@@ -2550,6 +2523,7 @@ class PeekWeb(BaseCommon):
         :return tuple: (errorIndication, varBinds)
         """
         self.get_mode_flag = True
+        self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
         return errorIndication, content
 

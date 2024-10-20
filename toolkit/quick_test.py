@@ -72,17 +72,11 @@ oids = [
 ]
 
 
-# for o in controller_management.Oids:
-#     print(f'o: {o.name}')
+h3 = controller_management.PotokP('10.179.56.113', host_id='Tetss1')
 
-
-
-
-h3 = controller_management.PotokP('10.179.39.33')
-
-errInd, varBinds = asyncio.run(h3.get_request([controller_management.Oids.utcReplyGn,
-                                               controller_management.Oids.utcType2OperationMode]))
+errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 logger.debug(h3.create_json(errInd, varBinds))
+
 
 # async def main():
 #     ip = [
