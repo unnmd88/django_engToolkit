@@ -86,7 +86,7 @@ errInd, varBinds = asyncio.run(h3.set_stage('0'))
     # [(controller_management.Oids.swarcoUTCTrafftechPhaseCommand.value, '2')]
 
 
-logger.debug(h3.create_json(errInd, varBinds))
+logger.debug(h3.create_json(errInd, varBinds, first_kwarg='первый kwarg'))
 
 
 # async def main():

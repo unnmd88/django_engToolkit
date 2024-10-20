@@ -240,6 +240,8 @@ class BaseCommon:
 
         if errorIndication:
             self.get_mode_flag = False
+            if kwargs:
+                json |= {k: v for k, v in kwargs.items()}
             return {self.ip_adress: json}
 
         if self.get_mode_flag:
@@ -249,6 +251,9 @@ class BaseCommon:
             json |= self.parse_varBinds_common(varBinds)
 
         self.get_mode_flag = False
+        if kwargs:
+            json |= {k: v for k, v in kwargs.items()}
+
         return {self.ip_adress: json}
 
     def parse_varBinds_common(self, varBinds: list) -> dict:
@@ -746,6 +751,7 @@ class BaseUG405(BaseSNMP):
 
 
 class SwarcoSTCIP(BaseSTCIP):
+
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
