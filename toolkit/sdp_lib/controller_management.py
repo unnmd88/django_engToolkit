@@ -232,7 +232,14 @@ class BaseCommon:
         else:
             self.controller_type = None
 
-    def create_json(self, errorIndication, varBinds: list, **kwargs) -> dict:
+    def create_json(self, errorIndication: None | Exception | str, varBinds: list, **kwargs) -> dict:
+        """"
+        Метод формирует словарь вида json
+        :arg errorIndication: None если не было ошибки при запросе иначе класс ошибки или str
+        :param varBinds: список varBinds, полученный после запроса
+        :arg kwargs: параметры, которые будут добавлены в словарь
+        """
+
         json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
         errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
         json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
