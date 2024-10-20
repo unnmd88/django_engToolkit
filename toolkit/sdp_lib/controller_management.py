@@ -320,12 +320,6 @@ class BaseCommon:
         self.get_mode_flag = False
         return {self.ip_adress: json}
 
-    # @staticmethod
-    # def parse_varBinds_common(varBinds: list) -> dict:
-    #     # vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
-    #     # logger.debug(f'vb: {vb}')
-    #     return {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
-
     def parse_varBinds_common(self, varBinds: list) -> dict:
         part_of_json = {}
         for oid, val in varBinds:
@@ -341,15 +335,6 @@ class BaseCommon:
             part_of_json[oid] = val
         return part_of_json
 
-
-
-        # if isinstance(self, (SwarcoSTCIP, PotokS)):
-        #     varBinds = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint()
-        #                 for oid, val in varBinds}
-        # elif isinstance(self, (PotokP, PeekWeb)):
-        #     for oid, val in varBinds:
-        #         oid, val = oid.__str__(), oid.__str__()
-        #         if
 
     @abc.abstractmethod
     def get_current_mode(self, *args):
@@ -554,11 +539,11 @@ class BaseSNMP(BaseCommon):
 
 
 class BaseSTCIP(BaseSNMP):
+
     community_write = os.getenv('communitySTCIP_r')
     community_read = os.getenv('communitySTCIP_w')
 
     """ GET REQUEST """
-
 
 
 
@@ -1320,24 +1305,6 @@ class PotokP(BaseUG405):
     #     values = {k: v for v, k in enumerate(stages, 1)}
     #     return values.get(val)
 
-
-        # if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
-        #     try:
-        #         scn = re.search('"(.+?)"', scn).group(1)
-        #         len_scn = str(len(scn)) + '.'
-        #         convert_to_ASCII = [str(ord(c)) for c in scn]
-        #         scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-        #         return scn
-        #     except AttributeError:
-        #         scn = ''
-        #     return scn
-        #
-        # len_scn = str(len(scn)) + '.'
-        # convert_to_ASCII = [str(ord(c)) for c in scn]
-        # return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-
-
-
     @staticmethod
     def convert_val_to_num_stage_set_req(val: str) -> int | None:
 
@@ -1449,281 +1416,6 @@ class PotokP(BaseUG405):
         #     val_mode = '--'
         # return self.statusMode.get(val_mode)
 
-    def parse_varBinds_get_state(self, varBinds: list) -> tuple:
-
-        (utcType2OperationMode, hasErrors, isFlash, isDark, isManual, plan, val_stage, hasDetErrors,
-         localAdaptiv, *rest) = [data[1].prettyPrint() for data in varBinds]
-
-        logger.warning(f'val_stage: {val_stage}')
-
-        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
-
-        # utcType2OperationMode = str(varBinds[0])
-        # hasErrors = str(varBinds[1])
-        # isFlash = str(varBinds[2])
-        # isDark = str(varBinds[3])
-        # isManual = str(varBinds[4])
-        # plan = str(varBinds[5])
-        # stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
-        # hasDetErrors = str(varBinds[7])
-        # localAdaptiv = str(varBinds[8])
-
-        get_mode_data = (
-            mode,
-            self.convert_val_to_num_stage_get_req(val_stage),
-            int(plan) if plan.isdigit() else plan,
-            bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors,
-        )
-        return get_mode_data
-
-    async def get_current_state(self, timeout=0, retries=0) -> tuple:
-        """
-        Метод запроса значений необходимых оидов для получения текущего состояния ДК
-        :param retries:
-        :param timeout:
-        :return tuple: (errorIndication, varBinds)
-        """
-        self.type_request = EntityJsonResponce.TYPE_GET_STATE
-        self.json_body_second_part = JsonBody.JSON_GET_STATE_POTOK_P_BODY.value
-        logger.debug(f'перед await get_current_mode')
-
-        # oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
-        #         ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
-        #         ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
-        #         ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
-        #         ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
-        #         ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
-        #         ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
-        #         ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
-        #         ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
-        #         ]
-        #
-
-        oids = [
-            Oids.utcType2OperationMode,
-            Oids.utcReplyCF,
-            Oids.utcReplyFR,
-            Oids.potok_utcReplyDarkStatus,
-            Oids.utcReplyMC,
-            Oids.potok_utcReplyPlanStatus,
-            Oids.utcReplyGn,
-            Oids.utcReplyDF,
-            Oids.potok_utcReplyLocalAdaptiv,
-
-        ]
-        return await self.get_request_base(self.ip_adress,
-                                           self.community,
-                                           oids,
-                                           timeout=timeout, retries=retries)
-
-    #########################################################
-    # def foo(self):
-    #     utcType2OperationMode = str(varBinds[0])
-    #     hasErrors = str(varBinds[1])
-    #     isFlash = str(varBinds[2])
-    #     isDark = str(varBinds[3])
-    #     isManual = str(varBinds[4])
-    #     plan = str(varBinds[5])
-    #     stage = obj.convert_val_stage_to_num_stage(str(varBinds[0]))
-    #     hasDetErrors = str(varBinds[7])
-    #     localAdaptiv = str(varBinds[8])
-    #
-    #     data = {
-    #         'num_host': obj.host_id,
-    #         'scn': obj.scn,
-    #         'current_plan': int(plan) if not isinstance(plan, int) and plan.isdigit() else plan,
-    #         'current_errors': bool(int(hasErrors)) if hasErrors.isdigit() else hasErrors,
-    #         'current_det_errors': bool(int(hasDetErrors)) if hasDetErrors.isdigit() else hasDetErrors
-    #     }
-    #
-    #     if isFlash.isdigit() and int(isFlash) in range(1, 5):
-    #         data['current_mode'] = self.statusMode.get("4")
-    #         return data
-    #     if isDark == '1':
-    #         data['current_mode'] = self.statusMode.get("3")
-    #         return data
-    #     if isManual == '1':
-    #         data['current_mode'] = self.statusMode.get("10")
-    #         return data
-    #
-    #     if utcType2OperationMode == '3' and plan == '0':
-    #         mode = self.statusMode.get('11')
-    #     elif localAdaptiv == '1' and hasDetErrors == '0' and plan != '0':
-    #         mode = self.statusMode.get('8')
-    #     elif (localAdaptiv == '0' or hasDetErrors == '1') and plan != '0':
-    #         mode = self.statusMode.get('12')
-    #     else:
-    #         mode = self.statusMode.get("--")
-    #
-    #     logger.debug(f'Фаза={stage} План={plan} Режим={mode}')
-    #
-    #     data.update(
-    #         {
-    #             'num_host': obj.host_id,
-    #             'scn': obj.scn,
-    #             'current_stage': stage,
-    #             'current_mode': mode,
-    #         }
-    #     )
-
-    async def get_utcReplyFR(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyFR ( Condition '1' confirms that the controller signals are in flashing
-        amber mode. This bit is only specified for export (non-UK) applications.)
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return tuple: Возвращает значение utcReplyFR (1 или 0)
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    # async def get_current_mode(self, timeout=0, retries=0):
-    #     """
-    #     Возвращает значение oid, которые опреляют текущий режим работы контроллера
-    #     :param timeout: Таймаут подключения
-    #     :param retries: Количетсво попыток подключения
-    #     :return varBinds
-    #     """
-    #     logging.debug(f'перед get_current_mode await PotokP')
-    #
-    #     oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode)),
-    #             ObjectType(ObjectIdentity(self.utcReplyCF + self.scn)),
-    #             ObjectType(ObjectIdentity(self.utcReplyFR + self.scn)),
-    #             ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn)),
-    #             ObjectType(ObjectIdentity(self.utcReplyMC + self.scn)),
-    #             ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn)),
-    #             ObjectType(ObjectIdentity(self.utcReplyGn + self.scn)),
-    #             ObjectType(ObjectIdentity(self.utcReplyDF + self.scn)),
-    #             ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))
-    #             ]
-    #     res = await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-    #     return self, res
-    #
-    #     # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-    #     #     SnmpEngine(),
-    #     #     CommunityData(self.community),
-    #     #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-    #     #     ContextData(),
-    #     #     ObjectType(ObjectIdentity(self.utcType2OperationMode), ),
-    #     #     ObjectType(ObjectIdentity(self.utcReplyCF + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.utcReplyMC + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.utcReplyGn + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.utcReplyDF + self.scn), ),
-    #     #     ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn), ),
-    #     # )
-    #     # return self, self.num_host, varBinds
-
-    async def get_potok_utcReplyPlanStatus(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyPlanStatus
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyPlanStatus
-        """
-
-        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.potok_utcReplyPlanStatus + self.scn), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
-
-    async def get_potok_utcReplyPlanSource(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyPlanSource:
-        |----   1 - по расписанию
-        |----   2 - удаленно включили по snmp
-        |----   3 - панели или с веб
-
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyPlanSource
-        """
-        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyPlanSource + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_potok_utcReplyElectricalCircuitErr(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyElectricalCircuitErr
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyElectricalCircuitErr
-        """
-        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyElectricalCircuitErr + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_potok_utcReplyLocalAdaptiv(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyLocalAdaptiv:
-        |----    1 -> установлена локальная адаптива
-        |----    0 -> локальная адаптива не установлена
-
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyLocalAdaptiv
-        """
-        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyLocalAdaptiv + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def get_stage(self, timeout=0, retries=0):
-        """
-        Возвращает номер фазы в десятичном виде
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Значение текущей фазы в десятичном виде
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyGn + self.scn))]
-        res = await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        return [self.convert_val_to_num_stage_get_req(res[0])]
-
-    async def get_dark(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyDarkStatus
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyDarkStatus
-        """
-        oids = [ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.potok_utcReplyDarkStatus + self.scn), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
-
-    async def get_flash(self, timeout=0, retries=0):
-        """
-        Возвращает значение utcReplyFR:
-        |----   0 ЖМ выключен
-        |----   1 -> по рассписанию
-        |----   2 -> удаленно
-        |----   3 -> в ручную
-        |----   4 -> аварийный
-
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcReplyFR
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcReplyFR + self.scn))]
-        return await self.get_request_base(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        # errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcReplyFR + self.scn), ),
-        # )
-        # return varBinds[0][1].prettyPrint()
 
     """*******************************************************************
     ***                          SET-REQUEST                          ****   
@@ -1860,17 +1552,6 @@ class PeekUG405(BaseUG405):
 
     # Маска адреса для получения контента с данными о режиме/работе дк on-line
     mask_url_get_data = '/hvi?file=m001a.hvi&pos1=0&pos2=-1'
-    # Режимы ДК
-
-    # oid для UG405 Peek
-    # oids_UG405_PEEK = {peek_utcReplyGn: '.1.3.6.1.4.1.13267.3.2.5.1.1.3',
-    #                    peek_utcControlLO: '.1.3.6.1.4.1.13267.3.2.4.2.1.11',
-    #                    peek_utcControlFF: '.1.3.6.1.4.1.13267.3.2.4.2.1.20',
-    #                    peek_utcControlTO: '.1.3.6.1.4.1.13267.3.2.4.2.1.15',
-    #                    peek_utcControlFn: '.1.3.6.1.4.1.13267.3.2.4.2.1.5',
-    #                    peek_utcType2OperationModeTimeout: '.1.3.6.1.4.1.13267.3.2.2.4.0',
-    #                    peek_utcType2OperationMode: '.1.3.6.1.4.1.13267.3.2.4.1.0'
-    #                    }
 
     def __init__(self, ip_adress, host_id=None, scn=None):
         super().__init__(ip_adress, scn, host_id)
