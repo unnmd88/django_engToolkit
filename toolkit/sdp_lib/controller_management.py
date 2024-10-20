@@ -103,7 +103,6 @@ class EntityJsonResponce(Enum):
 
 
 class JsonBody(Enum):
-
     BASE_JSON_BODY = (
         EntityJsonResponce.TYPE_CONTROLLER.value,
         EntityJsonResponce.NUM_HOST.value,
@@ -114,7 +113,6 @@ class JsonBody(Enum):
         EntityJsonResponce.TYPE_COMMAND.value,
         EntityJsonResponce.VALUE.value
     )
-
 
 
 class Oids(Enum):
@@ -183,7 +181,6 @@ class Oids(Enum):
 
 
 class BaseCommon:
-
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -214,14 +211,12 @@ class BaseCommon:
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
 
-
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
         self.host_id = host_id
         self.get_mode_flag = False
         self.type_request_json = None
         self.type_curr_request = None
-
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -253,7 +248,6 @@ class BaseCommon:
         if varBinds:
             json |= self.parse_varBinds_common(varBinds)
 
-
         self.get_mode_flag = False
         return {self.ip_adress: json}
 
@@ -266,12 +260,12 @@ class BaseCommon:
                     oid = oid.replace(self.scn, '')
             oid_name, oid_val = Oids(oid).name, Oids(oid).value
             oid = f'{oid_name}[{oid_val}]'
-            if Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.utcReplyGn.name in oid_name:
+            if (Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.swarcoUTCTrafftechPhaseCommand.name
+                    or Oids.utcReplyGn.name in oid_name):
                 num_stage = self.convert_val_to_num_stage_get_req(val)
                 val = f'num_stage[{num_stage}], val_stage[{val}]'
             part_of_json[oid] = val
         return part_of_json
-
 
     @abc.abstractmethod
     def get_current_mode(self, *args):
@@ -290,7 +284,6 @@ class BaseSNMP(BaseCommon):
 
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
-
 
     async def get_request_base(self,
                                ip_adress: str,
@@ -356,7 +349,7 @@ class BaseSNMP(BaseCommon):
             CommunityData(community),
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *[oid for oid in oids]
+            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
         )
         # logging.debug(
         #     f'errorIndication: {errorIndication.__str__()}\n'
@@ -425,15 +418,6 @@ class BaseSNMP(BaseCommon):
         #     # print(f'res -> {res}')
         # return errorIndication.__str__()
 
-
-
-
-
-
-
-
-
-
     def create_data_for_get_req(self,
                                 oids: list | tuple | set,
                                 get_mode: bool,
@@ -450,9 +434,7 @@ class BaseSNMP(BaseCommon):
         if get_mode:
             self.get_mode_flag = True
             if oids:
-                # processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
-                processed_oids = {ObjectType(ObjectIdentity(oid.value)) if type(oid) != str
-                                  else ObjectType(ObjectIdentity(oid)) for oid in oids} | self.get_state_oids
+                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
             else:
                 processed_oids = self.get_state_oids
         else:
@@ -478,11 +460,9 @@ class BaseSNMP(BaseCommon):
         logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids
 
-
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
         if not oids and not get_mode:
             return None, []
-
 
         processed_oids = self.create_data_for_get_req(oids, get_mode)
 
@@ -505,8 +485,8 @@ class BaseSNMP(BaseCommon):
             oids=processed_oids
         )
 
-class BaseSTCIP(BaseSNMP):
 
+class BaseSTCIP(BaseSNMP):
     community_write = os.getenv('communitySTCIP_w')
     community_read = os.getenv('communitySTCIP_r')
 
@@ -516,8 +496,6 @@ class BaseSTCIP(BaseSNMP):
     }
 
     """ GET REQUEST """
-
-
 
     """ SET REQUEST """
 
@@ -556,7 +534,6 @@ class BaseSTCIP(BaseSNMP):
 
 
 class BaseUG405(BaseSNMP):
-
     community_read = os.getenv('communityUG405_r')
     community_write = os.getenv('communityUG405_w')
 
@@ -683,7 +660,6 @@ class BaseUG405(BaseSNMP):
         else:
             return ''
 
-
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
         Возвращает значение OperationModeTimeout
@@ -707,9 +683,7 @@ class BaseUG405(BaseSNMP):
                                                   oids
                                                   )
 
-
     """ archive methods(not usage) """
-
 
     """ SET REQUEST """
 
@@ -1375,7 +1349,6 @@ class PotokP(BaseUG405):
         # else:
         #     val_mode = '--'
         # return self.statusMode.get(val_mode)
-
 
     """*******************************************************************
     ***                          SET-REQUEST                          ****   
@@ -2357,13 +2330,11 @@ class PeekWeb(BaseCommon):
                       'MPP_PH6', 'MPP_PH7', 'MPP_PH8',
                       'CP_OFF', 'CP_FLASH', 'CP_RED', 'CP_AUTO'}
 
-
     JSON_SET_COMMAND_BODY = (
         EntityJsonResponce.RESULT.value,
         EntityJsonResponce.TYPE_COMMAND.value,
         EntityJsonResponce.VALUE.value
     )
-
 
     def __init__(self, ip_adress: str, host_id: str = None):
         super().__init__(ip_adress, host_id)
