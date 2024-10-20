@@ -102,11 +102,6 @@ class EntityJsonResponce(Enum):
 
 
 class JsonBody(Enum):
-    # BASE_JSON_BODY = (
-    #     EntityJsonResponce.REQUEST_ERRORS.value,
-    #     EntityJsonResponce.TYPE_CONTROLLER.value,
-    #     EntityJsonResponce.NUM_HOST.value,
-    # )
 
     BASE_JSON_BODY = (
         EntityJsonResponce.TYPE_CONTROLLER.value,
@@ -119,36 +114,6 @@ class JsonBody(Enum):
         EntityJsonResponce.VALUE.value
     )
 
-    JSON_GET_STATE_SWARCO_BODY = (
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.NUM_DET_LOGICS.value,
-    )
-
-    JSON_GET_STATE_POTOK_S_BODY = (
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.NUM_DETECTORS.value,
-    )
-
-    JSON_GET_STATE_POTOK_P_BODY = (
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.CURRENT_DET_ERRORS.value,
-    )
-
-    JSON_GET_STATE_PEEK_BODY = (
-        EntityJsonResponce.CURRENT_MODE.value,
-        EntityJsonResponce.CURRENT_STAGE.value,
-        EntityJsonResponce.CURRENT_PLAN.value,
-        EntityJsonResponce.CURRENT_PARAM_PLAN.value,
-        EntityJsonResponce.CURRENT_TIME.value,
-        EntityJsonResponce.CURRENT_ERRORS.value,
-        EntityJsonResponce.CURRENT_STATE.value
-    )
 
 
 class Oids(Enum):
@@ -1722,35 +1687,6 @@ class PeekUG405(BaseUG405):
             # ObjectType(ObjectIdentity(oid), value),
             ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value)),
         )
-
-
-# class AvailableProtocolsManagement(Enum):
-#     """ Протоколы управления """
-#     POTOK_UG405 = 'POTOK_UG405'
-#     POTOK_STCIP = 'POTOK_STCIP'
-#     SWARCO_STCIP = 'SWARCO_STCIP'
-#     SWARCO_SSH = 'SWARCO_SSH'
-#     PEEK_UG405 = 'PEEK_UG405'
-#     PEEK_WEB = 'PEEK_WEB'
-#
-#
-# class Controller:
-#
-#     def __new__(cls, ip_adress, type_object, scn: str = None, num_host: str = None):
-#         logger.debug('ya в new, type_object = %s', type_object)
-#
-#         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
-#             return PotokS(ip_adress, num_host)
-#         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-#             return PotokP(ip_adress, num_host=num_host)
-#         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-#             return SwarcoSTCIP(ip_adress, num_host)
-#         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-#             return SwarcoSSH(ip_adress, num_host)
-#         elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-#             return PeekUG405(ip_adress, scn, num_host)
-#         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
-#             return PeekWeb(ip_adress, num_host)
 
 
 class GetDataControllerManagement:
