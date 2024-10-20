@@ -208,31 +208,12 @@ class Oids(Enum):
     potokP_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
     potokP_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
-    scn_required_oids = {
-        utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potokP_utcReplyPlanStatus,
-        potokP_utcReplyPlanSource, potokP_utcReplyPlanSource, potokP_utcReplyDarkStatus, potokP_utcReplyLocalAdaptiv,
-        potokP_utcReplyHardwareErr, potokP_utcReplySoftwareErr, potokP_utcReplyElectricalCircuitErr,
-        utcReplyMC, utcReplyCF
-    }
-
-    # get_state_potokS_oids = {
-    #     swarcoUTCStatusEquipment,
-    #     swarcoUTCTrafftechPhaseStatus,
-    #     swarcoUTCTrafftechPlanCurrent,
-    #     potokS_UTCStatusMode,
+    # scn_required_oids = {
+    #     utcReplyGn, utcReplyFR, utcReplyDF, utcControlTO, utcControlFn, potokP_utcReplyPlanStatus,
+    #     potokP_utcReplyPlanSource, potokP_utcReplyPlanSource, potokP_utcReplyDarkStatus, potokP_utcReplyLocalAdaptiv,
+    #     potokP_utcReplyHardwareErr, potokP_utcReplySoftwareErr, potokP_utcReplyElectricalCircuitErr,
+    #     utcReplyMC, utcReplyCF
     # }
-
-    get_state_potokP_oids = {
-        utcType2OperationMode,
-        utcReplyCF,
-        utcReplyFR,
-        potokP_utcReplyDarkStatus,
-        utcReplyMC,
-        potokP_utcReplyPlanStatus,
-        utcReplyGn,
-        utcReplyDF,
-        potokP_utcReplyLocalAdaptiv,
-    }
 
 
 class BaseCommon:

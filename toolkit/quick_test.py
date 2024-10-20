@@ -72,7 +72,7 @@ oids = [
 ]
 
 
-h3 = controller_management.PotokP('10.179.56.113', host_id='Tetss1')
+h3 = controller_management.PotokP('10.179.58.137', host_id='Tetss1')
 
 errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
 logger.debug(h3.create_json(errInd, varBinds))
