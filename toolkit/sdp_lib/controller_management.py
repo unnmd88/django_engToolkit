@@ -213,8 +213,7 @@ class BaseCommon:
     controller_type: str | None
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
-    matching_types_set_req: dict
-    scn_required_oids: dict
+
 
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
@@ -284,6 +283,15 @@ class BaseSNMP(BaseCommon):
     Базовый класс для snmp запросов по всем протоколам: set и get запросы
     """
 
+    get_state_oids: set
+    matching_types_set_req: dict
+    community_read: str
+    community_write: str
+
+    def __init__(self, ip_adress, host_id=None):
+        super().__init__(ip_adress, host_id)
+
+
     async def get_request_base(self,
                                ip_adress: str,
                                community: str,
@@ -348,7 +356,7 @@ class BaseSNMP(BaseCommon):
             CommunityData(community),
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
-            *[ObjectType(ObjectIdentity(oid)) for oid in oids]
+            *[oid for oid in oids]
         )
         # logging.debug(
         #     f'errorIndication: {errorIndication.__str__()}\n'
@@ -378,6 +386,9 @@ class BaseSNMP(BaseCommon):
         :param retries: количество попыток запроса
         :return: list при успешном запросе, иначе str с текстом ошибки
         """
+
+        self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
+
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
             CommunityData(community),
@@ -439,7 +450,9 @@ class BaseSNMP(BaseCommon):
         if get_mode:
             self.get_mode_flag = True
             if oids:
-                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
+                # processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
+                processed_oids = {ObjectType(ObjectIdentity(oid.value)) if type(oid) != str
+                                  else ObjectType(ObjectIdentity(oid)) for oid in oids} | self.get_state_oids
             else:
                 processed_oids = self.get_state_oids
         else:
@@ -450,13 +463,11 @@ class BaseSNMP(BaseCommon):
 
         return processed_oids
 
-    def create_data_for_set_req(self, oids):
+    def create_data_for_set_req(self, oids: tuple | list | dict):
+
         processed_oids = set()
-
         logger.debug(f'create_data_for_set_req {oids}')
-
         oids = list(oids.items()) if type(oids) == dict else oids
-        # return {(ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32('0')))}
         for oid, val in oids:
             if type(oid) == str:
                 processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
@@ -469,9 +480,9 @@ class BaseSNMP(BaseCommon):
 
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
-
         if not oids and not get_mode:
             return None, []
+
 
         processed_oids = self.create_data_for_get_req(oids, get_mode)
 
@@ -481,7 +492,11 @@ class BaseSNMP(BaseCommon):
             oids=processed_oids
         )
 
-    async def set_request(self, oids: tuple | list) -> tuple:
+    async def set_request(self, oids: tuple | list | dict) -> tuple:
+
+        if not oids:
+            return None, []
+
         processed_oids = self.create_data_for_set_req(oids)
 
         return await self.set_request_base(
