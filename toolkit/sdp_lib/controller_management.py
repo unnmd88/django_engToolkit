@@ -764,8 +764,6 @@ class SwarcoSTCIP(BaseSTCIP):
         self.set_controller_type()
         self._get_current_state = False
 
-
-
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str) -> int | None:
         values = {'2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6, '8': 7, '1': 8, '0': 0}
@@ -853,15 +851,6 @@ class SwarcoSTCIP(BaseSTCIP):
             ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(converted_val)),
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-
-        # converted_value_to_num_stage = self.set_val_stage.get(str(value))
-        # oids = [
-        #     ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
-        # ]
-        # result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-        # return [str(self.convert_val_to_num_stage_get_req.get(result[0]))]
-        # await self.set_swarcoUTCTrafftechPhaseCommand(self.set_val_stage.get(str(value)))
 
     async def set_flash(self, value='0', timeout=0, retries=0):
         """"
