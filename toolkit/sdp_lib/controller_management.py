@@ -353,6 +353,80 @@ class BaseCommon(ABC):
         self.get_mode_flag = False
         return {self.ip_adress: json}
 
+
+
+    async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
+        """
+        """
+        errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            *oids
+        )
+        if not errorIndication:
+            return True, varBinds[0][0].prettyPrint()
+        return False, errorIndication.__str__()
+
+    async def set_request(self, ip_adress: str, community: str, oids: list | tuple,
+                          timeout: int = 0, retries: int = 0) -> str | list:
+        """
+        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
+        :param ip_adress: ip хоста
+        :param community: коммьюнити хоста
+        :param oids: List или Tuple оидов
+        :param timeout: таймаут запроса, в секундах
+        :param retries: количество попыток запроса
+        :return: list при успешном запросе, иначе str с текстом ошибки
+        """
+        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
+            SnmpEngine(),
+            CommunityData(community),
+            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
+            ContextData(),
+            # ObjectType(ObjectIdentity(oid), value),
+            *oids
+        )
+        logging.debug(
+            f'errorIndication: {errorIndication.__str__()}\n'
+            f'errorStatus: {errorStatus}\n'
+            f'errorIndex: {errorIndex}\n'
+            f'varBinds: {varBinds}\n'
+        )
+
+        # print(f'errorIndication: {errorIndication.__str__()}')
+        # print(f'errorStatus: {errorStatus}')
+        # print(f'errorIndex: {errorIndex}')
+        # print(f'varBinds: {varBinds}')
+        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+        # print(f'res -> {res}')
+        if not errorIndication and varBinds:
+            if varBinds:
+                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+
+                return [data[1].prettyPrint() for data in varBinds]
+            else:
+                return self.error_no_varBinds
+            # print(f'(len(varBinds): {len(varBinds)}')
+            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
+            # res = [data[1].prettyPrint() for data in varBinds]
+            # print(f'res -> {res}')
+        return errorIndication.__str__()
+
+    @staticmethod
+    def parse_varBinds_common(varBinds: list) -> dict:
+        # vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
+        # logger.debug(f'vb: {vb}')
+        return {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
+
+    @abc.abstractmethod
+    def get_current_mode(self, *args):
+        pass
+
+
+class BaseSNMP(BaseCommon):
+
     async def get_request_base(self,
                                ip_adress: str,
                                community: str,
@@ -430,77 +504,8 @@ class BaseCommon(ABC):
             oids=processed_oids
         )
 
-    async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
-        """
-        """
-        errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
-            SnmpEngine(),
-            CommunityData(community),
-            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            *oids
-        )
-        if not errorIndication:
-            return True, varBinds[0][0].prettyPrint()
-        return False, errorIndication.__str__()
 
-    async def set_request(self, ip_adress: str, community: str, oids: list | tuple,
-                          timeout: int = 0, retries: int = 0) -> str | list:
-        """
-        Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
-        :param ip_adress: ip хоста
-        :param community: коммьюнити хоста
-        :param oids: List или Tuple оидов
-        :param timeout: таймаут запроса, в секундах
-        :param retries: количество попыток запроса
-        :return: list при успешном запросе, иначе str с текстом ошибки
-        """
-        errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
-            SnmpEngine(),
-            CommunityData(community),
-            UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
-            ContextData(),
-            # ObjectType(ObjectIdentity(oid), value),
-            *oids
-        )
-        logging.debug(
-            f'errorIndication: {errorIndication.__str__()}\n'
-            f'errorStatus: {errorStatus}\n'
-            f'errorIndex: {errorIndex}\n'
-            f'varBinds: {varBinds}\n'
-        )
-
-        # print(f'errorIndication: {errorIndication.__str__()}')
-        # print(f'errorStatus: {errorStatus}')
-        # print(f'errorIndex: {errorIndex}')
-        # print(f'varBinds: {varBinds}')
-        res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-        # print(f'res -> {res}')
-        if not errorIndication and varBinds:
-            if varBinds:
-                # return True, [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-
-                return [data[1].prettyPrint() for data in varBinds]
-            else:
-                return self.error_no_varBinds
-            # print(f'(len(varBinds): {len(varBinds)}')
-            # # res = [(data[0].prettyPrint(), data[1].prettyPrint()) for data in varBinds]
-            # res = [data[1].prettyPrint() for data in varBinds]
-            # print(f'res -> {res}')
-        return errorIndication.__str__()
-
-    @staticmethod
-    def parse_varBinds_common(varBinds: list) -> dict:
-        # vb = {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
-        # logger.debug(f'vb: {vb}')
-        return {f'{Oids(oid.__str__()).name}[{Oids(oid.__str__()).value}]': val.prettyPrint() for oid, val in varBinds}
-
-    @abc.abstractmethod
-    def get_current_mode(self, *args):
-        pass
-
-
-class BaseSTCIP(BaseCommon):
+class BaseSTCIP(BaseSNMP):
     community_write = os.getenv('communitySTCIP_r')
     community_read = os.getenv('communitySTCIP_w')
     # swarcoUTCTrafftechPhaseCommand = '1.3.6.1.4.1.1618.3.7.2.11.1.0'
@@ -733,7 +738,7 @@ class BaseSTCIP(BaseCommon):
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
 
-class BaseUG405(BaseCommon):
+class BaseUG405(BaseSNMP):
     community_read = os.getenv('communityUG405_r')
     community_write = os.getenv('communityUG405_w')
 
