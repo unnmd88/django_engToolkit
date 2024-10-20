@@ -612,7 +612,7 @@ class BaseUG405(BaseSNMP):
         self.host_id = host_id
 
     @staticmethod
-    def convert_scn(scn):
+    def convert_scn(scn: str) -> str:
         """ Функция получает на вход строку, которую необходимо конвертировать в SCN
             для управления и мониторинга по протоколу UG405.
             Например: convert_scn(CO1111)
@@ -648,37 +648,35 @@ class BaseUG405(BaseSNMP):
                 new_oids.add(oid)
         return new_oids
 
-    def remove_scn_from_oids(self, oids: set | tuple | list) -> set:
-        new_oids = set()
-        for oid in oids:
-            if oid in self.scn_required_oids:
-                if type(oid) is str:
-                    new_oids.add(oid + self.scn)
-            elif isinstance(oid, Oids):
-                new_oids.add(oid.value + self.scn)
-        return new_oids
 
     """ GET REQUEST """
 
     async def get_scn(self):
 
         if isinstance(self, PeekUG405):
-            result, val = await self.getNext_request(self.ip_adress,
+            result = await self.getNext_request(self.ip_adress,
                                                      self.community,
                                                      [ObjectType(
-                                                         ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
+                                                     ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2Reply'))]
                                                      )
         elif isinstance(self, PotokP):
             logging.debug(f'get_scn: {self}')
-            r = await self.get_utcReplySiteID()
-            logging.debug(f'res: {r}')
-            val = r[0]
-            result = True if val else False
-        else:
-            raise TypeError
-        logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
-        if result:
-            return self.convert_scn(val)
+            result = await self.get_request_base(self.ip_adress, self.community_read, (Oids.utcReplySiteID.value,))
+        val = result[1][0][1].prettyPrint()
+        return self.convert_scn(val)
+
+        # elif isinstance(self, PotokP):
+        #     logging.debug(f'get_scn: {self}')
+        #     r = await self.get_request_base(self.ip_adress, self.community_read, (Oids.utcReplySiteID.value, ))
+        #     logging.debug(f'res: {r}')
+        #     val = r[1][0][1].prettyPrint()
+        #     logger.warning(f'val++++++: {val}')
+        #     result = True if val else False
+        # else:
+        #     raise TypeError
+        # logger.warning(f'self.convert_scn(val): {self.convert_scn(val)}')
+        # if result:
+        #     return self.convert_scn(val)
 
     async def get_utcType2OperationModeTimeout(self, timeout=0, retries=0):
         """
@@ -1454,6 +1452,30 @@ class PotokP(BaseUG405):
     #     # print(stages)
     #     values = {k: v for v, k in enumerate(stages, 1)}
     #     return values.get(val)
+    @staticmethod
+    def convert_scn(scn: str) -> str:
+        """ Функция получает на вход строку, которую необходимо конвертировать в SCN
+            для управления и мониторинга по протоколу UG405.
+            Например: convert_scn(CO1111)
+        """
+        # print(f'scn : {scn}')
+        logger.debug(f'def convert_scn(scn): {scn}')
+        return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
+
+        # if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
+        #     try:
+        #         scn = re.search('"(.+?)"', scn).group(1)
+        #         len_scn = str(len(scn)) + '.'
+        #         convert_to_ASCII = [str(ord(c)) for c in scn]
+        #         scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
+        #         return scn
+        #     except AttributeError:
+        #         scn = ''
+        #     return scn
+        #
+        # len_scn = str(len(scn)) + '.'
+        # convert_to_ASCII = [str(ord(c)) for c in scn]
+        # return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str):
