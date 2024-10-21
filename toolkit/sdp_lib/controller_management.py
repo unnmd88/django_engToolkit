@@ -61,6 +61,7 @@ class AvailableControllers(Enum):
 class ErrorMessages(Enum):
     BAD_TYPE_OID = 'Оид должен быть строкой или или атрибутом класса Oids'
 
+
 class EntityJsonResponce(Enum):
     """ Доступные типы контроллера и команд"""
 
@@ -184,7 +185,6 @@ class Oids(Enum):
 
 
 class BaseCommon:
-
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -277,7 +277,7 @@ class BaseCommon:
             oid_name, oid_val = Oids(oid).name, Oids(oid).value
             oid = f'{oid_name}[{oid_val}]'
             if (Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.swarcoUTCTrafftechPhaseCommand.name
-                    or Oids.utcReplyGn.name in oid_name):
+                    in oid_name or Oids.utcReplyGn.name in oid_name):
                 num_stage = self.convert_val_to_num_stage_get_req(val)
                 val = f'num_stage[{num_stage}], val_stage[{val}]'
             part_of_json[oid] = val
@@ -292,7 +292,7 @@ class BaseSNMP(BaseCommon):
     """
     Базовый класс для snmp запросов по всем протоколам: set и get запросы
     """
-
+    user_oids: Iterable
     get_state_oids: set
     matching_types_set_req: dict
     community_read: str
@@ -434,9 +434,9 @@ class BaseSNMP(BaseCommon):
         # return errorIndication.__str__()
 
     def create_data_for_get_req(self,
-                                oids: list | tuple | set,
+                                oids: list,
                                 get_mode: bool,
-                                ) -> set:
+                                ) -> list:
         """
         Метод формирует коллекцию оидов для отправки в соответствии с переданными параметрами
         :arg oids: коллекция оидов для запроса от пользователя
@@ -444,19 +444,36 @@ class BaseSNMP(BaseCommon):
                        режим, фаза, план
         :return processed_oids: финальная коллекция оидов, которые будут отправлены хосту в get запросе(snmp)
         """
-        # logger.debug(f'processed_oids = self.get_state_oids: {self.get_state_oids}')
+
+        # oids = oids if oids else []
 
         if get_mode:
             self.get_mode_flag = True
-            if oids:
-                processed_oids = {oid.value if type(oid) != str else oid for oid in oids} | self.get_state_oids
+            if isinstance(self, (PotokP, PeekUG405)):
+                processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid))
+                                  for oid in itertools.chain(self.get_state_oids, oids)]
             else:
-                processed_oids = self.get_state_oids
+                processed_oids = [self.check_type_oid(oid) for oid in itertools.chain(self.get_state_oids, oids)]
         else:
-            processed_oids = {oid.value if type(oid) != str else oid for oid in oids}
-
-        if isinstance(self, (PotokP, PeekUG405)):
-            processed_oids = self.add_scn_to_oids(processed_oids)
+            if isinstance(self, (PotokP, PeekUG405)):
+                processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid)) for oid in oids]
+            else:
+                processed_oids = [self.check_type_oid(oid) for oid in oids]
+        # if get_mode:
+        #     self.get_mode_flag = True
+        #     if oids:
+        #         if isinstance(self, (PotokP, PeekUG405)):
+        #             processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid))
+        #                               for oid in itertools.chain(oids, self.get_state_oids)]
+        #         else:
+        #             processed_oids = [self.check_type_oid(oid) for oid in itertools.chain(oids, self.get_state_oids)]
+        #     else:
+        #         processed_oids = self.get_state_oids
+        # else:
+        #     if isinstance(self, (PotokP, PeekUG405)):
+        #         processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid)) for oid in oids]
+        #     else:
+        #         processed_oids = [self.check_type_oid(oid) for oid in oids]
 
         return processed_oids
 
@@ -475,11 +492,10 @@ class BaseSNMP(BaseCommon):
         for oid, val in oids:
             oid = self.check_type_oid(oid)
             if isinstance(self, (PotokP, PeekUG405)):
-                oid = self.add_scn_to_oids([oid])[0]
+                oid = self.add_scn_to_oids(oid)
             processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
         logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids if not unique_oids else set(processed_oids)
-
 
     # def create_data_for_set_req(self, oids: tuple | list | dict):
     #
@@ -498,9 +514,13 @@ class BaseSNMP(BaseCommon):
     #     return processed_oids
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+
         if not oids and not get_mode:
             return None, []
 
+        oids = [self.check_type_oid(oid) for oid in oids] if oids else []
+
+        self.user_oids = oids
         processed_oids = self.create_data_for_get_req(oids, get_mode)
 
         return await self.get_request_base(
@@ -552,9 +572,8 @@ class BaseSNMP(BaseCommon):
                 oid = Oids(oid).value
             else:
                 raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, type oid: {type(oid)}, val oid: {oid}')
+            # logger.debug(Oids(oid).name + '--' + Oids(oid).value + '--' + f'{type(oid)}')
         return oid
-
-
 
 
 class BaseSTCIP(BaseSNMP):
@@ -676,8 +695,18 @@ class BaseUG405(BaseSNMP):
     #             new_oids.add(oid)
     #     return new_oids
 
-    def add_scn_to_oids(self, oids: set | tuple | list, scn: str = None) -> list:
+    def add_scn_to_oids(self, oids: set | tuple | list | str, scn: str = None) -> list:
+        """
+        Метод добавляет scn к оиду, если он необходим.
+        :param oids: один оид в виде строки или коллекция оидов, где каждый элемент коллекции - оид типа str
+        :param scn: если None, то берём scn из self
+        :return: если на вход дан один оид(str) то возвращаем также один оид + scn в виде строки.
+                 если на вход дана коллекция, возвращаем коллекцию оидов с scn
+        """
         scn = self.scn if scn is None else scn
+        if type(oids) == str:
+            return oids
+
         new_oids = []
         for oid in oids:
             oid = self.check_type_oid(oid)
@@ -828,7 +857,6 @@ class BaseUG405(BaseSNMP):
 
 
 class SwarcoSTCIP(BaseSTCIP):
-
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
@@ -907,6 +935,8 @@ class SwarcoSTCIP(BaseSTCIP):
                     num_logics = val
                 elif oid == Oids.swarcoSoftIOStatus.value:
                     softstat180_181 = val[179:181] if len(val) > 180 else None
+                if self.user_oids and (oid in self.user_oids):
+                    new_varBins.append(data)
             else:
                 new_varBins.append(data)
         logger.info(f'len_vb posle: {len(varBinds)}')
@@ -919,7 +949,6 @@ class SwarcoSTCIP(BaseSTCIP):
         # for oid, val in varBinds:
         #     print(f'{Oids(oid.__str__()).value}||||| val: {val.prettyPrint()}')
         return new_varBins, curr_state
-
 
     """ SET REQUEST """
 

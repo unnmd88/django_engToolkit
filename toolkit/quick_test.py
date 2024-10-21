@@ -61,24 +61,26 @@ swarco16 = '10.45.154.16'
 # h2 = controller_management.PeekWeb(ip3, host_id='Testoviy PEEK')
 # res = asyncio.run(h2.get_current_state())
 
-# oids = [
-#     controller_management.Oids.swarcoUTCDetectorQty.value,
-#     controller_management.Oids.swarcoUTCTrafftechPhaseStatus.value,
-#     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-#     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-#     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-#     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-#     controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
-#     controller_management.Oids.utcControlFF,
-#     controller_management.Oids.swarcoSoftIOStatus,
-# ]
+oids = [
+    controller_management.Oids.swarcoUTCDetectorQty.value,
+
+    controller_management.Oids.swarcoUTCTrafftechPhaseStatus.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.swarcoUTCTrafftechPlanSource.value,
+    controller_management.Oids.utcControlFF,
+    controller_management.Oids.swarcoSoftIOStatus,
+]
 
 
 h3 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss1')
-errInd, varBinds = asyncio.run(h3.set_request(
-    [(controller_management.Oids.swarcoUTCTrafftechPhaseCommand.value, '0'),
-     (controller_management.Oids.swarcoUTCTrafftechPhaseCommand, '0'),]
-))
+errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
+# errInd, varBinds = asyncio.run(h3.set_request(
+#     [(controller_management.Oids.swarcoUTCTrafftechPhaseCommand.value, '0'),
+#      (controller_management.Oids.swarcoUTCTrafftechPhaseCommand, '0'),]
+# ))
 
 # oids_set = [
 #     # ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32('0'))
