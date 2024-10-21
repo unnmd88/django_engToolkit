@@ -599,7 +599,7 @@ class BaseSTCIP(BaseSNMP):
         :param timeout:
         :return: ErrorIndication, varBinds
         """
-        converted_val = self.convert_val_to_num_stage_set_req(value)
+        converted_val = self.convert_val_to_num_stage_set_req(value.lower())
         oids = (
             (Oids.swarcoUTCTrafftechPhaseCommand.value, Unsigned32(converted_val)),
         )
@@ -618,7 +618,7 @@ class BaseSTCIP(BaseSNMP):
         else:
             oid = Oids.potokS_UTCCommandAllRed.value
 
-        value = self.converted_values_all_red.get(value)
+        value = self.converted_values_all_red.get(value.lower())
         logger.debug(value)
         oids = (
             (oid, Unsigned32(value)),
@@ -628,37 +628,6 @@ class BaseSTCIP(BaseSNMP):
 
 
 
-
-
-
-    # async def set_allred(self, value='100', timeout=1, retries=2):
-    #     """"
-    #     Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-    #     :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
-    #     :return: Возвращает номер установленного плана
-    #     """
-    #     value = self.converted_values_all_red.get(value)
-    #     oids = (
-    #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(value)),
-    #     )
-    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def set_swarcoUTCTrafftechPlanCommand(self, value='0', timeout=1, retries=2):
-        """"
-        Устанавливает  текущий план.
-        :param value:  1-16 обычный план, 17 -> ЖМ, 18 -> ОС, 100 -> КК,
-        """
-
-        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPlanCommand.value), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def set_swarcoUTCTrafftechPhaseCommand(self, value='0', timeout=1, retries=2):
-        """"
-        Устанавливает  фазу.
-        :param value:  Значение фазы (фаза 1 -> value=2, фаза 2 -> value=3 и т.д)
-        """
-        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCCommandFlash(self, value='0', timeout=1, retries=2):
         """"
@@ -1180,42 +1149,9 @@ class PotokS(BaseSTCIP):
     #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
-    # async def set_allred(self, value='0', timeout=0, retries=0):
-    #
-    #     value = self.converted_values_all_red.get(value)
-    #     oids = (
-    #         ObjectType(ObjectIdentity(Oids.potokS_UTCCommandAllRed.value), Unsigned32(value)),
-    #     )
-    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-        # """"
-        # Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
-        # :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
-        # """
-        # return await self.set_potokUTCCommandAllRed(value, timeout=timeout, retries=retries)
-    # async def set_stage(self, value='0', timeout=0, retries=0):
-    #     """"
-    #     Устанавливает  фазу.
-    #     :param value:  Номер фазы в десятичном виде
-    #     """
-    #
-    #     if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
-    #         converted_value_to_num_stage = '0'
-    #     else:
-    #         converted_value_to_num_stage = self.set_val_stage.get(str(value))
-    #
-    #     oids = [
-    #         ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
-    #     ]
-    #     result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-    #     return [str(self.get_val_stage.get(result[0]))]
 
-    async def set_potokUTCCommandAllRed(self, value=0, timeout=0, retries=0):
-        """"
-        Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
-        :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
-        """
-        oids = [ObjectType(ObjectIdentity(self.potokUTCCommandAllRed), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+
 
     async def set_potokUTCSetGetLocal(self, value=0, timeout=0, retries=0):
         """"
@@ -1233,8 +1169,6 @@ class PotokS(BaseSTCIP):
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-
 
     async def set_flash(self, value='0', timeout=0, retries=0):
         """"
@@ -1383,7 +1317,7 @@ class PotokP(BaseUG405):
     def convert_val_to_num_stage_set_req(val: str) -> int | None:
 
         stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
-        values = {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
+        values = {str(k): v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
         logger.debug(values)
         return values.get(val)
 
@@ -1500,47 +1434,33 @@ class PotokP(BaseUG405):
     """
 
     async def set_stage(self, value='0', timeout=0, retries=0):
-
-        if str(value) != '0':
-            val = self.convert_val_to_num_stage_set_req(value)
-            oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-                    ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
-                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-                    ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=val))
-                    ]
+        """"
+        Устанавливает  фазу.
+        :param value:  Номер фазы в десятичном виде
+        :param retries:
+        :param timeout:
+        :return: ErrorIndication, varBinds
+        """
+        if value.lower() in {'0', 'локал', 'false', 'сброс', 'reset'}:
+            oids = (
+                (Oids.utcType2OperationMode.value, Integer32(1)),
+                (Oids.utcControlTO.value + self.scn, Integer32(0)),
+            )
         else:
-            oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
-                    ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0))
-                    ]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+            converted_val = self.convert_val_to_num_stage_set_req(value)
+            logger.debug(converted_val)
+            oids = (
+                (Oids.utcType2OperationModeTimeout.value, Integer32(90)),
+                (Oids.utcType2OperationMode.value, Integer32(3)),
+                (Oids.utcControlTO.value + self.scn, Integer32(1)),
+                (Oids.utcControlFn.value + self.scn, OctetString(hexValue=converted_val)),
+            )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-        # if str(value) != '0':
-        #     print(f'self.val_stage_set_request: {self.val_stage_set_request}')
-        #     # value = self.val_stage_set_request.get(value)
-        #     print(OctetString(hexValue=value))
-        #     await setCmd(
-        #         SnmpEngine(),
-        #         CommunityData(self.community),
-        #         UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-        #         ContextData(),
-        #         ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(90)),
-        #         ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
-        #         ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-        #         ObjectType(ObjectIdentity(self.utcControlFn + self.scn), OctetString(hexValue=value)),
-        #     )
-        # else:
-        #
-        #     await setCmd(
-        #         SnmpEngine(),
-        #         CommunityData(self.community),
-        #         UdpTransportTarget((self.ip_adress, 161), timeout=1, retries=2),
-        #         ContextData(),
-        #         ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(1)),
-        #         ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(0)),
-        #     )
 
-        # for oid, val in varBinds:
-        #     print(f'oid = {oid.prettyPrint()}, val = {val.prettyPrint()}')
+
+
+
 
     async def set_dark(self, value='0', timeout=0, retries=0):
 
