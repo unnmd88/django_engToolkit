@@ -306,7 +306,7 @@ class BaseSNMP(BaseCommon):
                                community: str,
                                oids: Iterable,
                                json_responce: bool = False,
-                               timeout: int = 0,
+                               timeout: int = 3,
                                retries: int = 0):
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
@@ -578,8 +578,10 @@ class BaseSNMP(BaseCommon):
 
 
 class BaseSTCIP(BaseSNMP):
+    convert_val_to_num_stage_set_req: Callable
+    converted_values_all_red: dict
     community_write = os.getenv('communitySTCIP_w')
-    community_read = os.getenv('communitySTCIP_r')
+    community_read = os.getenv('communitySTCIP_w')
 
     matching_types_set_req = {
         Oids.swarcoUTCTrafftechPhaseCommand.value: Unsigned32,
@@ -589,6 +591,31 @@ class BaseSTCIP(BaseSNMP):
     """ GET REQUEST """
 
     """ SET REQUEST """
+    async def set_stage(self, value='0', timeout=1, retries=2):
+        """"
+        Устанавливает  фазу.
+        :param retries:
+        :param timeout:
+        :param value:  Номер фазы в десятичном виде
+        :return value: Номер фазы в десятичном виде
+        """
+        converted_val = self.convert_val_to_num_stage_set_req(value)
+        oids = (
+            (Oids.swarcoUTCTrafftechPhaseCommand.value, Unsigned32(converted_val)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+    # async def set_allred(self, value='100', timeout=1, retries=2):
+    #     """"
+    #     Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
+    #     :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
+    #     :return: Возвращает номер установленного плана
+    #     """
+    #     value = self.converted_values_all_red.get(value)
+    #     oids = (
+    #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(value)),
+    #     )
+    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCTrafftechPlanCommand(self, value='0', timeout=1, retries=2):
         """"
@@ -696,7 +723,7 @@ class BaseUG405(BaseSNMP):
     #             new_oids.add(oid)
     #     return new_oids
 
-    def add_scn_to_oids(self, oids: set | tuple | list | str, scn: str = None) -> list:
+    def add_scn_to_oids(self, oids: set | tuple | list | str, scn: str = None) -> str | list:
         """
         Метод добавляет scn к оиду, если он необходим.
         :param oids: один оид в виде строки или коллекция оидов, где каждый элемент коллекции - оид типа str
@@ -953,17 +980,17 @@ class SwarcoSTCIP(BaseSTCIP):
 
     """ SET REQUEST """
 
-    async def set_stage(self, value='0', timeout=1, retries=2):
-        """"
-        Устанавливает  фазу.
-        :param value:  Номер фазы в десятичном виде
-        :return value: Номер фазы в десятичном виде
-        """
-        converted_val = self.convert_val_to_num_stage_set_req(value)
-        oids = (
-            ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(converted_val)),
-        )
-        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+    # async def set_stage(self, value='0', timeout=1, retries=2):
+    #     """"
+    #     Устанавливает  фазу.
+    #     :param value:  Номер фазы в десятичном виде
+    #     :return value: Номер фазы в десятичном виде
+    #     """
+    #     converted_val = self.convert_val_to_num_stage_set_req(value)
+    #     oids = (
+    #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(converted_val)),
+    #     )
+    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_flash(self, value='0', timeout=0, retries=0):
         """"
@@ -998,7 +1025,10 @@ class PotokS(BaseSTCIP):
         '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
         '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
     }
-
+    converted_values_all_red = {
+        '1': '2', 'true': '2', 'on': '2', 'вкл': '2',
+        '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
+    }
     # get_val_stage = {
     #     str(k) if k < 66 else str(0): v if v < 65 else 0 for k, v in zip(range(2, 67), range(1, 66))
     # }
@@ -1124,23 +1154,34 @@ class PotokS(BaseSTCIP):
     #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
+    async def set_allred(self, value='0', timeout=0, retries=0):
 
-    async def set_stage(self, value='0', timeout=0, retries=0):
-        """"
-        Устанавливает  фазу.
-        :param value:  Номер фазы в десятичном виде
-        """
-
-        if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
-            converted_value_to_num_stage = '0'
-        else:
-            converted_value_to_num_stage = self.set_val_stage.get(str(value))
-
-        oids = [
-            ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
-        ]
-        result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-        return [str(self.get_val_stage.get(result[0]))]
+        value = self.converted_values_all_red.get(value)
+        oids = (
+            ObjectType(ObjectIdentity(Oids.potokS_UTCCommandAllRed.value), Unsigned32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+        # """"
+        # Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
+        # :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
+        # """
+        # return await self.set_potokUTCCommandAllRed(value, timeout=timeout, retries=retries)
+    # async def set_stage(self, value='0', timeout=0, retries=0):
+    #     """"
+    #     Устанавливает  фазу.
+    #     :param value:  Номер фазы в десятичном виде
+    #     """
+    #
+    #     if value.lower() in ('false', 'reset', 'сброс', 'локал', 'local'):
+    #         converted_value_to_num_stage = '0'
+    #     else:
+    #         converted_value_to_num_stage = self.set_val_stage.get(str(value))
+    #
+    #     oids = [
+    #         ObjectType(ObjectIdentity(self.swarcoUTCTrafftechPhaseCommand), Unsigned32(converted_value_to_num_stage))
+    #     ]
+    #     result = await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+    #     return [str(self.get_val_stage.get(result[0]))]
 
     async def set_potokUTCCommandAllRed(self, value=0, timeout=0, retries=0):
         """"
@@ -1167,12 +1208,7 @@ class PotokS(BaseSTCIP):
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-    async def set_allred(self, value=0, timeout=0, retries=0):
-        """"
-        Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
-        :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
-        """
-        return await self.set_potokUTCCommandAllRed(value, timeout=timeout, retries=retries)
+
 
     async def set_flash(self, value='0', timeout=0, retries=0):
         """"
@@ -1322,6 +1358,7 @@ class PotokP(BaseUG405):
 
         stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
         values = {k: v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
+        logger.debug(values)
         return values.get(val)
 
     # Значения фаз для для UG405 Potok
