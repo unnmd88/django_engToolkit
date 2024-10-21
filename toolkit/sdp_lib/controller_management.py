@@ -58,6 +58,9 @@ class AvailableControllers(Enum):
     PEEK = 'Peek'
 
 
+class ErrorMessages(Enum):
+    BAD_TYPE_OID = 'Оид должен быть строкой или или атрибутом класса Oids'
+
 class EntityJsonResponce(Enum):
     """ Доступные типы контроллера и команд"""
 
@@ -181,6 +184,7 @@ class Oids(Enum):
 
 
 class BaseCommon:
+
     statusMode = {
         '3': 'Сигналы выключены(ОС)',
         '4': 'Жёлтое мигание',
@@ -380,7 +384,7 @@ class BaseSNMP(BaseCommon):
     async def set_request_base(self,
                                ip_adress: str,
                                community: str,
-                               oids: list | tuple | set,
+                               oids: list | tuple | set | dict,
                                timeout: int = 0, retries: int = 0) -> tuple:
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки
@@ -393,14 +397,15 @@ class BaseSNMP(BaseCommon):
         """
 
         self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
-
+        oids = list(oids.items() if type(oids) is dict else oids)
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
             CommunityData(community),
             UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
             ContextData(),
-            # ObjectType(ObjectIdentity(oid), value),
-            *[oid for oid in oids]
+            *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
+            # ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32('0'))
+
         )
         logging.debug(
             f'errorIndication: {errorIndication.__str__()}\n'
@@ -458,19 +463,59 @@ class BaseSNMP(BaseCommon):
         return processed_oids
 
     def create_data_for_set_req(self, oids: tuple | list | dict):
+        """
 
-        processed_oids = set()
+        :param oids:
+        :return: оиды для отправки. Примеры возвращаемой коллекции:
+
+        """
+        processed_oids = []
         logger.debug(f'create_data_for_set_req {oids}')
         oids = list(oids.items()) if type(oids) == dict else oids
         for oid, val in oids:
-            if type(oid) == str:
-                processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
-            elif isinstance(oid, Oids):
-                oid = oid.value
-                processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
+            oid = self.check_type_oid(oid)
+            if isinstance(self, (PotokP, PeekUG405)):
+                oid = self.add_scn_to_oids([oid])[0]
+            processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
+            # if type(oid) == str:
+            #     if isinstance(self, (PotokP, PeekUG405)):
+            #         oid = self.add_scn_to_oids([oid])[0]
+            #     logger.debug('if type(oid) == str:')
+            #     processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
+            # elif isinstance(oid, Oids):
+            #     oid = oid.value
+            #     processed_oids.append(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
+
+        # processed_oids = set()
+        # logger.debug(f'create_data_for_set_req {oids}')
+        # oids = list(oids.items()) if type(oids) == dict else oids
+        # for oid, val in oids:
+        #     if type(oid) == str:
+        #         logger.debug('if type(oid) == str:')
+        #         processed_oids.add(ObjectType(ObjectIdentity(oid, self.matching_types_set_req.get(oid)(val))))
+        #     elif isinstance(oid, Oids):
+        #         oid = oid.value
+        #         processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
 
         logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids
+
+
+    # def create_data_for_set_req(self, oids: tuple | list | dict):
+    #
+    #     processed_oids = set()
+    #     logger.debug(f'create_data_for_set_req {oids}')
+    #     oids = list(oids.items()) if type(oids) == dict else oids
+    #     for oid, val in oids:
+    #         if type(oid) == str:
+    #             logger.debug('if type(oid) == str:')
+    #             processed_oids.add(ObjectType(ObjectIdentity(oid, self.matching_types_set_req.get(oid)(val))))
+    #         elif isinstance(oid, Oids):
+    #             oid = oid.value
+    #             processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
+    #
+    #     logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
+    #     return processed_oids
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
         if not oids and not get_mode:
@@ -485,6 +530,24 @@ class BaseSNMP(BaseCommon):
         )
 
     async def set_request(self, oids: tuple | list | dict) -> tuple:
+        """"
+        :arg oids: данные для отправки
+
+
+
+        Примеры oids:
+                        [(Oids.swarcoUTCTrafftechPhaseCommand.value, Unsigned32('2')),
+                        (Oids.swarcoUTCTrafftechPlanCommand.value,
+                        self.matching_types_set_req.get(Oids.swarcoUTCTrafftechPlanCommand.value)(val)('2')),
+                        ('1.3.6.1.4.1.1618.3.7.2.2.1.0', Unsigned32('2'))
+                        ]
+                        ----------------------------------------------------------------------------------------
+                        {
+                        Oids.swarcoUTCTrafftechPhaseCommand.value: Unsigned32('2'),
+                        '1.3.6.1.4.1.1618.3.7.2.2.1.0': Unsigned32('2')
+                        }
+
+        """
 
         if not oids:
             return None, []
@@ -496,6 +559,21 @@ class BaseSNMP(BaseCommon):
             community=self.community_write,
             oids=processed_oids
         )
+
+    @staticmethod
+    def check_type_oid(oid: Oids | str) -> str:
+        if type(oid) is not str:
+            if isinstance(oid, Oids):
+                logger.debug('isinstance(oid, Oids)')
+                logger.debug(f'type(oid) {type(oid)}')
+                oid = Oids(oid).value
+                logger.debug(f'type(oid) after {type(oid)}')
+            else:
+                raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, oid: {oid}')
+        logger.debug('check_type_oid-> OK')
+        return oid
+
+
 
 
 class BaseSTCIP(BaseSNMP):
@@ -604,17 +682,28 @@ class BaseUG405(BaseSNMP):
         logger.debug(f'def convert_scn(scn): {scn}')
         return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
 
-    def add_scn_to_oids(self, oids: set | tuple | list) -> set:
+    # def add_scn_to_oids(self, oids: set | tuple | list) -> set:
+    #
+    #     new_oids = set()
+    #     for oid in oids:
+    #         if not type(oid) is str:
+    #             raise ValueError
+    #
+    #         if oid in self.scn_required_oids:
+    #             new_oids.add(oid + self.scn)
+    #         else:
+    #             new_oids.add(oid)
+    #     return new_oids
 
-        new_oids = set()
+    def add_scn_to_oids(self, oids: set | tuple | list, scn: str = None) -> list:
+        scn = self.scn if scn is None else scn
+        new_oids = []
         for oid in oids:
-            if not type(oid) is str:
-                raise ValueError
-
+            oid = self.check_type_oid(oid)
             if oid in self.scn_required_oids:
-                new_oids.add(oid + self.scn)
+                new_oids.append(oid + scn)
             else:
-                new_oids.add(oid)
+                new_oids.append(oid)
         return new_oids
 
     def remove_scn_from_oid(self, oid: str) -> str:
