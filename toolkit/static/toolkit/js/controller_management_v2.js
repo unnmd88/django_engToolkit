@@ -506,7 +506,7 @@ function collect_data_from_hosts (){
                 //                  `${$(`#scn_${num_host}`).val()};`
                 
                 data[`${$('#ip_' + num_host).val()}`] = {
-                    num_host: num_host,
+                    host_id: num_host,
                     type_controller:  `${$(`#protocol_${num_host} option:selected`).text()}`,
                     scn: `${$(`#scn_${num_host}`).val()}`
                 }                              

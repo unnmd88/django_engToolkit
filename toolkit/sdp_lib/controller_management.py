@@ -514,7 +514,7 @@ class BaseSNMP(BaseCommon):
     #     logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
     #     return processed_oids
 
-    async def get_request(self, oids: tuple | list = None, get_mode: bool = False) -> tuple:
+    async def get_request(self, oids: tuple | list = None, get_mode: bool = True) -> tuple:
 
         if not oids and not get_mode:
             return None, []
@@ -802,6 +802,7 @@ class BaseUG405(BaseSNMP):
         else:
             return ''
 
+
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
         Возвращает значение OperationModeTimeout
@@ -966,7 +967,7 @@ class SwarcoSTCIP(BaseSTCIP):
         mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
         curr_state = {
             EntityJsonResponce.CURRENT_MODE.value: mode,
-            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_STAGE.value: str(stage),
             EntityJsonResponce.CURRENT_PLAN.value: plan,
         }
         # for oid, val in varBinds:

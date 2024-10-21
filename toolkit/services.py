@@ -13,6 +13,23 @@ def test_for_logger():
     logger.debug('deeeee')
 
 
+def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str = None):
+    logger.debug('ya в create_obj, type_object = %s', type_object)
+    scn = scn if scn else None
+    if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
+        return controller_management.PotokS(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
+        return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
+    elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
+        return controller_management.SwarcoSTCIP(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
+        return controller_management.SwarcoSSH(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
+        return controller_management.PeekUG405(ip_adress, scn, host_id)
+    elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
+        return controller_management.PeekWeb(ip_adress, host_id)
+
+
 class Controller:
 
     def __new__(cls, ip_adress, type_object, scn: str = None, host_id: str = None):
@@ -56,19 +73,19 @@ class GetDataFromController:
         self.processed_data = {}
 
     async def get_data_from_controllers(self, objects_methods):
+        logger.debug(objects_methods)
 
-        result = await asyncio.gather(*[method() for method in objects_methods])
+        # result = await asyncio.gather(*[method() for method in objects_methods])
+        result = await asyncio.gather(*objects_methods)
+        # json_responce = {}
+        # for item in result:
+        #     json_responce.update(item)
+        print(result)
+        logger.debug(f'result-->>> {result}')
+        return result
 
-        json_responce = {}
-        for item in result:
-            json_responce.update(item)
-        print(json_responce)
-        logger.debug(f'json_responce-->>> {json_responce}')
-        return json_responce
-
-
-    def create_objects_methods(self):
-        objects_methods = []
+    async def main(self):
+        objects, objects_methods, error_hosts = [], [], []
 
         logger.debug(self.data_request)
         # print(self.data_request.items())
@@ -80,16 +97,28 @@ class GetDataFromController:
             # print(data.get('num_host'))
             # print(data.get('type_controller'))
             # print(data.get('scn'))
-            num_host = data.get('num_host')
+            host_id = data.get('host_id')
             controller_type = data.get('type_controller')
             scn = data.get('scn')
-            controller_type_request = self.get_type_object_get_request(controller_type.upper())
-            obj = Controller(ip_adress, controller_type_request, scn, num_host)
+            controller_type_request = self.get_type_object(controller_type.upper())
+
+            obj = create_obj(ip_adress, controller_type_request, scn, host_id)
+
             if obj is None:
-                self.processed_data[num_host] = 'Сбой отправки запроса. Проверьте корректность данных'
+                error_hosts.append({ip_adress: {
+                    'host_id': host_id,
+                    'type_controller': controller_type,
+                    'scn': scn
+                }
+                })
+                # self.processed_data[ip_adress] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
-            objects_methods.append(obj.get_current_state)
-        return objects_methods
+            objects.append(obj)
+            objects_methods.append(asyncio.create_task(obj.get_request(get_mode=True)))
+        result_req = await asyncio.gather(*objects_methods)
+        logger.debug(f'result-->>> {result_req}')
+
+        return objects, error_hosts, result_req
 
     # def get_data_from_controllers(self, objects_methods):
     #
@@ -99,7 +128,7 @@ class GetDataFromController:
     #     processed_data = get_data_manager.data_processing(raw_data_from_controllers)
     #     return self.processed_data | processed_data
 
-    def get_type_object_get_request(self, controller_type: str):
+    def get_type_object(self, controller_type: str):
 
         if controller_type == AvailableControllers.POTOK_P.value:
             return AvailableProtocolsManagement.POTOK_UG405.value
