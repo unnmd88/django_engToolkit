@@ -460,7 +460,7 @@ class BaseSNMP(BaseCommon):
 
         return processed_oids
 
-    def create_data_for_set_req(self, oids: tuple | list | dict, unique_oids: bool = False):
+    def create_data_for_set_req(self, oids: tuple | list | dict, unique_oids: bool = False) -> list | set:
         """
 
 
@@ -477,26 +477,6 @@ class BaseSNMP(BaseCommon):
             if isinstance(self, (PotokP, PeekUG405)):
                 oid = self.add_scn_to_oids([oid])[0]
             processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
-            # if type(oid) == str:
-            #     if isinstance(self, (PotokP, PeekUG405)):
-            #         oid = self.add_scn_to_oids([oid])[0]
-            #     logger.debug('if type(oid) == str:')
-            #     processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
-            # elif isinstance(oid, Oids):
-            #     oid = oid.value
-            #     processed_oids.append(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
-
-        # processed_oids = set()
-        # logger.debug(f'create_data_for_set_req {oids}')
-        # oids = list(oids.items()) if type(oids) == dict else oids
-        # for oid, val in oids:
-        #     if type(oid) == str:
-        #         logger.debug('if type(oid) == str:')
-        #         processed_oids.add(ObjectType(ObjectIdentity(oid, self.matching_types_set_req.get(oid)(val))))
-        #     elif isinstance(oid, Oids):
-        #         oid = oid.value
-        #         processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
-
         logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids if not unique_oids else set(processed_oids)
 
