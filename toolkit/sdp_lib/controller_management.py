@@ -591,19 +591,45 @@ class BaseSTCIP(BaseSNMP):
     """ GET REQUEST """
 
     """ SET REQUEST """
-    async def set_stage(self, value='0', timeout=1, retries=2):
+    async def set_stage(self, value='0', timeout=1, retries=2) -> tuple:
         """"
         Устанавливает  фазу.
+        :param value:  Номер фазы в десятичном виде
         :param retries:
         :param timeout:
-        :param value:  Номер фазы в десятичном виде
-        :return value: Номер фазы в десятичном виде
+        :return: ErrorIndication, varBinds
         """
         converted_val = self.convert_val_to_num_stage_set_req(value)
         oids = (
             (Oids.swarcoUTCTrafftechPhaseCommand.value, Unsigned32(converted_val)),
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+    async def set_allred(self, value='0', timeout=1, retries=2) -> tuple:
+        """"
+        Устанавливает или сбрасывает режим КК
+        :param retries:
+        :param timeout:
+        :param value: значение. см ассоциации в self.converted_values_all_red
+        :return: ErrorIndication, varBinds
+        """
+        if isinstance(self, SwarcoSTCIP):
+            oid = Oids.swarcoUTCTrafftechPlanCommand.value
+        else:
+            oid = Oids.potokS_UTCCommandAllRed.value
+
+        value = self.converted_values_all_red.get(value)
+        logger.debug(value)
+        oids = (
+            (oid, Unsigned32(value)),
+            # (oid, Unsigned32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+
+
+
+
 
     # async def set_allred(self, value='100', timeout=1, retries=2):
     #     """"
@@ -886,7 +912,7 @@ class BaseUG405(BaseSNMP):
 
 class SwarcoSTCIP(BaseSTCIP):
     converted_values_all_red = {
-        '1': '119', 'true': '119', 'on': '119', 'вкл': '119',
+        '1': '119', 'true': '119', 'on': '119', 'вкл': '119', '2': '119', '119': '119',
         '0': '100', 'false': '100', 'off': '100', 'выкл': '100',
     }
 
@@ -1010,14 +1036,14 @@ class SwarcoSTCIP(BaseSTCIP):
         value = self.converted_values_flash_dark.get(value)
         await self.set_swarcoUTCCommandDark(value, timeout=timeout, retries=retries)
 
-    async def set_allred(self, value='100'):
-        """"
-        Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-        :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
-        :return: Возвращает номер установленного плана
-        """
-        value = self.converted_values_all_red.get(value)
-        return await self.set_swarcoUTCTrafftechPlanCommand(value)
+    # async def set_allred(self, value='100'):
+    #     """"
+    #     Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
+    #     :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
+    #     :return: Возвращает номер установленного плана
+    #     """
+    #     value = self.converted_values_all_red.get(value)
+    #     return await self.set_swarcoUTCTrafftechPlanCommand(value)
 
 
 class PotokS(BaseSTCIP):
@@ -1154,13 +1180,13 @@ class PotokS(BaseSTCIP):
     #                                        timeout=timeout, retries=retries)
 
     """ SET REQUEST """
-    async def set_allred(self, value='0', timeout=0, retries=0):
-
-        value = self.converted_values_all_red.get(value)
-        oids = (
-            ObjectType(ObjectIdentity(Oids.potokS_UTCCommandAllRed.value), Unsigned32(value)),
-        )
-        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+    # async def set_allred(self, value='0', timeout=0, retries=0):
+    #
+    #     value = self.converted_values_all_red.get(value)
+    #     oids = (
+    #         ObjectType(ObjectIdentity(Oids.potokS_UTCCommandAllRed.value), Unsigned32(value)),
+    #     )
+    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
         # """"
         # Устанавливает КК(или сбрасывает ранее установленный в potokUTCCommandAllRed)
         # :param value: 2 -> устанавливает КК, 0 -> сбрасывает ранее установленный КК
