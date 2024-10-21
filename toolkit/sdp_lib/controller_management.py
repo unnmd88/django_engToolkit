@@ -452,6 +452,7 @@ class BaseSNMP(BaseCommon):
             if isinstance(self, (PotokP, PeekUG405)):
                 processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid))
                                   for oid in itertools.chain(self.get_state_oids, oids)]
+                logger.debug(f'processed_oids {processed_oids}')
             else:
                 processed_oids = [self.check_type_oid(oid) for oid in itertools.chain(self.get_state_oids, oids)]
         else:
@@ -487,14 +488,14 @@ class BaseSNMP(BaseCommon):
 
         """
         processed_oids = []
-        logger.debug(f'create_data_for_set_req {oids}')
+        # logger.debug(f'create_data_for_set_req {oids}')
         oids = list(oids.items()) if type(oids) == dict else oids
         for oid, val in oids:
             oid = self.check_type_oid(oid)
             if isinstance(self, (PotokP, PeekUG405)):
                 oid = self.add_scn_to_oids(oid)
             processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
-        logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
+        # logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids if not unique_oids else set(processed_oids)
 
     # def create_data_for_set_req(self, oids: tuple | list | dict):
@@ -705,7 +706,7 @@ class BaseUG405(BaseSNMP):
         """
         scn = self.scn if scn is None else scn
         if type(oids) == str:
-            return oids
+            return oids + scn
 
         new_oids = []
         for oid in oids:
@@ -1075,6 +1076,8 @@ class PotokS(BaseSTCIP):
                     plan = val
                 elif oid == Oids.potokS_UTCStatusMode.value:
                     status_mode = val
+                if self.user_oids and (oid in self.user_oids):
+                    new_varBins.append(data)
             else:
                 new_varBins.append(data)
         mode = self._mode_define(equipment_status, plan, status_mode)
@@ -1340,45 +1343,6 @@ class PotokP(BaseUG405):
 
     """ GET REQUEST """
 
-    def get_current_mode(self, varBinds: list) -> tuple:
-        utcType2OperationMode = hasErrors = isFlash = isDark = isManual = plan = stage = \
-            hasDetErrors = localAdaptiv = None
-
-        new_varBins = []
-        for data in varBinds:
-            oid, val = data[0].__str__(), data[1].prettyPrint()
-            logger.debug(f'oid, val: {oid, val}')
-            oid = oid.replace(self.scn, '') if oid.endswith(self.scn) else oid
-            if oid in self.get_state_oids:
-                if oid == Oids.utcType2OperationMode.value:
-                    utcType2OperationMode = val
-                elif oid == Oids.utcReplyCF.value:
-                    hasErrors = val
-                elif oid == Oids.utcReplyFR.value:
-                    isFlash = val
-                elif oid == Oids.potokP_utcReplyDarkStatus.value:
-                    isDark = val
-                elif oid == Oids.utcReplyMC.value:
-                    isManual = val
-                elif oid == Oids.potokP_utcReplyPlanStatus.value:
-                    plan = val
-                elif oid == Oids.utcReplyGn.value:
-                    stage = self.convert_val_to_num_stage_get_req(val)
-                elif oid in Oids.utcReplyDF.value:
-                    hasDetErrors = val
-                elif oid in Oids.potokP_utcReplyLocalAdaptiv.value:
-                    localAdaptiv = val
-            else:
-                new_varBins.append(data)
-
-        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
-        curr_state = {
-            EntityJsonResponce.CURRENT_MODE.value: mode,
-            EntityJsonResponce.CURRENT_STAGE.value: stage,
-            EntityJsonResponce.CURRENT_PLAN.value: plan,
-        }
-        return new_varBins, curr_state
-
     def _mode_define(self, utcType2OperationMode: str, isFlash: str, isDark: str,
                      isManual: str, plan: str, hasDetErrors: str, localAdaptiv: str) -> str:
         """ Определяет текщий ружим ДК.
@@ -1424,6 +1388,48 @@ class PotokP(BaseUG405):
         # else:
         #     val_mode = '--'
         # return self.statusMode.get(val_mode)
+    def get_current_mode(self, varBinds: list) -> tuple:
+        utcType2OperationMode = hasErrors = isFlash = isDark = isManual = plan = stage = \
+            hasDetErrors = localAdaptiv = None
+
+        new_varBins = []
+        for data in varBinds:
+            oid, val = data[0].__str__(), data[1].prettyPrint()
+            logger.debug(f'oid, val: {oid, val}')
+            oid = oid.replace(self.scn, '') if oid.endswith(self.scn) else oid
+            if oid in self.get_state_oids:
+                if oid == Oids.utcType2OperationMode.value:
+                    utcType2OperationMode = val
+                elif oid == Oids.utcReplyCF.value:
+                    hasErrors = val
+                elif oid == Oids.utcReplyFR.value:
+                    isFlash = val
+                elif oid == Oids.potokP_utcReplyDarkStatus.value:
+                    isDark = val
+                elif oid == Oids.utcReplyMC.value:
+                    isManual = val
+                elif oid == Oids.potokP_utcReplyPlanStatus.value:
+                    plan = val
+                elif oid == Oids.utcReplyGn.value:
+                    stage = self.convert_val_to_num_stage_get_req(val)
+                elif oid in Oids.utcReplyDF.value:
+                    hasDetErrors = val
+                elif oid in Oids.potokP_utcReplyLocalAdaptiv.value:
+                    localAdaptiv = val
+                if self.user_oids and (oid in self.user_oids):
+                    new_varBins.append(data)
+            else:
+                new_varBins.append(data)
+
+        mode = self._mode_define(utcType2OperationMode, isFlash, isDark, isManual, plan, hasDetErrors, localAdaptiv)
+        curr_state = {
+            EntityJsonResponce.CURRENT_MODE.value: mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+        }
+        return new_varBins, curr_state
+
+
 
     """*******************************************************************
     ***                          SET-REQUEST                          ****   

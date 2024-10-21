@@ -75,8 +75,14 @@ oids = [
 ]
 
 
-h3 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss1')
-errInd, varBinds = asyncio.run(h3.get_request(get_mode=True))
+# h3 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss1')
+h3 = controller_management.PotokP('10.179.56.217', host_id='Tetss1')
+errInd, varBinds = asyncio.run(h3.get_request(get_mode=True,
+                                              oids=[controller_management.Oids.potokP_utcReplyHardwareErr,
+                                                    controller_management.Oids.potokP_utcReplySoftwareErr]
+                                              ))
+
+
 # errInd, varBinds = asyncio.run(h3.set_request(
 #     [(controller_management.Oids.swarcoUTCTrafftechPhaseCommand.value, '0'),
 #      (controller_management.Oids.swarcoUTCTrafftechPhaseCommand, '0'),]
