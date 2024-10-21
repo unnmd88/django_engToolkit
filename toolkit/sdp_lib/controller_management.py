@@ -405,15 +405,13 @@ class BaseSNMP(BaseCommon):
             ContextData(),
             *[ObjectType(ObjectIdentity(oid), val) for oid, val in oids]
             # ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32('0'))
-
         )
         logging.debug(
-            f'errorIndication: {errorIndication.__str__()}\n'
+            f'\nerrorIndication: {errorIndication.__str__()}\n'
             f'errorStatus: {errorStatus}\n'
             f'errorIndex: {errorIndex}\n'
             f'varBinds: {varBinds}\n'
         )
-
         return errorIndication, varBinds
 
         # print(f'errorIndication: {errorIndication.__str__()}')
@@ -462,10 +460,12 @@ class BaseSNMP(BaseCommon):
 
         return processed_oids
 
-    def create_data_for_set_req(self, oids: tuple | list | dict):
+    def create_data_for_set_req(self, oids: tuple | list | dict, unique_oids: bool = False):
         """
 
+
         :param oids:
+        :param unique_oids:
         :return: оиды для отправки. Примеры возвращаемой коллекции:
 
         """
@@ -498,7 +498,7 @@ class BaseSNMP(BaseCommon):
         #         processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
 
         logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
-        return processed_oids
+        return processed_oids if not unique_oids else set(processed_oids)
 
 
     # def create_data_for_set_req(self, oids: tuple | list | dict):
@@ -562,15 +562,16 @@ class BaseSNMP(BaseCommon):
 
     @staticmethod
     def check_type_oid(oid: Oids | str) -> str:
+        """
+        Метод проверяет корректность типа переданного оида
+        :param oid: Проверяемый оид
+        :return: оид типа str
+        """
         if type(oid) is not str:
             if isinstance(oid, Oids):
-                logger.debug('isinstance(oid, Oids)')
-                logger.debug(f'type(oid) {type(oid)}')
                 oid = Oids(oid).value
-                logger.debug(f'type(oid) after {type(oid)}')
             else:
-                raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, oid: {oid}')
-        logger.debug('check_type_oid-> OK')
+                raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, type oid: {type(oid)}, val oid: {oid}')
         return oid
 
 

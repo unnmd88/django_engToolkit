@@ -77,7 +77,6 @@ swarco16 = '10.45.154.16'
 h3 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss1')
 errInd, varBinds = asyncio.run(h3.set_request(
     [(controller_management.Oids.swarcoUTCTrafftechPhaseCommand.value, '0'),
-     (controller_management.Oids.swarcoUTCTrafftechPhaseCommand, '0'),
      (controller_management.Oids.swarcoUTCTrafftechPhaseCommand, '0'),]
 ))
 
