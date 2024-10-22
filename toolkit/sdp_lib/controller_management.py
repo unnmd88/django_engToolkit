@@ -1,13 +1,11 @@
 """" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
 import abc
 import os
-from typing import Any, Generator
 
 from dotenv import load_dotenv
 
 from collections.abc import Iterable, Callable
 
-from abc import ABC
 import itertools
 import re
 import time
@@ -22,12 +20,6 @@ import paramiko
 import aiohttp
 from pysnmp.hlapi.asyncio import *
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 
 """*******************************************************************
 ***                          GET-REQUEST                          ****   
@@ -37,17 +29,6 @@ from selenium.webdriver.chrome.options import Options
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-
-async def get_stage(ip_adress, community, oids):
-    errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
-        SnmpEngine(),
-        CommunityData(community),
-        UdpTransportTarget((ip_adress, 161), timeout=0, retries=0),
-        ContextData(),
-        *oids
-    )
-    return varBinds
 
 
 class AvailableControllers(Enum):

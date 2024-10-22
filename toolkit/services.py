@@ -9,10 +9,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def test_for_logger():
-    logger.debug('deeeee')
-
-
 def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str = None):
     logger.debug('ya в create_obj, type_object = %s', type_object)
     scn = scn if scn else None
@@ -72,17 +68,14 @@ class GetDataFromController:
         self.data_request = data
         self.processed_data = {}
 
-    async def get_data_from_controllers(self, objects_methods):
-        logger.debug(objects_methods)
-
-        # result = await asyncio.gather(*[method() for method in objects_methods])
-        result = await asyncio.gather(*objects_methods)
-        # json_responce = {}
-        # for item in result:
-        #     json_responce.update(item)
-        print(result)
-        logger.debug(f'result-->>> {result}')
-        return result
+    # async def get_data_from_controllers(self, objects_methods):
+    #     logger.debug(objects_methods)
+    #
+    #     result = await asyncio.gather(*objects_methods)
+    #
+    #     print(result)
+    #     logger.debug(f'result-->>> {result}')
+    #     return result
 
     async def main(self):
         objects_methods, error_hosts = [], []
@@ -92,11 +85,6 @@ class GetDataFromController:
         for ip_adress, data in self.data_request.items():
             if not isinstance(data, dict):
                 continue
-            # print(f'ip_adress---- {ip_adress}')
-            # print(f'data---- {data}')
-            # print(data.get('num_host'))
-            # print(data.get('type_controller'))
-            # print(data.get('scn'))
             host_id = data.get('host_id')
             controller_type = data.get('type_controller')
             scn = data.get('scn')
@@ -111,7 +99,6 @@ class GetDataFromController:
                     'scn': scn
                 }
                 })
-                # self.processed_data[ip_adress] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
 
             objects_methods.append(asyncio.create_task(obj.get_request(get_mode=True)))
@@ -119,14 +106,6 @@ class GetDataFromController:
         logger.debug(f'result-->>> {result_req}')
 
         return error_hosts, result_req
-
-    # def get_data_from_controllers(self, objects_methods):
-    #
-    #     get_data_manager = controller_management.GetDataControllerManagement()
-    #
-    #     raw_data_from_controllers = asyncio.run(get_data_manager.collect_data_from_hosts(objects_methods, option='get'))
-    #     processed_data = get_data_manager.data_processing(raw_data_from_controllers)
-    #     return self.processed_data | processed_data
 
     def get_type_object(self, controller_type: str):
 
@@ -169,8 +148,7 @@ class SetRequestToController:
             ip_adress, type_of_controller, scn, command, value = data_request
             command, type_of_controller = command.upper(), type_of_controller.upper()
             type_of_controller_management = self.get_type_object_set_request(type_of_controller, command)
-            host = Controller(ip_adress, type_of_controller_management, scn)
-            print(f'host -> {host}')
+            host = create_obj(ip_adress, type_of_controller_management, scn)
 
             if command in set_stage:
                 if inspect.iscoroutinefunction(host.set_stage):
@@ -178,23 +156,20 @@ class SetRequestToController:
                     result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_stage(value)
-                print('command in set_stage')
+
             elif command in set_flash:
                 if inspect.iscoroutinefunction(host.set_flash):
-                    print('elif command in set_flash:')
                     isError = asyncio.run(host.set_flash(value))
                     result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_flash(value)
-                print('command in host.set_flash(value)')
+
             elif command in set_dark:
-                print('elif command in set_dark:')
                 if inspect.iscoroutinefunction(host.set_dark):
                     isError = asyncio.run(host.set_dark(value))
                     result, msg = self.get_result_command(isError, host)
                 else:
                     result = host.set_dark(value)
-                print('command in host.set_dark(value)')
             elif command == 'ВВОДЫ':
                 result = host.session_manager(inputs=(inp for inp in value.split(',')))
             elif command == set_user_params_peek_web:
@@ -232,8 +207,6 @@ class SetRequestToController:
                 return AvailableProtocolsManagement.PEEK_WEB.value
 
     def get_result_command(self, res, host):
-
-        print(f'get_result_command res: {res}')
 
         messages = {
             'type_controller_error': 'Ошибка: проверьте корректность типа контроллера',
