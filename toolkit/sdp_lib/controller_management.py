@@ -763,82 +763,32 @@ class BaseUG405(BaseSNMP):
         else:
             return ''
 
-    async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
-        """
-        Возвращает значение OperationModeTimeout
-        :param timeout: Таймаут подключения
-        :param retries: Количетсво попыток подключения
-        :return Текущее значение utcType2OperationModeTimeout
-        """
-        print('-------')
-        print(self.ip_adress)
-        print(self.community)
-        print('*******')
-
-        oids = [
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
-            ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
-        ]
-
-        result, val = await self.get_request_base(self.ip_adress,
-                                                  self.community,
-                                                  oids
-                                                  )
+    # async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
+    #     """
+    #     Возвращает значение OperationModeTimeout
+    #     :param timeout: Таймаут подключения
+    #     :param retries: Количетсво попыток подключения
+    #     :return Текущее значение utcType2OperationModeTimeout
+    #     """
+    #     print('-------')
+    #     print(self.ip_adress)
+    #     print(self.community)
+    #     print('*******')
+    #
+    #     oids = [
+    #         ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareType', 0)),
+    #         ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2VendorID', 0)),
+    #         ObjectType(ObjectIdentity('UTMC-UTMCFULLUTCTYPE2-MIB', 'utcType2HardwareID', 0)),
+    #     ]
+    #
+    #     result, val = await self.get_request_base(self.ip_adress,
+    #                                               self.community,
+    #                                               oids
+    #                                               )
 
     """ archive methods(not usage) """
 
     """ SET REQUEST """
-
-    async def set_utcControlTO(self, value=1, timeout=0, retries=0):
-
-        oids = [ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def set_utcControlLO(self, value=0, timeout=1, retries=1):
-        """
-            Устанавливает utcControlLO бит(Выключение сигналов).
-            :param timeout: Таймаут подключения
-            :param retries: Количетсво попыток подключения
-            :param value -> В аргумент необходимо передавать значение 1 или 0.
-        """
-
-        oids = [ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-        # await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value)),
-        # )
-
-    async def set_utcControlFF(self, value=0, timeout=1, retries=1):
-        """
-            Устанавливает utcControlFF бит(Жёлтое мигание).
-            :param timeout: Таймаут подключения
-            :param retries: Количетсво попыток подключения
-            :param value -> В аргумент необходимо передавать значение 1 или 0.
-        """
-        oids = [ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-        # await getCmd(
-        #     SnmpEngine(),
-        #     CommunityData(self.community),
-        #     UdpTransportTarget((self.ip_adress, 161), timeout=timeout, retries=retries),
-        #     ContextData(),
-        #     ObjectType(ObjectIdentity(self.utcControlFF + self.scn), Integer32(value)),
-        # )
-
-    async def set_utcType2OperationMode(self, value=1, timeout=1, retries=1):
-        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
-    async def set_utcType2OperationModeTimeout(self, value=90, timeout=1, retries=1):
-        oids = [ObjectType(ObjectIdentity(self.utcType2OperationModeTimeout), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
-
 
 class SwarcoSTCIP(BaseSTCIP):
     converted_values_all_red = {
