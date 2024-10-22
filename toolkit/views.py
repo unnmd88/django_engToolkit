@@ -289,11 +289,6 @@ class GetDataFromControllerAPIView(APIView):
             logger.debug(data_host)
             responce |= data_host
 
-        # for host, res in zip(objects, res_req):
-        #     errInd, varBinds = res
-        #     data_host = host.create_json(errInd, varBinds, first_kwarg='вот он первий попытка))) kwarg')
-        #     logger.debug(data_host)
-        #     responce |= data_host
         logger.debug(f'Время выполнения запроса: {time.time() - start_time}')
         return Response(responce)
 
@@ -325,8 +320,8 @@ class GetNamesConfigurationControllerManagementAPIView(APIView):
 
 
 def get_configuration_controller_management_axios(request):
-    print(f'get_configuration_controller_management_ax')
-    # print(f'test_body1: {json.loads(request.body.decode("utf-8"))}')
+    # print(f'get_configuration_controller_management_ax')
+
 
     if request.GET:
         get_dict = request.GET.dict()
@@ -350,7 +345,6 @@ def get_configuration_controller_management_axios(request):
     else:
         data = {'result': False}
 
-    print(f'final_data {data}')
     return JsonResponse(data)
 
 
