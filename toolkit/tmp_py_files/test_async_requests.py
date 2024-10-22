@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 CO2385 = '10.179.16.81'
-h1 = controller_management.PeekUG405(CO2385)
+h1 = controller_management.PotokP('10.45.154.12')
 
 
 def convert_datetime(string):
@@ -27,7 +27,7 @@ def convert_datetime(string):
 
 
 while True:
-    errInd, varBinds = asyncio.run(h1.get_request([
+    errInd, varBinds, _ = asyncio.run(h1.get_request([
         controller_management.Oids.utcType2ScootDetectorCount,
         controller_management.Oids.utcType2OutstationTime,
         controller_management.Oids.utcReplyVSn

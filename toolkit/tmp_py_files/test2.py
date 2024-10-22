@@ -7,7 +7,23 @@ import requests
 import aiohttp
 import inspect
 
-print((getattr(controller_management.Oids, 'swarcoUTCDetectorQty')).name)
+
+
+class Test:
+
+    def __init__(self):
+        self.scn = self.test
+
+    async def test(self):
+        await asyncio.sleep(2)
+        print('выспался')
+    def t2(self):
+        print(await self.scn())
+
+obj = Test()
+obj.t2()
+
+# print((getattr(controller_management.Oids, 'swarcoUTCDetectorQty')).name)
 
 
 

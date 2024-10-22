@@ -293,6 +293,7 @@ class BaseSNMP(BaseCommon):
     Базовый класс для snmp запросов по всем протоколам: set и get запросы
     """
     user_oids: Iterable
+    scn: str
     get_state_oids: set
     matching_types_set_req: dict
     community_read: str
@@ -306,8 +307,8 @@ class BaseSNMP(BaseCommon):
                                community: str,
                                oids: Iterable,
                                json_responce: bool = False,
-                               timeout: int = 3,
-                               retries: int = 0):
+                               timeout: int = 0,
+                               retries: int = 1):
         """
         Возвращает list значений оидов при успешном запросе, инчае возвращает str с текстом ошибки.
         :param type_controller:
@@ -521,6 +522,10 @@ class BaseSNMP(BaseCommon):
 
         oids = [self.check_type_oid(oid) for oid in oids] if oids else []
 
+        if isinstance(self, (PotokP, PeekUG405)):
+            if not self.scn:
+                self.scn = await self.get_scn()
+
         self.user_oids = oids
         processed_oids = self.create_data_for_get_req(oids, get_mode)
 
@@ -552,6 +557,10 @@ class BaseSNMP(BaseCommon):
 
         if not oids:
             return None, []
+
+        if isinstance(self, (PotokP, PeekUG405)):
+            if not self.scn:
+                self.scn = await self.get_scn()
 
         processed_oids = self.create_data_for_set_req(oids)
 
@@ -591,6 +600,7 @@ class BaseSTCIP(BaseSNMP):
     """ GET REQUEST """
 
     """ SET REQUEST """
+
     async def set_stage(self, value='0', timeout=1, retries=2) -> tuple:
         """"
         Устанавливает  фазу.
@@ -625,9 +635,6 @@ class BaseSTCIP(BaseSNMP):
             # (oid, Unsigned32(value)),
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-
-
 
     async def set_swarcoUTCCommandFlash(self, value='0', timeout=1, retries=2):
         """"
@@ -668,7 +675,7 @@ class BaseUG405(BaseSNMP):
     def __init__(self, ip_adress, scn=None, host_id=None):
         super().__init__(ip_adress, host_id)
         self.ip_adress = ip_adress
-        self.scn = asyncio.run(self.get_scn()) if scn is None else self.convert_scn(scn)
+        self.scn = self.convert_scn(scn) if scn else scn
         self.host_id = host_id
 
     # @staticmethod
@@ -780,9 +787,9 @@ class BaseUG405(BaseSNMP):
         if isinstance(self, PeekUG405):
             logger.debug('comm: %s', self.community_read)
 
-            errorIndication, varBinds = await self.getNext_request_base(self.ip_adress,
-                                                                        self.community_read,
-                                                                        [Oids.utcType2Reply.value])
+            errorIndication, varBinds, _ = await self.getNext_request_base(self.ip_adress,
+                                                                           self.community_read,
+                                                                           [Oids.utcType2Reply.value])
             if errorIndication is None and varBinds:
                 oid = varBinds[0][0][0].__str__()
                 replace_fragment = Oids.utcReplyGn.value
@@ -793,15 +800,14 @@ class BaseUG405(BaseSNMP):
 
         elif isinstance(self, PotokP):
             logging.debug(f'get_scn: {self}')
-            errorIndication, varBinds = await self.get_request_base(self.ip_adress,
-                                                                    self.community_read,
-                                                                    (Oids.utcReplySiteID.value,))
+            errorIndication, varBinds, _ = await self.get_request_base(self.ip_adress,
+                                                                       self.community_read,
+                                                                       (Oids.utcReplySiteID.value,))
             if errorIndication is None and varBinds:
                 return self.convert_scn(varBinds[0][1].prettyPrint())
             return ''
         else:
             return ''
-
 
     async def TESTget_utcType2VendorID(self, timeout=0, retries=0):
         """
@@ -1151,9 +1157,6 @@ class PotokS(BaseSTCIP):
 
     """ SET REQUEST """
 
-
-
-
     async def set_potokUTCSetGetLocal(self, value=0, timeout=0, retries=0):
         """"
         Устанавливает/сбрасывает локальный режим
@@ -1386,6 +1389,7 @@ class PotokP(BaseUG405):
         # else:
         #     val_mode = '--'
         # return self.statusMode.get(val_mode)
+
     def get_current_mode(self, varBinds: list) -> tuple:
         utcType2OperationMode = hasErrors = isFlash = isDark = isManual = plan = stage = \
             hasDetErrors = localAdaptiv = None
@@ -1427,8 +1431,6 @@ class PotokP(BaseUG405):
         }
         return new_varBins, curr_state
 
-
-
     """*******************************************************************
     ***                          SET-REQUEST                          ****   
     **********************************************************************
@@ -1442,6 +1444,10 @@ class PotokP(BaseUG405):
         :param timeout:
         :return: ErrorIndication, varBinds
         """
+
+        if not self.scn:
+            self.scn = await self.get_scn()
+
         if value.lower() in {'0', 'локал', 'false', 'сброс', 'reset'}:
             oids = (
                 (Oids.utcType2OperationMode.value, Integer32(1)),
@@ -1457,11 +1463,6 @@ class PotokP(BaseUG405):
                 (Oids.utcControlFn.value + self.scn, OctetString(hexValue=converted_val)),
             )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-
-
-
-
 
     async def set_dark(self, value='0', timeout=0, retries=0):
 
@@ -2503,7 +2504,7 @@ class PeekWeb(BaseCommon):
         self.get_mode_flag = True
         self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
-        return errorIndication, content
+        return errorIndication, content, self
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
