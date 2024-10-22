@@ -653,14 +653,6 @@ class BaseSTCIP(BaseSNMP):
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-    async def set_swarcoUTCCommandDark(self, value='0', timeout=1, retries=2):
-        """"
-        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
-        """
-        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCCommandDark.value), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
 
 class BaseUG405(BaseSNMP):
     community_read = os.getenv('communityUG405_r')
@@ -1141,14 +1133,24 @@ class PotokS(BaseSTCIP):
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-    async def set_restartProgramm(self, value=1, timeout=0, retries=0):
+    # async def set_restartProgramm(self, value=1, timeout=0, retries=0):
+    #     """"
+    #     Перезапускает рабочую программу
+    #     :param value: 1 -> команда на перезапуск рабочей программы
+    #     """
+    #     oids = [ObjectType(ObjectIdentity(self.potokUTCCommandRestartProgramm), Unsigned32(value))]
+    #     return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+    async def set_restartProgramm(self, value='1', timeout=1, retries=2) -> tuple:
         """"
         Перезапускает рабочую программу
         :param value: 1 -> команда на перезапуск рабочей программы
         """
-        oids = [ObjectType(ObjectIdentity(self.potokUTCCommandRestartProgramm), Unsigned32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
+        oids = (
+            (Oids.potokS_UTCCommandRestartProgramm.value, Unsigned32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
 class PotokP(BaseUG405):
     """
