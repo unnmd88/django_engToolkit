@@ -1163,22 +1163,6 @@ class PotokP(BaseUG405):
             '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
         }
         return converted_values_flash_dark.get(val)
-    # Значения фаз для для UG405 Potok
-    # val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
-    # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
-
-    # -- Control Bits --#
-    # potok_utcControRestartProgramm = '.1.3.6.1.4.1.13267.3.2.4.2.1.5.5'
-    # # -- Reply Bits --#
-    #
-    # potok_utcReplyPlanStatus = '.1.3.6.1.4.1.13267.1.2.9.1.3'
-    # potok_utcReplyPlanSource = '1.3.6.1.4.1.13267.1.2.9.1.3.1'
-    # potok_utcReplyDarkStatus = '.1.3.6.1.4.1.13267.3.2.5.1.1.45'
-    # potok_utcReplyLocalAdaptiv = '1.3.6.1.4.1.13267.3.2.5.1.1.46'
-    #
-    # potok_utcReplyHardwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.1'
-    # potok_utcReplySoftwareErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.2'
-    # potok_utcReplyElectricalCircuitErr = '1.3.6.1.4.1.13267.3.2.5.1.1.16.3'
 
     """ GET REQUEST """
 
