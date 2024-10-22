@@ -11,7 +11,7 @@ import asyncio
 
 from toolkit.sdp_lib import controller_management
 
-h1 = controller_management.PotokP('10.45.154.11')
-res = asyncio.run(h1.get_scn())
+h1 = controller_management.PotokS('10.45.154.17')
+res = asyncio.run(h1.set_flash())
 print(res)
 

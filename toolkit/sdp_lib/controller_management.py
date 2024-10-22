@@ -499,22 +499,6 @@ class BaseSNMP(BaseCommon):
         # logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
         return processed_oids if not unique_oids else set(processed_oids)
 
-    # def create_data_for_set_req(self, oids: tuple | list | dict):
-    #
-    #     processed_oids = set()
-    #     logger.debug(f'create_data_for_set_req {oids}')
-    #     oids = list(oids.items()) if type(oids) == dict else oids
-    #     for oid, val in oids:
-    #         if type(oid) == str:
-    #             logger.debug('if type(oid) == str:')
-    #             processed_oids.add(ObjectType(ObjectIdentity(oid, self.matching_types_set_req.get(oid)(val))))
-    #         elif isinstance(oid, Oids):
-    #             oid = oid.value
-    #             processed_oids.add(ObjectType(ObjectIdentity(oid), self.matching_types_set_req.get(oid)(val)))
-    #
-    #     logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
-    #     return processed_oids
-
     async def get_request(self, oids: tuple | list = None, get_mode: bool = True) -> tuple:
 
         if not oids and not get_mode:
@@ -592,6 +576,10 @@ class BaseSTCIP(BaseSNMP):
     community_write = os.getenv('communitySTCIP_w')
     community_read = os.getenv('communitySTCIP_w')
 
+    converted_values_flash_dark = {
+        '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
+        '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
+    }
     matching_types_set_req = {
         Oids.swarcoUTCTrafftechPhaseCommand.value: Unsigned32,
         Oids.swarcoUTCTrafftechPlanCommand.value: Unsigned32
@@ -636,13 +624,34 @@ class BaseSTCIP(BaseSNMP):
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-    async def set_swarcoUTCCommandFlash(self, value='0', timeout=1, retries=2):
+    async def set_flash(self, value='0', timeout=1, retries=2) -> tuple:
         """"
         Устанавливает ЖМ(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
+        :param retries:
+        :param timeout:
         :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ЖМ
         """
-        oids = [ObjectType(ObjectIdentity(Oids.swarcoUTCCommandFlash.value), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+        value = self.converted_values_flash_dark.get(value.lower())
+        logger.debug(value)
+        oids = (
+            (Oids.swarcoUTCCommandFlash.value, Integer32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+    async def set_dark(self, value='0', timeout=1, retries=2) -> tuple:
+        """"
+        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
+        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
+        :return: Возвращает значение установленного swarcoUTCCommandDark
+        """
+
+        value = self.converted_values_flash_dark.get(value.lower())
+        logger.debug(value)
+        oids = (
+            (Oids.swarcoUTCCommandDark.value, Integer32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_swarcoUTCCommandDark(self, value='0', timeout=1, retries=2):
         """"
@@ -982,51 +991,9 @@ class SwarcoSTCIP(BaseSTCIP):
 
     """ SET REQUEST """
 
-    # async def set_stage(self, value='0', timeout=1, retries=2):
-    #     """"
-    #     Устанавливает  фазу.
-    #     :param value:  Номер фазы в десятичном виде
-    #     :return value: Номер фазы в десятичном виде
-    #     """
-    #     converted_val = self.convert_val_to_num_stage_set_req(value)
-    #     oids = (
-    #         ObjectType(ObjectIdentity(Oids.swarcoUTCTrafftechPhaseCommand.value), Unsigned32(converted_val)),
-    #     )
-    #     return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def set_flash(self, value='0', timeout=0, retries=0):
-        """"
-        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
-               :return: Возвращает значение установленного swarcoUTCCommandFlash
-        """
-        value = self.converted_values_flash_dark.get(value)
-        return await self.set_swarcoUTCCommandFlash(value, timeout=timeout, retries=retries)
-
-    async def set_dark(self, value='0', timeout=0, retries=0):
-        """"
-        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
-        :return: Возвращает значение установленного swarcoUTCCommandDark
-        """
-        value = self.converted_values_flash_dark.get(value)
-        await self.set_swarcoUTCCommandDark(value, timeout=timeout, retries=retries)
-
-    # async def set_allred(self, value='100'):
-    #     """"
-    #     Устанавливает КК(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-    #     :param value: 100 -> устанавливает К, 0 -> сбрасывает ранее установленный КК
-    #     :return: Возвращает номер установленного плана
-    #     """
-    #     value = self.converted_values_all_red.get(value)
-    #     return await self.set_swarcoUTCTrafftechPlanCommand(value)
-
 
 class PotokS(BaseSTCIP):
-    converted_values_flash_dark = {
-        '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
-        '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
-    }
+
     converted_values_all_red = {
         '1': '2', 'true': '2', 'on': '2', 'вкл': '2',
         '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
@@ -1173,23 +1140,6 @@ class PotokS(BaseSTCIP):
         """
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def set_flash(self, value='0', timeout=0, retries=0):
-        """"
-        Устанавливает ЖМ(или сбрасывает ранее установленный в swarcoUTCCommandFlash)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ЖМ
-        """
-        converted_value = self.converted_values_flash_dark.get(value)
-        return await self.set_swarcoUTCCommandFlash(converted_value, timeout=timeout, retries=retries)
-
-    async def set_dark(self, value='0', timeout=0, retries=0):
-        """"
-        Устанавливает ОС(или сбрасывает ранее установленный в swarcoUTCCommandDark)
-        :param value: 2 -> устанавливает ОС, 0 -> сбрасывает ранее установленный ОС
-        """
-
-        converted_value = self.converted_values_flash_dark.get(value)
-        return await self.set_swarcoUTCCommandDark(converted_value, timeout=timeout, retries=retries)
 
     async def set_restartProgramm(self, value=1, timeout=0, retries=0):
         """"
