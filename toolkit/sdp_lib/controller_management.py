@@ -303,7 +303,7 @@ class BaseSNMP(BaseCommon):
         """
         # print(f'get_request ')
         # print(f'oids : {oids} ')
-        logger.debug(f'oids before: {oids}')
+
         # if isinstance(self, (PotokP, PeekUG405)):
         #     oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
@@ -340,7 +340,7 @@ class BaseSNMP(BaseCommon):
                                    timeout: int = 0,
                                    retries: int = 0):
 
-        logger.debug(f'getNext_request_base oids: {oids}')
+
         self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
         errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
             SnmpEngine(),
@@ -434,7 +434,7 @@ class BaseSNMP(BaseCommon):
             if isinstance(self, (PotokP, PeekUG405)):
                 processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid))
                                   for oid in itertools.chain(self.get_state_oids, oids)]
-                logger.debug(f'processed_oids {processed_oids}')
+
             else:
                 processed_oids = [self.check_type_oid(oid) for oid in itertools.chain(self.get_state_oids, oids)]
         else:
@@ -470,14 +470,14 @@ class BaseSNMP(BaseCommon):
 
         """
         processed_oids = []
-        # logger.debug(f'create_data_for_set_req {oids}')
+
         oids = list(oids.items()) if type(oids) == dict else oids
         for oid, val in oids:
             oid = self.check_type_oid(oid)
             if isinstance(self, (PotokP, PeekUG405)):
                 oid = self.add_scn_to_oids(oid)
             processed_oids.append((oid, self.matching_types_set_req.get(oid)(val)))
-        # logger.debug(f'create_data_for_set_req processed_oids {processed_oids}')
+
         return processed_oids if not unique_oids else set(processed_oids)
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = True) -> tuple:
@@ -547,7 +547,7 @@ class BaseSNMP(BaseCommon):
                 oid = Oids(oid).value
             else:
                 raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, type oid: {type(oid)}, val oid: {oid}')
-            # logger.debug(Oids(oid).name + '--' + Oids(oid).value + '--' + f'{type(oid)}')
+
         return oid
 
 
@@ -598,10 +598,9 @@ class BaseSTCIP(BaseSNMP):
             oid = Oids.potokS_UTCCommandAllRed.value
 
         value = self.converted_values_all_red.get(value.lower())
-        logger.debug(value)
+
         oids = (
             (oid, Unsigned32(value)),
-            # (oid, Unsigned32(value)),
         )
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
@@ -614,7 +613,7 @@ class BaseSTCIP(BaseSNMP):
         """
 
         value = self.converted_values_flash_dark.get(value.lower())
-        logger.debug(value)
+
         oids = (
             (Oids.swarcoUTCCommandFlash.value, Integer32(value)),
         )
@@ -628,7 +627,6 @@ class BaseSTCIP(BaseSNMP):
         """
 
         value = self.converted_values_flash_dark.get(value.lower())
-        logger.debug(value)
         oids = (
             (Oids.swarcoUTCCommandDark.value, Integer32(value)),
         )
@@ -687,8 +685,6 @@ class BaseUG405(BaseSNMP):
             для управления и мониторинга по протоколу UG405.
             Например: convert_scn(CO1111)
         """
-        # print(f'scn : {scn}')
-        logger.debug(f'def convert_scn(scn): {scn}')
         return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
 
     def add_scn_to_oids(self, oids: set | tuple | list | str, scn: str = None) -> str | list:
@@ -739,7 +735,6 @@ class BaseUG405(BaseSNMP):
     async def get_scn(self):
 
         if isinstance(self, PeekUG405):
-            logger.debug('comm: %s', self.community_read)
 
             errorIndication, varBinds, _ = await self.getNext_request_base(self.ip_adress,
                                                                            self.community_read,
@@ -748,7 +743,6 @@ class BaseUG405(BaseSNMP):
                 oid = varBinds[0][0][0].__str__()
                 replace_fragment = Oids.utcReplyGn.value
                 if replace_fragment in oid:
-                    logger.debug(f'final_scn: {oid.replace(replace_fragment, "")}')
                     return oid.replace(replace_fragment, "")
             return ''
 
@@ -850,7 +844,7 @@ class SwarcoSTCIP(BaseSTCIP):
             val_mode = '8'
         else:
             val_mode = '--'
-        # logger.info(f"self.statusMode.get(val_mode): {self.statusMode.get(val_mode)}")
+
         return self.statusMode.get(val_mode)
 
     def get_current_mode(self, varBinds: list) -> tuple:
@@ -873,7 +867,6 @@ class SwarcoSTCIP(BaseSTCIP):
                     new_varBins.append(data)
             else:
                 new_varBins.append(data)
-        logger.info(f'len_vb posle: {len(varBinds)}')
         mode = self._mode_define(equipment_status, plan, softstat180_181, num_logics)
         curr_state = {
             EntityJsonResponce.CURRENT_MODE.value: mode,
@@ -1154,7 +1147,6 @@ class PotokP(BaseUG405):
 
         stg_mask = ['01', '02', '04', '08', '10', '20', '40', '80']
         values = {str(k): v for k, v in enumerate((f'{i}{j * "00"}' for j in range(8) for i in stg_mask), 1)}
-        logger.debug(values)
         return values.get(val)
 
     def convert_values_flash_dark(self, val):
@@ -1219,7 +1211,6 @@ class PotokP(BaseUG405):
         new_varBins = []
         for data in varBinds:
             oid, val = data[0].__str__(), data[1].prettyPrint()
-            logger.debug(f'oid, val: {oid, val}')
             oid = oid.replace(self.scn, '') if oid.endswith(self.scn) else oid
             if oid in self.get_state_oids:
                 if oid == Oids.utcType2OperationMode.value:
@@ -1277,7 +1268,6 @@ class PotokP(BaseUG405):
             )
         else:
             converted_val = self.convert_val_to_num_stage_set_req(value)
-            logger.debug(converted_val)
             oids = (
                 (Oids.utcType2OperationModeTimeout.value, Integer32(90)),
                 (Oids.utcType2OperationMode.value, Integer32(3)),
@@ -1880,12 +1870,8 @@ class PeekWeb(BaseCommon):
                 async with session.get(url, timeout=timeout) as s:
                     if s.status != 200:
                         raise TypeError(EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value)
-                    logger.debug('s.status : %s', s.status)
                     content = await s.text()
                     errorIndication = None
-            # logger.debug('после content = await s.text()')
-            # logger.debug(content)
-            # logger.debug(f'errorIndication: {errorIndication}')
 
         except aiohttp.client_exceptions.ClientConnectorError:
             errorIndication, content = aiohttp.client_exceptions.ClientConnectorError, []
@@ -1917,13 +1903,11 @@ class PeekWeb(BaseCommon):
         # error_request, result_text_msg = self._check_errors_after_web_request(inputs_web_content,
         #                                                                       EntityJsonResponce.TYPE_WEB_REQUEST_SET)
         if errorIndication is None:
-            logger.debug('inputs_web_content, %s', inputs_web_content)
             inputs = self.parse_inps_and_user_param_content(inputs_web_content)
             timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 set_CP_AUTO = False
                 async with asyncio.TaskGroup() as tg1:
-                    logger.debug('tg1')
                     params_to_set = []
                     blocked_inps = [
                         'MPP_FL', 'MPP_OFF', 'CP_OFF', 'CP_FLASH', 'CP_RED',
@@ -1947,7 +1931,6 @@ class PeekWeb(BaseCommon):
                                               (inputs.get('CP_AUTO')[0], self.ACTUATOR_ON))
 
                 async with asyncio.TaskGroup() as tg:
-                    logger.debug('tg')
                     data_param_to_set = []
                     if set_CP_AUTO:
                         data_param_to_set.append((inputs.get('CP_AUTO')[0], self.ACTUATOR_RESET))
@@ -1967,7 +1950,6 @@ class PeekWeb(BaseCommon):
                                 data_param_to_set.append((inputs.get(inp)[0], self.ACTUATOR_ON))
                     tasks_res = [tg.create_task(self.set_val_to_web(self.SET_INPUTS, session, data_params))
                                  for data_params in data_param_to_set]
-            logger.info('tasks: %s', tasks_res)
 
             if all(res.result() == 200 for res in tasks_res):
                 errorIndication = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
@@ -2023,13 +2005,9 @@ class PeekWeb(BaseCommon):
             timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 async with asyncio.TaskGroup() as tg:
-                    logger.debug('params_to_set: %s', params_to_set)
-                    logger.debug('params_to_set.items(): %s', params_to_set.items())
                     tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
                                  for data_params in params_to_set.items()]
-                    logger.info('tasks: %s', tasks_res)
                 if set_CP_AUTO:
-                    logger.debug('if set_CP_AUTO:')
                     await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '2'))
                     await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '0'))
 
@@ -2086,8 +2064,6 @@ class PeekWeb(BaseCommon):
     #             return True, self.ACTUATOR_ON
 
     async def set_val_to_web(self, type_set_request, session, data_params, ):
-        # logger.debug(f'data_params: {data_params}')
-        logger.debug(f'start set_val_to_web')
 
         index, value = data_params
         if type_set_request == self.SET_INPUTS:
@@ -2099,11 +2075,8 @@ class PeekWeb(BaseCommon):
         else:
             raise TypeError
 
-        logger.debug(f'params: {params}')
-
         async with session.post(url=url, data=params) as response:
             await response.text()
-            logger.debug(f'final set_val_to_web')
             return response.status
 
     async def set_flash(self, value):

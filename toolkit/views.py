@@ -29,10 +29,8 @@ class ControllersViewSet(APIView):
         name_configuration = self.request.query_params.get('name_configuration')
         if name_configuration is not None:
             queryset = queryset.filter(name=self.request.query_params.get('name_configuration')).values()[0]
-            print(f'queryset from if: {queryset}')
             try:
                 queryset['data'] = ast.literal_eval(queryset.get('data'))
-                print(f'queryset from try: {queryset}')
                 return Response(queryset)
             except Exception as err:
                 print(f'err: {err}')
@@ -310,12 +308,12 @@ class SetRequestToControllerAPIView(APIView):
 
 
 class GetNamesConfigurationControllerManagementAPIView(APIView):
+
     def get(self, request):
         first_option = 'Выбор конфигурации'
         names = {k: v if k > 0 else first_option
                  for k, v in enumerate([el[0] for el in ControllerManagement.objects.values_list('name')])}
-        print(f'nameees2 --> {names}')
-
+        # print(f'nameees2 --> {names}')
         return Response(names)
 
 
@@ -348,10 +346,9 @@ def get_configuration_controller_management_axios(request):
     return JsonResponse(data)
 
 
-
 def save_configuration_controller_management_axios(request):
     data_request = json.loads(request.body.decode("utf-8")).get('data')
-    print(f'data_request SV_AXIOS: {data_request} ')
+    # print(f'data_request SV_AXIOS: {data_request} ')
 
     name = data_request.pop('name')
     num_visible_hosts = data_request.pop('num_visible_hosts')
@@ -397,10 +394,6 @@ def save_configuration_controller_management_axios(request):
     return JsonResponse({'result': result})
 
 
-def my_python_function(request):  # Ваш код Python здесь
-    response_data = {'message': 'Функция Python вызвана успешно!'}
-    print(response_data)
-    return JsonResponse(response_data)
 
 
 def index(request):
@@ -448,7 +441,6 @@ def manage_snmp(request):
     third_row_set = {'set_btn': 'Отправить'}
     form = ControllerManagementData()
     lst = [el.name for el in ControllerManagement.objects.all()]
-    print(f'w:{lst}')
 
     # print(BASE_DIR / 'data/db.sqlite3')
 
@@ -498,23 +490,6 @@ def calc_cyc(request):
     data = {'title': 'Расчёт циклов и сдвигов', 'menu_header': menu_header}
     return render(request, 'toolkit/calc_cyc.html', context=data)
 
-
-# def tabs(request, tabs_id):
-#     return HttpResponse(f'<h1> Странца приложения tabs </h1><p>id: {tabs_id}</p>')
-#
-#
-# def tabs_by_slug(request, tabs_slug):
-#     print(request.GET)
-#     return HttpResponse(f'<h1> Странца приложения tabs </h1><p>slug: {tabs_slug}</p>')
-#
-# def main_page(request):
-#     return HttpResponse('Главная страница')
-#
-#
-# def archive(request, year):
-#     if year > 2024:
-#         uri = reverse('tabs_slug', args=('test', ))
-#         return HttpResponseRedirect('/')
 
 def upload_file(file):
     with open(f'{path_tmp}{file.name}', 'wb+') as f:

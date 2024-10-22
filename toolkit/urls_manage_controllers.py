@@ -1,0 +1,11 @@
+path("manage_snmp/", views.manage_snmp, name='manage_snmp'),
+path("api/v1/get-data-from-controller-ax/", GetDataFromControllerAPIView.as_view()),
+path(r"api/v1/get-names-configuration-controller-management/",
+     GetNamesConfigurationControllerManagementAPIView.as_view()),
+path(r"api/v1/get-configuration-controller-management/",
+     ControllersViewSet.as_view(),
+     name='get_configuration_controller_management'),
+
+path(r"api/v1/save-configuration-controller-management-ax/",
+     views.save_configuration_controller_management_axios,
+     name='save_configuration_controller_management_axios'),
