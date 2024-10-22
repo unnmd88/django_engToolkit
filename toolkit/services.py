@@ -9,23 +9,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str = None):
-    logger.debug('ya в create_obj, type_object = %s', type_object)
-    scn = scn if scn else None
-    if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
-        return controller_management.PotokS(ip_adress, host_id)
-    elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-        return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
-    elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-        return controller_management.SwarcoSTCIP(ip_adress, host_id)
-    elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-        return controller_management.SwarcoSSH(ip_adress, host_id)
-    elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-        return controller_management.PeekUG405(ip_adress, scn, host_id)
-    elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
-        return controller_management.PeekWeb(ip_adress, host_id)
-
-
 # class Controller:
 #
 #     def __new__(cls, ip_adress, type_object, scn: str = None, host_id: str = None):
@@ -43,6 +26,22 @@ def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str =
 #             return controller_management.PeekUG405(ip_adress, scn, host_id)
 #         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
 #             return controller_management.PeekWeb(ip_adress, host_id)
+
+def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str = None):
+    logger.debug('ya в create_obj, type_object = %s', type_object)
+    scn = scn if scn else None
+    if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
+        return controller_management.PotokS(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
+        return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
+    elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
+        return controller_management.SwarcoSTCIP(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
+        return controller_management.SwarcoSSH(ip_adress, host_id)
+    elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
+        return controller_management.PeekUG405(ip_adress, scn, host_id)
+    elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
+        return controller_management.PeekWeb(ip_adress, host_id)
 
 
 class AvailableProtocolsManagement(Enum):
@@ -102,10 +101,10 @@ class GetDataFromController:
                 continue
 
             objects_methods.append(asyncio.create_task(obj.get_request(get_mode=True)))
-        result_req = await asyncio.gather(*objects_methods)
-        logger.debug(f'result-->>> {result_req}')
+        result_request = await asyncio.gather(*objects_methods)
+        logger.debug(f'result-->>> {result_request}')
 
-        return error_hosts, result_req
+        return error_hosts, result_request
 
     def get_type_object(self, controller_type: str):
 
@@ -128,55 +127,80 @@ class SetRequestToController:
         # print(f'self.request: {self.request}')
         self.data_request = request.data.get('data')
 
-        print(f'request.data = self.data_request: {self.data_request}')
+        logger.debug(f'request.data = self.data_request: {self.data_request}')
         # self.data_request = request.POST.dict()
         logger.debug(self.request.data.get('data'))
 
-    def set_command_request(self):
+    async def main(self):
+
+        objects_methods, error_hosts = [], []
 
         set_stage = ('ФАЗА MAN', 'ФАЗА SNMP')
         set_flash = ('ЖМ MAN', 'ЖМ SNMP')
         set_dark = ('ОС MAN', 'ОС SNMP')
         set_user_params_peek_web = 'ПАРАМЕТРЫ ПРОГРАММЫ'
 
-        result = msg = num_host = None
-
-        for num_host, data_request in self.data_request.items():
-            data_request = data_request.split(';')
-            if len(data_request) != 5:
+        logger.debug(f'перед {self.request.data.get("data")}')
+        for ip_adress, data in self.data_request.items():
+            if not isinstance(data, dict):
                 continue
-            ip_adress, type_of_controller, scn, command, value = data_request
+            host_id = data.get('host_id')
+            type_of_controller = data.get('type_controller')
+            command = data.get('type_command')
+            value = data.get('set_val')
+            scn = data.get('scn')
+
             command, type_of_controller = command.upper(), type_of_controller.upper()
             type_of_controller_management = self.get_type_object_set_request(type_of_controller, command)
-            host = create_obj(ip_adress, type_of_controller_management, scn)
+            obj = create_obj(ip_adress, type_of_controller_management, scn, host_id)
+            if obj is None:
+                error_hosts.append({ip_adress: {
+                    'host_id': host_id,
+                    'type_controller': type_of_controller,
+                    'scn': scn
+                }
+                })
+                continue
 
             if command in set_stage:
-                if inspect.iscoroutinefunction(host.set_stage):
-                    isError = asyncio.run(host.set_stage(value))
-                    result, msg = self.get_result_command(isError, host)
+                if inspect.iscoroutinefunction(obj.set_stage):
+                    objects_methods.append(asyncio.create_task(obj.set_stage(value)))
                 else:
-                    result = host.set_stage(value)
+                    result_req = obj.set_stage(value)
 
             elif command in set_flash:
-                if inspect.iscoroutinefunction(host.set_flash):
-                    isError = asyncio.run(host.set_flash(value))
-                    result, msg = self.get_result_command(isError, host)
+                if inspect.iscoroutinefunction(obj.set_flash):
+                    result_req = asyncio.run(obj.set_flash(value))
                 else:
-                    result = host.set_flash(value)
+                    result_req = obj.set_flash(value)
 
             elif command in set_dark:
-                if inspect.iscoroutinefunction(host.set_dark):
-                    isError = asyncio.run(host.set_dark(value))
-                    result, msg = self.get_result_command(isError, host)
+                if inspect.iscoroutinefunction(obj.set_dark):
+                    result_req = asyncio.run(obj.set_dark(value))
                 else:
-                    result = host.set_dark(value)
+                    result_req = obj.set_dark(value)
             elif command == 'ВВОДЫ':
-                result = host.session_manager(inputs=(inp for inp in value.split(',')))
+                result_req = obj.session_manager(inputs=(inp for inp in value.split(',')))
             elif command == set_user_params_peek_web:
-                isError = asyncio.run(host.set_user_parameters(params=value))
-                result, msg = self.get_result_command(isError, host)
+                result_req = asyncio.run(obj.set_user_parameters(params=value))
 
-        return num_host, result, msg
+        result_req = await asyncio.gather(*objects_methods)
+        logger.debug(f'result-->>> {result_req}')
+        #
+        # logger.debug(f'log1 {result_req}')
+        #
+        # # if result_req is None:
+        # #     result_req = True, {
+        # #         ip_adress: {
+        # #             'request_errors': 'Некорректные данные для отправки команды',
+        # #             'host_id': host_id,
+        # #             'type_controller': data.get('type_controller'),
+        # #             'scn': scn,
+        # #             'command': data.get('type_command'),
+        # #         }
+        # #     }
+        # logger.debug(f'log2 {result_req}')
+        return error_hosts, result_req
 
     def get_type_object_set_request(self, controller_type, command):
 

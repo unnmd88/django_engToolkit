@@ -294,17 +294,22 @@ class GetDataFromControllerAPIView(APIView):
 class SetRequestToControllerAPIView(APIView):
 
     def post(self, request):
-        print(f'post-post')
+
         manager = services.SetRequestToController(request)
-        num_host, result, msg = manager.set_command_request()
+        start_time = time.time()
+        err_hosts, res_req = asyncio.run(manager.main())
+        responce = {}
+        logger.debug('3 %s', res_req)
+        # for errInd, varBinds, obj in res_req:
+        for errInd, varBinds, obj in res_req:
+            logger.debug('varBinds %s', varBinds)
+            data_host = obj.create_json(errInd, varBinds)
+            logger.debug(data_host)
+            responce |= data_host
 
-        context = {
-            'num_host': int(num_host) if num_host.isdigit() else num_host,
-            'result': result,
-            'message': msg
-        }
+        logger.debug(f'Время выполнения запроса: {time.time() - start_time}')
+        return Response(responce)
 
-        return Response(context)
 
 
 class GetNamesConfigurationControllerManagementAPIView(APIView):

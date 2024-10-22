@@ -377,7 +377,7 @@ class BaseSNMP(BaseCommon):
         :param retries: количество попыток запроса
         :return: list при успешном запросе, иначе str с текстом ошибки
         """
-
+        logging.debug(f'set_request_base')
         self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
         oids = list(oids.items() if type(oids) is dict else oids)
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(

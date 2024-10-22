@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 CO2385 = '10.179.16.81'
-h1 = controller_management.PotokP('10.45.154.12')
+h1 = controller_management.PotokP('10.179.97.97')
 
 
 def convert_datetime(string):
