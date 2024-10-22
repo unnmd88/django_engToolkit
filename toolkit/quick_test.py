@@ -80,9 +80,9 @@ oids = [
 # errInd, varBinds = asyncio.run(h2.get_request(get_mode=True))
 # h2 = controller_management.PotokS('10.179.109.41', host_id='Tetss1')
 # h2 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss2')
-h2 = controller_management.PotokS('10.45.154.11', host_id='Tetss2')
+h2 = controller_management.PotokP('10.45.154.12', host_id='Tetss2')
 
-errInd, varBinds, _ = asyncio.run(h2.set_restartProgramm())
+errInd, varBinds, _ = asyncio.run(h2.set_dark('0'))
 
 
 

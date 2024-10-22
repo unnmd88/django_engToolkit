@@ -655,6 +655,26 @@ class BaseSTCIP(BaseSNMP):
 
 
 class BaseUG405(BaseSNMP):
+    """
+        utcControlLO = 'Включить/Выключить ОС'
+        utcControlFF = 'Включить/Выключить ЖМ'
+        utcControlFn = 'Установка фазы'
+        utcControlTO = 'Разрешающий бит(TO)'
+        utcType2OperationMode = 'Получение режимов работы ДК(OperationMode)'
+        utcType2OperationModeTimeout = 'Таймаут на ожидание команды(OperationModeTimeout)'
+        utcControlGn = 'Получение значения фазы(hex)'
+        potok_utcReplyPlanStatus = 'Возвращает номер плана'
+        potok_utcControRestartProgramm = 'Перезапуск программы'
+        potok_utcReplyDarkStatus = Получение состояния ОС(0 - ВЫКЛ выключен, 1 - ВЫКЛ включен)
+        utcReplyFR = Получение состояния ЖМ:
+                                            |----   0 ЖМ выключен
+                                            |----   1 -> по рассписанию
+                                            |----   2 -> удаленно
+                                            |----   3 -> в ручную
+                                            |----   4 -> аварийный
+
+    """
+
     community_read = os.getenv('communityUG405_r')
     community_write = os.getenv('communityUG405_w')
 
@@ -679,29 +699,6 @@ class BaseUG405(BaseSNMP):
         self.scn = self.convert_scn(scn) if scn else scn
         self.host_id = host_id
 
-    # @staticmethod
-    # def convert_scn(scn: str) -> str:
-    #     """ Функция получает на вход строку, которую необходимо конвертировать в SCN
-    #         для управления и мониторинга по протоколу UG405.
-    #         Например: convert_scn(CO1111)
-    #     """
-    #     # print(f'scn : {scn}')
-    #     logger.debug(f'def convert_scn(scn): {scn}')
-    #
-    #     if 'UTMC-UTMCFULLUTCTYPE2-MIB' in scn:
-    #         try:
-    #             scn = re.search('"(.+?)"', scn).group(1)
-    #             len_scn = str(len(scn)) + '.'
-    #             convert_to_ASCII = [str(ord(c)) for c in scn]
-    #             scn = f'.1.{len_scn}{".".join(convert_to_ASCII)}'
-    #             return scn
-    #         except AttributeError:
-    #             scn = ''
-    #         return scn
-    #
-    #     len_scn = str(len(scn)) + '.'
-    #     convert_to_ASCII = [str(ord(c)) for c in scn]
-    #     return f'.1.{len_scn}{".".join(convert_to_ASCII)}'
 
     @staticmethod
     def convert_scn(scn: str) -> str:
@@ -712,19 +709,6 @@ class BaseUG405(BaseSNMP):
         # print(f'scn : {scn}')
         logger.debug(f'def convert_scn(scn): {scn}')
         return f'.1.{str(len(scn))}.{".".join([str(ord(c)) for c in scn])}'
-
-    # def add_scn_to_oids(self, oids: set | tuple | list) -> set:
-    #
-    #     new_oids = set()
-    #     for oid in oids:
-    #         if not type(oid) is str:
-    #             raise ValueError
-    #
-    #         if oid in self.scn_required_oids:
-    #             new_oids.add(oid + self.scn)
-    #         else:
-    #             new_oids.add(oid)
-    #     return new_oids
 
     def add_scn_to_oids(self, oids: set | tuple | list | str, scn: str = None) -> str | list:
         """
@@ -768,18 +752,6 @@ class BaseUG405(BaseSNMP):
                 return None
         except ValueError:
             return None
-
-    # async def getNext_request(self, ip_adress, community, oids, timeout=0, retries=0):
-    #     """
-    #     """
-    #     errorIndication, errorStatus, errorIndex, varBinds = await nextCmd(
-    #         SnmpEngine(),
-    #         CommunityData(community),
-    #         UdpTransportTarget((ip_adress, 161), timeout=timeout, retries=retries),
-    #         ContextData(),
-    #         *oids
-    #     )
-    #     return errorIndication, varBinds
 
     """ GET REQUEST """
 
@@ -1116,6 +1088,19 @@ class PotokS(BaseSTCIP):
 
     """ SET REQUEST """
 
+    async def set_restartProgramm(self, value='1', timeout=1, retries=2) -> tuple:
+        """"
+        Перезапускает рабочую программу
+        :param retries:
+        :param timeout:
+        :param value: 1 -> команда на перезапуск рабочей программы
+        """
+
+        oids = (
+            (Oids.potokS_UTCCommandRestartProgramm.value, Unsigned32(value)),
+        )
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
     async def set_potokUTCSetGetLocal(self, value=0, timeout=0, retries=0):
         """"
         Устанавливает/сбрасывает локальный режим
@@ -1133,45 +1118,8 @@ class PotokS(BaseSTCIP):
         oids = [ObjectType(ObjectIdentity(self.potokUTCprohibitionManualPanel), Unsigned32(value))]
         return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
-    # async def set_restartProgramm(self, value=1, timeout=0, retries=0):
-    #     """"
-    #     Перезапускает рабочую программу
-    #     :param value: 1 -> команда на перезапуск рабочей программы
-    #     """
-    #     oids = [ObjectType(ObjectIdentity(self.potokUTCCommandRestartProgramm), Unsigned32(value))]
-    #     return await self.set_request(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
-
-    async def set_restartProgramm(self, value='1', timeout=1, retries=2) -> tuple:
-        """"
-        Перезапускает рабочую программу
-        :param value: 1 -> команда на перезапуск рабочей программы
-        """
-
-        oids = (
-            (Oids.potokS_UTCCommandRestartProgramm.value, Unsigned32(value)),
-        )
-        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
 class PotokP(BaseUG405):
-    """
-        utcControlLO = 'Включить/Выключить ОС'
-        utcControlFF = 'Включить/Выключить ЖМ'
-        utcControlFn = 'Установка фазы'
-        utcControlTO = 'Разрешающий бит(TO)'
-        utcType2OperationMode = 'Получение режимов работы ДК(OperationMode)'
-        utcType2OperationModeTimeout = 'Таймаут на ожидание команды(OperationModeTimeout)'
-        utcControlGn = 'Получение значения фазы(hex)'
-        potok_utcReplyPlanStatus = 'Возвращает номер плана'
-        potok_utcControRestartProgramm = 'Перезапуск программы'
-        potok_utcReplyDarkStatus = Получение состояния ОС(0 - ВЫКЛ выключен, 1 - ВЫКЛ включен)
-        utcReplyFR = Получение состояния ЖМ:
-                                            |----   0 ЖМ выключен
-                                            |----   1 -> по рассписанию
-                                            |----   2 -> удаленно
-                                            |----   3 -> в ручную
-                                            |----   4 -> аварийный
-
-    """
 
     # set_stage_UG405_potok_values = {
     #     '1': '0x01', '2': '0x02', '3': '0x04', '4': '0x08',
@@ -1205,6 +1153,8 @@ class PotokP(BaseUG405):
         Oids.utcReplyDF.value,
         Oids.potokP_utcReplyLocalAdaptiv.value,
     }
+
+
 
     def __init__(self, ip_adress, host_id=None, scn=None):
         super().__init__(ip_adress, scn, host_id)
@@ -1277,6 +1227,12 @@ class PotokP(BaseUG405):
         logger.debug(values)
         return values.get(val)
 
+    def convert_values_flash_dark(self, val):
+        converted_values_flash_dark = {
+            '1': '2', 'true': '2', 'on': '2', 'вкл': '2', '2': '2',
+            '0': '0', 'false': '0', 'off': '0', 'выкл': '0',
+        }
+        return converted_values_flash_dark.get(val)
     # Значения фаз для для UG405 Potok
     # val_stage_get_request = make_val_stages_for_get_stage_UG405_potok(option='get')
     # val_stage_set_request = make_val_stages_for_get_stage_UG405_potok(option='set')
@@ -1417,11 +1373,31 @@ class PotokP(BaseUG405):
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_dark(self, value='0', timeout=0, retries=0):
+        """"
+        Устанавливает  фазу.
+        :param value:  Номер фазы в десятичном виде
+        :param retries:
+        :param timeout:
+        :return: ErrorIndication, varBinds
+        """
 
-        oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
-                ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
-                ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value))]
-        return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
+        if not self.scn:
+            self.scn = await self.get_scn()
+
+        oids = (
+            (Oids.utcType2OperationMode.value, Integer32(3)),
+            (Oids.utcControlTO.value + self.scn, Integer32(1)),
+            (Oids.utcControlLO.value + self.scn, Integer32(self.convert_values_flash_dark(value))),
+        )
+
+        return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
+
+    # async def set_dark(self, value='0', timeout=0, retries=0):
+    #
+    #     oids = [ObjectType(ObjectIdentity(self.utcType2OperationMode), Integer32(3)),
+    #             ObjectType(ObjectIdentity(self.utcControlTO + self.scn), Integer32(1)),
+    #             ObjectType(ObjectIdentity(self.utcControlLO + self.scn), Integer32(value))]
+    #     return await self.set_request(self.ip_adress, self.community, oids, timeout=timeout, retries=retries)
 
     async def set_flash(self, value='0', timeout=0, retries=0):
 
