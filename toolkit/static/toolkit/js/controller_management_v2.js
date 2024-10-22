@@ -42,7 +42,9 @@ const CONTROLLERS = ['Swarco', 'Поток (S)', 'Поток (P)', 'Peek']
 const SELECT_PROTOCOL = {'Swarco': 0, 'Поток (S)': 1, 'Поток (P)': 2, 'Peek': 3};
 const TYPE_COMMAND = [''];
 const SEARCH_OPTIONS = ['По номеру СО', 'Названию СО'];
-const TOKEN = '7174fa6f9d0f954a92d2a5852a7fc3bcaace7578';
+// const TOKEN = '7174fa6f9d0f954a92d2a5852a7fc3bcaace7578';
+const TOKEN = 'a090474ab50a6ec440eef021295d5f0e750afa00';
+
 // const SEARCH_OPTIONS = {'По номеру СО': function (value) {
 //                                         return Number.isInteger(+value);
 //                                         }

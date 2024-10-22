@@ -349,7 +349,7 @@ class BaseSNMP(BaseCommon):
         # print(f'errorIndex: {errorIndex}')
         # print(f'varBinds: {varBinds}')
 
-        return errorIndication, varBinds
+        return errorIndication, varBinds, self
 
     async def getNext_request_base(self,
                                    ip_adress: str,
@@ -379,7 +379,7 @@ class BaseSNMP(BaseCommon):
         # print(f'errorStatus: {errorStatus}')
         # print(f'errorIndex: {errorIndex}')
         # print(f'varBinds: {varBinds}')
-        return errorIndication, varBinds
+        return errorIndication, varBinds, self
 
     async def set_request_base(self,
                                ip_adress: str,
@@ -412,7 +412,7 @@ class BaseSNMP(BaseCommon):
             f'errorIndex: {errorIndex}\n'
             f'varBinds: {varBinds}\n'
         )
-        return errorIndication, varBinds
+        return errorIndication, varBinds, self
 
         # print(f'errorIndication: {errorIndication.__str__()}')
         # print(f'errorStatus: {errorStatus}')

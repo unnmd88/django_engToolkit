@@ -30,23 +30,23 @@ def create_obj(ip_adress: str, type_object: str, scn: str = None, host_id: str =
         return controller_management.PeekWeb(ip_adress, host_id)
 
 
-class Controller:
-
-    def __new__(cls, ip_adress, type_object, scn: str = None, host_id: str = None):
-        logger.debug('ya в new, type_object = %s', type_object)
-        scn = scn if scn else None
-        if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
-            return controller_management.PotokS(ip_adress, host_id)
-        elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
-            return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
-        elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
-            return controller_management.SwarcoSTCIP(ip_adress, host_id)
-        elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
-            return controller_management.SwarcoSSH(ip_adress, host_id)
-        elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
-            return controller_management.PeekUG405(ip_adress, scn, host_id)
-        elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
-            return controller_management.PeekWeb(ip_adress, host_id)
+# class Controller:
+#
+#     def __new__(cls, ip_adress, type_object, scn: str = None, host_id: str = None):
+#         logger.debug('ya в new, type_object = %s', type_object)
+#         scn = scn if scn else None
+#         if type_object == AvailableProtocolsManagement.POTOK_STCIP.value:
+#             return controller_management.PotokS(ip_adress, host_id)
+#         elif type_object == AvailableProtocolsManagement.POTOK_UG405.value:
+#             return controller_management.PotokP(ip_adress, host_id=host_id, scn=scn)
+#         elif type_object == AvailableProtocolsManagement.SWARCO_STCIP.value:
+#             return controller_management.SwarcoSTCIP(ip_adress, host_id)
+#         elif type_object == AvailableProtocolsManagement.SWARCO_SSH.value:
+#             return controller_management.SwarcoSSH(ip_adress, host_id)
+#         elif type_object == AvailableProtocolsManagement.PEEK_UG405.value:
+#             return controller_management.PeekUG405(ip_adress, scn, host_id)
+#         elif type_object == AvailableProtocolsManagement.PEEK_WEB.value:
+#             return controller_management.PeekWeb(ip_adress, host_id)
 
 
 class AvailableProtocolsManagement(Enum):
@@ -85,7 +85,7 @@ class GetDataFromController:
         return result
 
     async def main(self):
-        objects, objects_methods, error_hosts = [], [], []
+        objects_methods, error_hosts = [], []
 
         logger.debug(self.data_request)
         # print(self.data_request.items())
@@ -113,12 +113,12 @@ class GetDataFromController:
                 })
                 # self.processed_data[ip_adress] = 'Сбой отправки запроса. Проверьте корректность данных'
                 continue
-            objects.append(obj)
+
             objects_methods.append(asyncio.create_task(obj.get_request(get_mode=True)))
         result_req = await asyncio.gather(*objects_methods)
         logger.debug(f'result-->>> {result_req}')
 
-        return objects, error_hosts, result_req
+        return error_hosts, result_req
 
     # def get_data_from_controllers(self, objects_methods):
     #
