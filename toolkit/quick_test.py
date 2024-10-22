@@ -82,7 +82,7 @@ oids = [
 # h2 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss2')
 h2 = controller_management.PotokP('10.45.154.12', host_id='Tetss2')
 
-errInd, varBinds, _ = asyncio.run(h2.set_dark('0'))
+errInd, varBinds, _ = asyncio.run(h2.set_restartProgramm('1'))
 
 
 
