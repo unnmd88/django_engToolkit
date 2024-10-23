@@ -46,6 +46,7 @@ while True:
                 print(f'{controller_management.Oids(oid).name}: {convert_datetime(val)}')
             if controller_management.Oids(oid).name == controller_management.Oids.utcReplyVSn.name:
                 octet_str = val.replace("0x", '')
+                # print(f'количество символов: {len(octet_str)}')
                 logger.debug(octet_str)
                 print(f'{controller_management.Oids(oid).name}: {":".join([octet_str[i:i+2] for i in range(0, len(octet_str), 2)])}')
                 print(

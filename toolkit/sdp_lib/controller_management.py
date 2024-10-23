@@ -2,6 +2,7 @@
 import abc
 import os
 
+import asyncssh
 from dotenv import load_dotenv
 
 from collections.abc import Iterable, Callable
@@ -57,11 +58,13 @@ class EntityJsonResponce(Enum):
 
     TYPE_GET_STATE = ''
     TYPE_REQUEST = 'type_request'
-    TYPE_SNMP_REQUEST_SET = 'set_snmp_values'
-    TYPE_SNMP_REQUEST_GET = 'get_snmp_values'
+    TYPE_SNMP_REQUEST_SET = 'snmp_set_values'
+    TYPE_SNMP_REQUEST_GET = 'snmp_get_values'
     TYPE_SNMP_REQUEST_GET_STATE = 'get_state_on_snmp'
-    TYPE_WEB_REQUEST_SET = 'set_web_parameters'
-    TYPE_WEB_REQUEST_GET = 'get_web_parameters'
+    TYPE_WEB_REQUEST_SET = 'web_set_parameters'
+    TYPE_WEB_REQUEST_GET = 'web_get_parameters'
+    TYPE_SSH_REQUEST_SET = 'ssh_set_values'
+
 
     COMMAND_SEND_SUCCESSFULLY = 'Команда успешно отправлена'
     COMMAND_SEND_ERROR = 'Команда не была отправлена'
@@ -250,6 +253,9 @@ class BaseCommon:
 
     def parse_varBinds_common(self, varBinds: list) -> dict:
         part_of_json = {}
+        if isinstance(self, ConnectionSSH):
+            part_of_json = ...
+
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
             if isinstance(self, (PotokP, PeekUG405)):
@@ -1599,7 +1605,7 @@ class PeekUG405(BaseUG405):
 """" SSH MANAGEMENT """
 
 
-class ConnectionSSH:
+class ConnectionSSH(BaseCommon):
     access_levels = {
         'swarco_itc': (os.getenv('swarco_itc_login'), os.getenv('swarco_itc_password')),
         'swarco_r': (os.getenv('swarco_r_login'), os.getenv('swarco_r_password')),
@@ -1634,20 +1640,63 @@ class ConnectionSSH:
             message = f'\n{datetime.today().strftime("%Y-%m-%d %H:%M:%S")} Программный сбой подключения...'
         return client, message
 
+    @staticmethod
+    async def read_timed(stream: asyncssh.SSHReader,
+                         timeout: float = 1,
+                         bufsize: int = 1024) -> str:
+        """Read data from a stream with a timeout."""
+        ret = ''
+        while True:
+            try:
+                ret += await asyncio.wait_for(stream.read(bufsize), timeout)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                return ret
+
+    async def acreate_proc(self, ip, username, password, commands):
+        err = varBinds = None
+        self.type_curr_request = EntityJsonResponce.TYPE_SSH_REQUEST_SET.value
+        try:
+            async with asyncssh.connect(host=ip,
+                                        username=username,
+                                        password=password,
+                                        kex_algs="+diffie-hellman-group1-sha1",
+                                        encryption_algs='+aes256-cbc',
+                                        known_hosts=None) as conn:
+                async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+                    await self.read_timed(proc.stdout, timeout=3, bufsize=4096)
+                    for command in commands:
+                        proc.stdin.write(command)
+                    # await self.read_timed(proc.stdout, timeout=3, bufsize=4096)
+                    response = await self.read_timed(proc.stdout, timeout=3, bufsize=4096)
+                    logger.debug(response)
+                    err, varBinds = None, response.encode('iso-8859-1')
+                    logger.debug(response)
+
+        except asyncssh.misc.PermissionDenied:
+            err, varBinds = 'Permission denied', []
+        except (OSError, asyncssh.Error) as exc:
+            err, varBinds = 'SSH connection failed', []
+        except Exception as err:
+            err, varBinds = 'System error', []
+            logger.error('Ошибка выполнения программы: {}'.format(err))
+        finally:
+            return err, varBinds, self
+
+
+            #     # r_enc = r.decode('iso-8859-1').encode('utf-8')
+            # return response
+
 
 class SwarcoSSH(ConnectionSSH):
     inp_stages = {str(stage): str(inp) for stage, inp in zip(range(1, 9), range(104, 112))}
-
-    def __init__(self, ip_adress: str, num_host: str = None):
-        self.ip_adress = ip_adress
 
     @staticmethod
     def make_any_commands(commands_from_user, separ=','):
         return (command + '\n' for command in commands_from_user.split(separ))
 
     @staticmethod
-    def commands_set_stage(stage_inp):
-        return 'inp102=1\n', f'inp{SwarcoSSH.inp_stages.get(stage_inp)}=1\n', 'instat102 ?\n'
+    def commands_set_stage(num_stage):
+        return itertools.chain('inp102=1\n', f'inp{SwarcoSSH.inp_stages.get(num_stage)}=1\n', 'instat102 ?\n')
 
     @staticmethod
     def commands_l2():
@@ -1738,6 +1787,66 @@ class SwarcoSSH(ConnectionSSH):
         # print('res')
         print(res)
         return res
+
+    def parse_stdout_from_shell(self, varBinds: list) -> tuple:
+
+
+
+    # async def run_client():
+    #     async with asyncssh.connect(host='10.45.154.16',
+    #                                 # username=os.getenv('swarco_itc_login'),
+    #                                 # password=os.getenv('swarco_itc_password'),
+    #                                 username='itc',
+    #                                 password='level1NN',
+    #                                 kex_algs="+diffie-hellman-group1-sha1",
+    #                                 known_hosts=None) as conn:
+    #         async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+    #             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+    #             proc.stdin.write('lang UK\n')
+    #             proc.stdin.write('l2\n')
+    #             proc.stdin.write('2727\n')
+    #             print('Response:', response)
+    #             for i in range(1, 4):
+    #                 if i != 2:
+    #                     proc.stdin.write(f'inp10{i}=1\n')
+    #             proc.stdin.write('CBMEM10 ?\n')
+    #
+    #             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+    #             print('Response:', response)
+    #             with open('log', 'w') as f:
+    #                 f.write(response)
+    #
+    #             logger.debug(response)
+    #             r = response.encode('iso-8859-1')
+    #             logger.debug(r)
+    #             r_enc = r.decode('iso-8859-1').encode('utf-8')
+    #             logger.debug(r_enc)
+    #             print(r)
+    #             print(r_enc.decode('utf-8').splitlines())
+    #             for line in r_enc.decode('utf-8').splitlines():
+    #                 print(f'line: {line}')
+    #
+    #             return response
+
+
+class AsyncSwarcoSsh(SwarcoSSH):
+
+    async def set_stage(self, val: str) -> tuple:
+        """"
+        Устанавливает фазу.
+        :arg val: номер фазы
+        :return: Состояние входов 102-112
+        """
+        username, password = self.access_levels.get('swarco_itc')
+        commands = itertools.chain(self.commands_l2(), self.commands_reset_inp102_111(), self.commands_set_stage(val))
+        return await self.acreate_proc(
+            ip=self.ip_adress,
+            username=username,
+            password=password,
+            commands=commands
+        )
+
+
 
 
 """" WEB MANAGEMENT """
@@ -1863,7 +1972,7 @@ class PeekWeb(BaseCommon):
 
     async def get_content_from_web(self, route_type, timeout=1) -> tuple:
         url = f'http://{self.ip_adress}{self.routes_url.get(route_type)}'
-
+        errorIndication = content = None
         try:
             timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
@@ -1879,8 +1988,8 @@ class PeekWeb(BaseCommon):
             errorIndication, content = EntityJsonResponce.TIMEOUT_ERROR_WEB_REQUEST_MSG.value, []
         except TypeError:
             errorIndication, content = EntityJsonResponce.TYPE_CONTROLLER_ERROR_MSG.value, []
-
-        return errorIndication, content
+        finally:
+            return errorIndication, content
 
     async def get_request(self, get_mode: bool, timeout=1) -> tuple:
         """

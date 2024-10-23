@@ -1,9 +1,10 @@
 import logging
 import os
+import functools
 import asyncio, asyncssh, sys
 import textwrap
 import time
-
+from engineering_tools import settings
 import aiohttp
 from enum import Enum
 
@@ -18,21 +19,49 @@ from toolkit.sdp_lib import controller_management
 from dotenv import load_dotenv
 load_dotenv()
 
-
-# async def run_client() -> None:
-#     async with asyncssh.connect('10.45.154.16',
-#                                 username=os.getenv('swarco_r_login'),
-#                                 password=os.getenv('swarco_r_password'),
+# commands = ['lang UK\n', 'l2\n', '2727\n', 'inp104=1\n', 'instat102 ?\n']
+# async def sess():
+#     async with asyncssh.connect(host='10.45.154.16',
+#                                 # username=os.getenv('swarco_itc_login'),
+#                                 # password=os.getenv('swarco_itc_password'),
+#                                 username='root',
+#                                 password='N1eZ4pC',
 #                                 kex_algs="+diffie-hellman-group1-sha1",
 #                                 known_hosts=None) as conn:
-#
-#         async with conn.create_process(term_type="ansi") as process:
-#             process.stdin.write('itc')
-#             print(f'3nd str')
-#             result = await process.stdout.readline()
-#             return result
+#         return conn
 
-# res = asyncio.run(run_client())
+h1 = controller_management.AsyncSwarcoSsh(ip_adress='10.45.154.19')
+h2 = controller_management.PotokP('10.45.154.12')
+# res = asyncio.run(h1.acreate_proc(
+#     ip=h1.ip_adress,
+#     username=h1.access_levels.get('swarco_itc')[0],
+#     password=h1.access_levels.get('swarco_itc')[1],
+#     commands=commands
+# ))
+
+async def main():
+    tasks = [asyncio.create_task(h1.set_stage('2')), asyncio.create_task(h2.set_stage('12'))]
+    await asyncio.gather(*tasks)
+
+res = asyncio.run(main())
+
+
+# print('1111111111')
+# for line in res.decode('utf-8').splitlines():
+#     print('l {}'.format(line))
+
+# async def create_proc(conn):
+#     async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+#             print('create_conn')
+#             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+#
+# asyncio.run(create_proc(conn))
+
+# async def create_conn():
+#     async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+#         print('create_conn')
+#         response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+
 
 
 
@@ -50,32 +79,88 @@ async def read_timed(stream: asyncssh.SSHReader,
 
 async def run_client():
     async with asyncssh.connect(host='10.45.154.16',
-                                port=22,
                                 # username=os.getenv('swarco_itc_login'),
                                 # password=os.getenv('swarco_itc_password'),
                                 username='itc',
                                 password='level1NN',
                                 kex_algs="+diffie-hellman-group1-sha1",
+                                encryption_algs='+aes256-cbc',
                                 known_hosts=None) as conn:
-        async with conn.create_process(term_type="ansi", encoding='latin-1') as proc:
-            # welcome = await read_timed(proc.stdout, timeout=1, bufsize=4096, )
-            # print(welcome.encode().decode('latin-1'), end='')
+        async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+            response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
             proc.stdin.write('lang UK\n')
-            #
-            # proc.stdin.write('itc\n')
-            # proc.stdin.write('l2\n')
-            # proc.stdin.write('2727\n\n')
-
-
+            proc.stdin.write('l2\n')
+            proc.stdin.write('2727\n')
+            print('Response:', response)
+            for i in range(1, 4):
+                if i != 2:
+                    proc.stdin.write(f'inp10{i}=1\n')
             proc.stdin.write('CBMEM10 ?\n')
 
-
-
-            response = await read_timed(proc.stdout, timeout=1, bufsize=4096, )
+            response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
             print('Response:', response)
+            with open('log', 'w') as f:
+                f.write(response)
+
+            logger.debug(response)
+            r = response.encode('iso-8859-1')
+            logger.debug(r)
+            r_enc = r.decode('iso-8859-1').encode('utf-8')
+            logger.debug(r_enc)
+            print(r)
+            print(r_enc.decode('utf-8').splitlines())
+            for line in r_enc.decode('utf-8').splitlines():
+                print(f'line: {line}')
+
+            return response
 
 
-asyncio.run(run_client())
+# async def run_client():
+#     async with asyncssh.connect(host='10.45.154.16',
+#                                 # username=os.getenv('swarco_itc_login'),
+#                                 # password=os.getenv('swarco_itc_password'),
+#                                 username='root',
+#                                 password='N1eZ4pC',
+#                                 kex_algs="+diffie-hellman-group1-sha1",
+#                                 known_hosts=None) as conn:
+#         async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+#             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+#             proc.stdin.write('ls\n')
+#
+#             print('Response:', response)
+#             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+#             print('Response:', response)
+#             with open('log', 'w') as f:
+#                 f.write(response)
+#             return response
+
+
+# async def run_client():
+#     async with asyncssh.connect(host='10.45.154.19',
+#                                 # username=os.getenv('swarco_itc_login'),
+#                                 # password=os.getenv('swarco_itc_password'),
+#                                 username='root',
+#                                 password='peek',
+#                                 kex_algs="+diffie-hellman-group1-sha1",
+#                                 encryption_algs='+aes256-cbc',
+#                                 known_hosts=None) as conn:
+#         async with conn.create_process(term_type="ansi", encoding='latin-1', recv_eof=True) as proc:
+#             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+#             proc.stdin.write('ls\n')
+#
+#             print('Response:', response)
+#             response = await read_timed(proc.stdout, timeout=3, bufsize=4096)
+#             print('Response:', response)
+#             with open('log', 'w') as f:
+#                 f.write(response)
+#             return response
+
+
+# res = asyncio.run(run_client())
+
+
+
+
 
 # loop = asyncio.new_event_loop()
 # try:
