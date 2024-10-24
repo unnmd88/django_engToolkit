@@ -19,31 +19,25 @@ from toolkit.sdp_lib import controller_management
 from dotenv import load_dotenv
 load_dotenv()
 
-# commands = ['lang UK\n', 'l2\n', '2727\n', 'inp104=1\n', 'instat102 ?\n']
-# async def sess():
-#     async with asyncssh.connect(host='10.45.154.16',
-#                                 # username=os.getenv('swarco_itc_login'),
-#                                 # password=os.getenv('swarco_itc_password'),
-#                                 username='root',
-#                                 password='N1eZ4pC',
-#                                 kex_algs="+diffie-hellman-group1-sha1",
-#                                 known_hosts=None) as conn:
-#         return conn
 
+start_time = time.time()
 h1 = controller_management.AsyncSwarcoSsh(ip_adress='10.45.154.19')
 h2 = controller_management.PotokP('10.45.154.12')
-# res = asyncio.run(h1.acreate_proc(
-#     ip=h1.ip_adress,
-#     username=h1.access_levels.get('swarco_itc')[0],
-#     password=h1.access_levels.get('swarco_itc')[1],
-#     commands=commands
-# ))
+h3 = controller_management.SwarcoSTCIP('10.179.117.97')
+# async def main():
+#     tasks = [asyncio.create_task(h1.set_stage('2')), asyncio.create_task(h2.set_stage('12'))]
+#     await asyncio.gather(*tasks)
 
-async def main():
-    tasks = [asyncio.create_task(h1.set_stage('2')), asyncio.create_task(h2.set_stage('12'))]
-    await asyncio.gather(*tasks)
+# res = asyncio.run(h3.get_request(get_mode=True, oids=[controller_management.Oids.swarcoUTCStatusEquipment.value,
+#                                                       controller_management.Oids.swarcoUTCDetectorQty,
+#                                                       controller_management.Oids.swarcoSoftIOStatus]))
 
-res = asyncio.run(main())
+res = asyncio.run(h3.set_stage('0'))
+
+print(res)
+print(h3.create_json(res[0], res[1]))
+
+print(f'Время выполнения: {time.time() - start_time}')
 
 
 # print('1111111111')

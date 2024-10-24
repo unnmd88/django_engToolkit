@@ -1,6 +1,7 @@
 """" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
 import abc
 import os
+from typing import Generator
 
 import asyncssh
 from dotenv import load_dotenv
@@ -51,6 +52,8 @@ class EntityJsonResponce(Enum):
     TYPE_CONTROLLER = 'type_controller'
     TYPE_COMMAND = 'type_command'
     VALUE = 'value'
+    REQUEST_ENTITY = 'request_entity'
+    RESPONCE_ENTITY = 'responce_entity'
 
     SET_STAGE_MPP_MAN = 'set_stage_mpp_man'
     SET_MAN_INPUTS_WEB = 'set_inputs'
@@ -64,6 +67,8 @@ class EntityJsonResponce(Enum):
     TYPE_WEB_REQUEST_SET = 'web_set_parameters'
     TYPE_WEB_REQUEST_GET = 'web_get_parameters'
     TYPE_SSH_REQUEST_SET = 'ssh_set_values'
+
+    NO_DATA_FOR_REQ = 'There is no data for the request'
 
 
     COMMAND_SEND_SUCCESSFULLY = 'Команда успешно отправлена'
@@ -203,8 +208,13 @@ class BaseCommon:
         self.ip_adress = ip_adress
         self.host_id = host_id
         self.get_mode_flag = False
-        self.type_request_json = None
         self.type_curr_request = None
+        # self.cur_req_entity = {}
+        self.errorIndication = None
+        self.varBinds = None
+        self.req_data = {}
+        self.get_entity = []
+        self.set_entity = {}
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -220,6 +230,46 @@ class BaseCommon:
         else:
             self.controller_type = None
 
+    def put_to_get_entity(self, data: str | list):
+        if type(data) == str:
+            self.get_entity.append(data)
+        elif type(data) == list:
+            self.get_entity += data
+
+
+    # def create_json(self, errorIndication: None | Exception | str, varBinds: list, **kwargs) -> dict:
+    #     """"
+    #     Метод формирует словарь вида json
+    #     :arg errorIndication: None если не было ошибки при запросе иначе класс ошибки или str
+    #     :param varBinds: список varBinds, полученный после запроса
+    #     :arg kwargs: параметры, которые будут добавлены в словарь
+    #     """
+    #
+    #
+    #     json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
+    #     errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
+    #     json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
+    #     # json[EntityJsonResponce.TYPE_REQUEST.value] = self.type_curr_request
+    #
+    #
+    #     if errorIndication:
+    #         self.get_mode_flag = False
+    #         if kwargs:
+    #             json |= {k: v for k, v in kwargs.items()}
+    #         return {self.ip_adress: json}
+    #
+    #     if self.get_mode_flag:
+    #         varBinds, curr_state = self.get_current_mode(varBinds)
+    #         json |= curr_state
+    #     if varBinds:
+    #         json |= self.parse_varBinds_common(varBinds)
+    #
+    #     self.get_mode_flag = False
+    #     if kwargs:
+    #         json |= {k: v for k, v in kwargs.items()}
+    #
+    #     return {self.ip_adress: json}
+
     def create_json(self, errorIndication: None | Exception | str, varBinds: list, **kwargs) -> dict:
         """"
         Метод формирует словарь вида json
@@ -228,33 +278,65 @@ class BaseCommon:
         :arg kwargs: параметры, которые будут добавлены в словарь
         """
 
-        json = {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
+        example_get = {
+            'host_id': "1",
+            'request_errors': None,
+            'type_controller': 'Swarco',
+            "request": {'protocol': 'snmp',
+                        'type': 'get',
+                 'entity': ['get_mode', "swarcoUTCTrafftechPlanSource"]
+                },
+            "responce": {'mode': 'Адаптивный',
+                         'фаза': '2',
+                         'план': '5'
+            }
+        }
+
+        example_set = {
+            'host_id':"1",
+            'request_errors': None,
+            'type_controller': 'Swarco',
+                "request": {'protocol': 'snmp',
+                        'type': 'set',
+                 'entity':
+                        {'set_stage': '1'}
+                },
+            "responce": {'swarcoUTCTrafftechPhaseCommand[1.3.6.1.4.1.1618.3.7.2.11.1.0]': 'num_stage[1], val_stage[2]'}
+        }
+
+        self.req_data |= {k: v for k, v in zip(JsonBody.BASE_JSON_BODY.value, (self.controller_type, self.host_id))}
+        logger.debug('self.req_data %s', self.req_data)
         errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
-        json[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
-        json[EntityJsonResponce.TYPE_REQUEST.value] = self.type_curr_request
+        self.req_data[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
+        # json[EntityJsonResponce.TYPE_REQUEST.value] = self.type_curr_request
+
 
         if errorIndication:
             self.get_mode_flag = False
             if kwargs:
-                json |= {k: v for k, v in kwargs.items()}
-            return {self.ip_adress: json}
+                self.req_data |= {k: v for k, v in kwargs.items()}
+            return self.req_data
+
+        if self.get_entity:
+            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.get_entity
+        elif self.set_entity:
+            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.set_entity
 
         if self.get_mode_flag:
             varBinds, curr_state = self.get_current_mode(varBinds)
-            json |= curr_state
+            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = curr_state
+
         if varBinds:
-            json |= self.parse_varBinds_common(varBinds)
+            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = self.parse_varBinds_common(varBinds)
 
         self.get_mode_flag = False
         if kwargs:
-            json |= {k: v for k, v in kwargs.items()}
+            self.req_data |= {k: v for k, v in kwargs.items()}
 
-        return {self.ip_adress: json}
+        return self.req_data
 
     def parse_varBinds_common(self, varBinds: list) -> dict:
         part_of_json = {}
-        if isinstance(self, ConnectionSSH):
-            part_of_json = ...
 
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
@@ -270,9 +352,8 @@ class BaseCommon:
             part_of_json[oid] = val
         return part_of_json
 
-    @abc.abstractmethod
-    def get_current_mode(self, *args):
-        pass
+    def get_current_mode(self, args: list) -> list:
+        ...
 
 
 class BaseSNMP(BaseCommon):
@@ -314,7 +395,10 @@ class BaseSNMP(BaseCommon):
         #     oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
         #     oids = [oid.value for oid in oids]
-        self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
+        self.req_data['protocol'] = 'snmp'
+        self.req_data['type'] = 'get'
+
+        # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
 
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
@@ -336,7 +420,7 @@ class BaseSNMP(BaseCommon):
         # print(f'errorStatus: {errorStatus}')
         # print(f'errorIndex: {errorIndex}')
         # print(f'varBinds: {varBinds}')
-
+        self.errorIndication, self.varBinds = errorIndication, varBinds
         return errorIndication, varBinds, self
 
     async def getNext_request_base(self,
@@ -384,7 +468,11 @@ class BaseSNMP(BaseCommon):
         :return: list при успешном запросе, иначе str с текстом ошибки
         """
         logging.debug(f'set_request_base')
-        self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
+
+        self.req_data['protocol'] = 'snmp'
+        self.req_data['type'] = 'set'
+
+        # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
         oids = list(oids.items() if type(oids) is dict else oids)
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
@@ -400,6 +488,7 @@ class BaseSNMP(BaseCommon):
             f'errorIndex: {errorIndex}\n'
             f'varBinds: {varBinds}\n'
         )
+        self.errorIndication, self.varBinds = errorIndication, varBinds
         return errorIndication, varBinds, self
 
         # print(f'errorIndication: {errorIndication.__str__()}')
@@ -488,16 +577,22 @@ class BaseSNMP(BaseCommon):
 
     async def get_request(self, oids: tuple | list = None, get_mode: bool = True) -> tuple:
 
+        if get_mode:
+            self.put_to_get_entity('get_mode')
+
+
         if not oids and not get_mode:
-            return None, []
+            self.errorIndication, self.varBinds = EntityJsonResponce.NO_DATA_FOR_REQ.value, []
+            return None, [], self
 
         oids = [self.check_type_oid(oid) for oid in oids] if oids else []
+        # self.get_entity += [Oids(oid).name if oid in {o.value for o in Oids} else oid for oid in oids]
+        self.put_to_get_entity([Oids(oid).name if oid in {o.value for o in Oids} else oid for oid in oids])
 
         if isinstance(self, (PotokP, PeekUG405)):
             if not self.scn:
                 self.scn = await self.get_scn()
 
-        self.user_oids = oids
         processed_oids = self.create_data_for_get_req(oids, get_mode)
 
         return await self.get_request_base(
@@ -527,12 +622,14 @@ class BaseSNMP(BaseCommon):
         """
 
         if not oids:
-            return None, []
+            self.errorIndication, self.varBinds = EntityJsonResponce.NO_DATA_FOR_REQ.value, []
+            return None, [], self
 
         if isinstance(self, (PotokP, PeekUG405)):
             if not self.scn:
                 self.scn = await self.get_scn()
 
+        self.set_entity += [Oids(oid).name if oid in {o.value for o in Oids} else oid for oid in oids]
         processed_oids = self.create_data_for_set_req(oids)
 
         return await self.set_request_base(
@@ -584,10 +681,12 @@ class BaseSTCIP(BaseSNMP):
         :param timeout:
         :return: ErrorIndication, varBinds
         """
+
+        self.set_entity['set_stage'] = value
         converted_val = self.convert_val_to_num_stage_set_req(value.lower())
-        oids = (
+        oids = [
             (Oids.swarcoUTCTrafftechPhaseCommand.value, Unsigned32(converted_val)),
-        )
+        ]
         return await self.set_request_base(self.ip_adress, self.community_write, oids, timeout=timeout, retries=retries)
 
     async def set_allred(self, value='0', timeout=1, retries=2) -> tuple:
@@ -790,6 +889,7 @@ class BaseUG405(BaseSNMP):
 
     """ SET REQUEST """
 
+
 class SwarcoSTCIP(BaseSTCIP):
     converted_values_all_red = {
         '1': '119', 'true': '119', 'on': '119', 'вкл': '119', '2': '119', '119': '119',
@@ -807,7 +907,7 @@ class SwarcoSTCIP(BaseSTCIP):
     def __init__(self, ip_adress, host_id=None):
         super().__init__(ip_adress, host_id)
         self.set_controller_type()
-        self._get_current_state = False
+        # self._get_current_state = False
 
     @staticmethod
     def convert_val_to_num_stage_get_req(val: str) -> int | None:
@@ -856,8 +956,11 @@ class SwarcoSTCIP(BaseSTCIP):
     def get_current_mode(self, varBinds: list) -> tuple:
         equipment_status = plan = softstat180_181 = num_logics = stage = None
         new_varBins = []
+        user_oids = self.req_data.get('request')
+        logger.debug(user_oids)
         for data in varBinds:
             oid, val = data[0].__str__(), data[1].prettyPrint()
+
             if oid in self.get_state_oids:
                 if oid == Oids.swarcoUTCStatusEquipment.value:
                     equipment_status = val
@@ -869,7 +972,8 @@ class SwarcoSTCIP(BaseSTCIP):
                     num_logics = val
                 elif oid == Oids.swarcoSoftIOStatus.value:
                     softstat180_181 = val[179:181] if len(val) > 180 else None
-                if self.user_oids and (oid in self.user_oids):
+                if user_oids is not None and Oids(oid).name in user_oids:
+                    logger.debug(user_oids)
                     new_varBins.append(data)
             else:
                 new_varBins.append(data)
@@ -1652,8 +1756,8 @@ class ConnectionSSH(BaseCommon):
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 return ret
 
-    async def acreate_proc(self, ip, username, password, commands):
-        err = varBinds = None
+    async def acreate_proc(self, ip: str, username: str, password: str, commands: Iterable, type_req: str = None):
+        errorIndication = varBinds = None
         self.type_curr_request = EntityJsonResponce.TYPE_SSH_REQUEST_SET.value
         try:
             async with asyncssh.connect(host=ip,
@@ -1673,14 +1777,14 @@ class ConnectionSSH(BaseCommon):
                     logger.debug(response)
 
         except asyncssh.misc.PermissionDenied:
-            err, varBinds = 'Permission denied', []
+            errorIndication, varBinds = 'Permission denied', []
         except (OSError, asyncssh.Error) as exc:
-            err, varBinds = 'SSH connection failed', []
+            errorIndication, varBinds = 'SSH connection failed', []
         except Exception as err:
-            err, varBinds = 'System error', []
+            errorIndication, varBinds = 'System error', []
             logger.error('Ошибка выполнения программы: {}'.format(err))
         finally:
-            return err, varBinds, self
+            return errorIndication, varBinds, self, type_req
 
 
             #     # r_enc = r.decode('iso-8859-1').encode('utf-8')
@@ -1789,6 +1893,7 @@ class SwarcoSSH(ConnectionSSH):
         return res
 
     def parse_stdout_from_shell(self, varBinds: list) -> tuple:
+        pass
 
 
 
@@ -2001,7 +2106,7 @@ class PeekWeb(BaseCommon):
         self.get_mode_flag = True
         self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
-        return errorIndication, content, self
+        return errorIndication, content, self, EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 

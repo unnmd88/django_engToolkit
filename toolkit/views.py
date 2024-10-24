@@ -279,13 +279,14 @@ class GetDataFromControllerAPIView(APIView):
         # print(f'req_data = {request.data}')
         # print(f'req_data2 = {request.data.get("data")}')
         start_time = time.time()
+        logger.debug(request.data)
         manager = services.GetDataFromController(request.data.get('data', {}))
         err_hosts, res_req = asyncio.run(manager.main())
         responce = {}
         for errInd, varBinds, obj in res_req:
             data_host = obj.create_json(errInd, varBinds, first_kwarg='вот он первий попытка))) kwarg')
             logger.debug(data_host)
-            responce |= data_host
+            responce |= {obj.ip_adress: data_host}
 
         logger.debug(f'Время выполнения запроса: {time.time() - start_time}')
         return Response(responce)
