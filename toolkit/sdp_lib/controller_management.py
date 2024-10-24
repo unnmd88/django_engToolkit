@@ -209,7 +209,7 @@ class BaseCommon:
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
         self.host_id = host_id
-        self.get_mode_flag = False
+        # self.get_mode_flag = False
         # self.type_curr_request = None
         # self.cur_req_entity = {}
         self.errorIndication = None
@@ -398,8 +398,6 @@ class BaseSNMP(BaseCommon):
         #     oids = [oid.value for oid in oids]
         self.put_to_req_data({'protocol': 'snmp', 'type': 'get', 'request_time': self.set_curr_datetime()})
 
-        # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
-
         errorIndication, errorStatus, errorIndex, varBinds = await getCmd(
             SnmpEngine(),
             CommunityData(community),
@@ -468,10 +466,7 @@ class BaseSNMP(BaseCommon):
         :return: list при успешном запросе, иначе str с текстом ошибки
         """
         logging.debug(f'set_request_base')
-
         self.put_to_req_data({'protocol': 'snmp', 'type': 'set', 'request_time': self.set_curr_datetime()})
-
-        # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
         oids = list(oids.items() if type(oids) is dict else oids)
         errorIndication, errorStatus, errorIndex, varBinds = await setCmd(
             SnmpEngine(),
@@ -524,7 +519,7 @@ class BaseSNMP(BaseCommon):
         # oids = oids if oids else []
 
         if get_mode:
-            self.get_mode_flag = True
+            # self.get_mode_flag = True
             if isinstance(self, (PotokP, PeekUG405)):
                 processed_oids = [self.add_scn_to_oids(self.check_type_oid(oid))
                                   for oid in itertools.chain(self.get_state_oids, oids)]
@@ -651,9 +646,30 @@ class BaseSNMP(BaseCommon):
 
         return oid
 
+    # def parse_varBinds(self, varBinds: list) -> dict:
+    #
+    #     part_of_json = {}
+    #     for oid, val in varBinds:
+    #         oid, val = oid.__str__(), val.prettyPrint()
+    #         if isinstance(self, (PotokP, PeekUG405)):
+    #             if oid.endswith(self.scn):
+    #                 oid = oid.replace(self.scn, '')
+    #         oid_name, oid_val = Oids(oid).name, Oids(oid).value
+    #         oid = f'{oid_name}[{oid_val}]'
+    #         if (Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.swarcoUTCTrafftechPhaseCommand.name
+    #                 in oid_name or Oids.utcReplyGn.name in oid_name):
+    #             num_stage = self.convert_val_to_num_stage_get_req(val)
+    #             val = f'num_stage[{num_stage}], val_stage[{val}]'
+    #         part_of_json[oid] = val
+    #
+    #         if self.set_entity:
+    #             part_of_json = {'raw_data': part_of_json}
+    #
+    #     return part_of_json
+
     def parse_varBinds(self, varBinds: list) -> dict:
 
-        part_of_json = {}
+        part_of_json, oids = {}, []
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
             if isinstance(self, (PotokP, PeekUG405)):
@@ -665,12 +681,20 @@ class BaseSNMP(BaseCommon):
                     in oid_name or Oids.utcReplyGn.name in oid_name):
                 num_stage = self.convert_val_to_num_stage_get_req(val)
                 val = f'num_stage[{num_stage}], val_stage[{val}]'
-            part_of_json[oid] = val
+
+            if self.get_entity:
+                part_of_json[oid] = val
+            elif self.set_entity:
+                oids.append({oid: val})
+            else:
+                raise ValueError('Программный сбой')
+            #
+            # if not self.get_entity:
+            #     part_of_json[oid] = val
+            # elif :
 
             if self.set_entity:
-                part_of_json = {'raw_data': part_of_json}
-
-                # part_of_json[raw_data] = part_of_json
+                part_of_json = {'raw_data': {'oids': oids}}
 
         return part_of_json
 
@@ -1996,6 +2020,17 @@ class PeekWeb(BaseCommon):
         'ВКЛ': ACTUATOR_ON
     }
 
+    ACTUATOR_VALUES2 = {
+        ACTUATOR_RESET: 'ВФ',
+        ACTUATOR_OFF: 'ВЫКЛ',
+        ACTUATOR_ON: 'ВКЛ'
+    }
+
+    synonyms_red_yellow_dark = {
+        '1': 'ВКЛ',
+        '0': 'ВФ'
+    }
+
     INPUTS = 'INPUTS'
     USER_PARAMETERS = 'USER_PARAMETERS'
     CURRENT_STATE = 'STATE'
@@ -2034,10 +2069,12 @@ class PeekWeb(BaseCommon):
         self.ip_adress = ip_adress
         self.host_id = host_id
         self.controller_type = AvailableControllers.PEEK.value
-        self.inputs = {}
-        self.user_parameters = {}
+        self.last_read_parameters = {}
+        self.last_set_commands = []
+        # self.inputs = {}
+        # self.user_parameters = {}
 
-    def parse_inps_and_user_param_content(self, content):
+    def parse_inps_and_user_param_content(self, content: str, create_self_attr: bool = False):
 
         parsed_data = {}
         for line in (
@@ -2051,23 +2088,35 @@ class PeekWeb(BaseCommon):
             # val1 -> Значение, val2 -> Мин. val3 -> Макс
             parsed_data[name] = index, val1, val2, val3
 
+        if create_self_attr:
+            self.last_read_parameters = {parsed_data.get(k)[0]: k for k in parsed_data}
+            logger.debug(parsed_data)
+            # if 'MPP_MAN' in parsed_data:
+            #     logger.debug({parsed_data.get(k)[0]: k for k in parsed_data})
+            #     self.inputs = {parsed_data.get(k)[0]: k for k in parsed_data}
+            # elif 'FIX_TIME' in parsed_data:
+            #     self.user_parameters = {parsed_data.get(k)[0]: k for k in parsed_data}
+        # logger.debug('self.inputs {}'.format(self.inputs))
+        # logger.debug('self.user_parameters %s', self.user_parameters)
+
+
         return parsed_data
 
     def parse_varBinds(self, content: str):
-        content = [
-            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
-        ]
-        mode, stage = content[6].split('(')
-        stage = stage.replace(')', '')
-        plan = re.sub('[^0-9]', '', content[0])
-        plan = str(int(plan) if plan.isdigit() else plan)
-        param_plan = content[1]
-        current_time = content[2]
-        current_err = content[3]
-        current_state = content[4]
-        current_mode = self.statusMode.get(mode)
-
-        part_of_json = {
+        if self.get_entity:
+            content = [
+                line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+            ]
+            mode, stage = content[6].split('(')
+            stage = stage.replace(')', '')
+            plan = re.sub('[^0-9]', '', content[0])
+            plan = str(int(plan) if plan.isdigit() else plan)
+            param_plan = content[1]
+            current_time = content[2]
+            current_err = content[3]
+            current_state = content[4]
+            current_mode = self.statusMode.get(mode)
+            part_of_json = {
             EntityJsonResponce.CURRENT_MODE.value: current_mode,
             EntityJsonResponce.CURRENT_STAGE.value: stage,
             EntityJsonResponce.CURRENT_PLAN.value: plan,
@@ -2076,9 +2125,16 @@ class PeekWeb(BaseCommon):
             EntityJsonResponce.CURRENT_ERRORS.value: current_err,
             EntityJsonResponce.CURRENT_STATE.value: current_state,
         }
+        elif self.set_entity:
+            part_of_json = {'raw_data': {'web_parameters': self.last_set_commands}}
+        else:
+            raise ValueError
+        # logger.debug(self.last_set_commands)
 
         return part_of_json
 
+    def put_to_last_val(self, data):
+        self.last_set_commands.append(data)
 
     def _check_errors_after_web_request(self, content, type_request):
 
@@ -2153,21 +2209,22 @@ class PeekWeb(BaseCommon):
         """
         self.put_to_get_entity('get_mode')
         self.put_to_req_data({'protocol': 'http', 'type': 'get'})
-        # self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
         self.errorIndication, self.varBinds = errorIndication, content
         return errorIndication, content, self
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
-        self.type_request = EntityJsonResponce.TYPE_WEB_REQUEST_SET
+        # self.type_request = EntityJsonResponce.TYPE_WEB_REQUEST_SET
+        self.put_to_req_data({'protocol': 'http', 'type': 'set', 'request_time': self.set_curr_datetime()})
+        self.set_entity['set_stage'] = stage_to_set
 
         input_name_to_set = self.MAN_INPUTS_STAGES.get(stage_to_set)
         errorIndication, inputs_web_content = await self.get_content_from_web(self.GET_INPUTS)
         # error_request, result_text_msg = self._check_errors_after_web_request(inputs_web_content,
         #                                                                       EntityJsonResponce.TYPE_WEB_REQUEST_SET)
         if errorIndication is None:
-            inputs = self.parse_inps_and_user_param_content(inputs_web_content)
+            inputs = self.parse_inps_and_user_param_content(inputs_web_content, create_self_attr=True)
             timeout = aiohttp.ClientTimeout(timeout)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 set_CP_AUTO = False
@@ -2216,9 +2273,9 @@ class PeekWeb(BaseCommon):
                                  for data_params in data_param_to_set]
 
             if all(res.result() == 200 for res in tasks_res):
-                errorIndication = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+                errorIndication = None
 
-        return errorIndication, [EntityJsonResponce.SET_STAGE_MPP_MAN.value, stage_to_set]
+        return errorIndication, self.last_set_commands, self
 
         # processed_data = (
         #     error_request,
@@ -2234,28 +2291,89 @@ class PeekWeb(BaseCommon):
         #                                      varBinds=processed_data,
         #                                      )
 
-    async def set_val_to_web_common(self, set_type, data, timeout=3):
+    # async def set_val_to_web_common(self, set_type, data, timeout=3):
+    #
+    #     self.put_to_req_data({'protocol': 'http', 'type': 'set', 'request_time': self.set_curr_datetime()})
+    #
+    #     set_CP_AUTO = False
+    #     if set_type == self.SET_USER_PARAMETERS:
+    #         type_command_ = EntityJsonResponce.SET_USER_PARAMETERS_WEB.value
+    #         part_url = self.GET_USER_PARAMETERS
+    #     elif set_type == self.SET_INPUTS:
+    #         type_command_ = EntityJsonResponce.SET_MAN_INPUTS_WEB.value
+    #         part_url = self.GET_INPUTS
+    #     else:
+    #         raise TypeError
+    #
+    #     web_content = await self.get_content_from_web(part_url)
+    #
+    #     error_request, result_text_msg = self._check_errors_after_web_request(web_content,
+    #                                                                           EntityJsonResponce.TYPE_WEB_REQUEST_SET)
+    #
+    #     if error_request is None:
+    #         params_from_web = self.parse_inps_and_user_param_content(web_content)
+    #         params_to_set = {}
+    #         for param in data.split(';'):
+    #             if param in ('CP_RED=ВФ', 'MPP_FL=ВЫКЛ', 'MPP_FL=ВФ', 'MPP_OFF=ВКЛ', 'MPP_OFF=ВФ'):
+    #                 set_CP_AUTO = True
+    #             param, val = param.split('=')
+    #             if param in params_from_web:
+    #                 if set_type == 'SET_INPUTS':
+    #                     val = self.ACTUATOR_VALUES.get(val)
+    #                 params_to_set[params_from_web.get(param)[0]] = val
+    #
+    #         if not params_to_set:
+    #             raise ValueError
+    #
+    #         timeout = aiohttp.ClientTimeout(timeout)
+    #         async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
+    #             async with asyncio.TaskGroup() as tg:
+    #                 tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
+    #                              for data_params in params_to_set.items()]
+    #             if set_CP_AUTO:
+    #                 await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '2'))
+    #                 await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '0'))
+    #
+    #         if all(res.result() == 200 for res in tasks_res):
+    #             result_text_msg = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+    #         else:
+    #             result_text_msg = EntityJsonResponce.COMMAND_SEND_ERROR.value
+    #
+    #     processed_data = (
+    #         error_request,
+    #         AvailableControllers.PEEK.value,
+    #         self.host_id,
+    #         result_text_msg,
+    #         type_command_,
+    #         data
+    #     )
+    #
+    #     return BaseCommon.make_json_responce(self.ip_adress,
+    #                                          json_entity=self.base_json_entity + self.JSON_SET_COMMAND_BODY,
+    #                                          varBinds=processed_data,
+    #                                          )
+
+    async def set_val_common(self, set_type, data, timeout=3):
+
+        self.put_to_req_data({'protocol': 'http', 'type': 'set', 'request_time': self.set_curr_datetime()})
 
         set_CP_AUTO = False
         if set_type == self.SET_USER_PARAMETERS:
-            type_command_ = EntityJsonResponce.SET_USER_PARAMETERS_WEB.value
+            # type_command_ = EntityJsonResponce.SET_USER_PARAMETERS_WEB.value
             part_url = self.GET_USER_PARAMETERS
         elif set_type == self.SET_INPUTS:
-            type_command_ = EntityJsonResponce.SET_MAN_INPUTS_WEB.value
+            # type_command_ = EntityJsonResponce.SET_MAN_INPUTS_WEB.value
             part_url = self.GET_INPUTS
         else:
             raise TypeError
 
-        web_content = await self.get_content_from_web(part_url)
+        errorIndication, inputs_web_content = await self.get_content_from_web(part_url)
 
-        error_request, result_text_msg = self._check_errors_after_web_request(web_content,
-                                                                              EntityJsonResponce.TYPE_WEB_REQUEST_SET)
-
-        if error_request is None:
-            params_from_web = self.parse_inps_and_user_param_content(web_content)
+        if errorIndication is None:
+            params_from_web = self.parse_inps_and_user_param_content(inputs_web_content, create_self_attr=True)
             params_to_set = {}
             for param in data.split(';'):
-                if param in ('CP_RED=ВФ', 'MPP_FL=ВЫКЛ', 'MPP_FL=ВФ', 'MPP_OFF=ВКЛ', 'MPP_OFF=ВФ'):
+                if param in {'CP_RED=ВФ', 'CP_RED=ВЫКЛ', 'MPP_FL=ВЫКЛ', 'MPP_FL=ВФ', 'MPP_OFF=ВКЛ', 'MPP_OFF=ВФ'}:
                     set_CP_AUTO = True
                 param, val = param.split('=')
                 if param in params_from_web:
@@ -2266,7 +2384,7 @@ class PeekWeb(BaseCommon):
             if not params_to_set:
                 raise ValueError
 
-            timeout = aiohttp.ClientTimeout(timeout)
+            timeout = aiohttp.ClientTimeout(3)
             async with aiohttp.ClientSession(headers=self.headers, cookies=self.cookies, timeout=timeout) as session:
                 async with asyncio.TaskGroup() as tg:
                     tasks_res = [tg.create_task(self.set_val_to_web(set_type, session, data_params))
@@ -2276,23 +2394,13 @@ class PeekWeb(BaseCommon):
                     await self.set_val_to_web(set_type, session, (params_from_web.get('CP_AUTO')[0], '0'))
 
             if all(res.result() == 200 for res in tasks_res):
-                result_text_msg = EntityJsonResponce.COMMAND_SEND_SUCCESSFULLY.value
+                errorIndication = None
             else:
-                result_text_msg = EntityJsonResponce.COMMAND_SEND_ERROR.value
+                errorIndication = EntityJsonResponce.COMMAND_SEND_ERROR.value
 
-        processed_data = (
-            error_request,
-            AvailableControllers.PEEK.value,
-            self.host_id,
-            result_text_msg,
-            type_command_,
-            data
-        )
+        return errorIndication, self.last_set_commands, self
 
-        return BaseCommon.make_json_responce(self.ip_adress,
-                                             json_entity=self.base_json_entity + self.JSON_SET_COMMAND_BODY,
-                                             varBinds=processed_data,
-                                             )
+
 
     # def validate_val(self, value, type_set_request):
     #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
@@ -2330,6 +2438,20 @@ class PeekWeb(BaseCommon):
     async def set_val_to_web(self, type_set_request, session, data_params, ):
 
         index, value = data_params
+        # if self.last_set_commands:
+        #     self.last_set_commands |= {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
+        # else:
+        #     self.last_set_commands = {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
+
+        self.put_to_last_val({self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)})
+
+        # if self.last_set_commands:
+        #     self.put_to_last_val({self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)})
+        #     self.last_set_commands |= {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
+        # else:
+        #     self.last_set_commands = {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
+
+
         if type_set_request == self.SET_INPUTS:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
             url = f'http://{self.ip_adress}{self.routes_url.get(self.SET_INPUTS)}'
@@ -2344,34 +2466,19 @@ class PeekWeb(BaseCommon):
             return response.status
 
     async def set_flash(self, value):
-        return await self.set_val_to_web_common('SET_INPUTS', 'CP_RED=1', value)
-
-        # res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
-        # if not res:
-        #     err_message = actuator_val
-        #     return err_message
-        # inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_FL', actuator_val)
-        #
-        # return await self.main_async(inputs_to_set,
-        #                              self.type_set_request_man_flash_dark_allred,
-        #                              True if actuator_val == self.ACTUATOR_RESET else False)
+        self.set_entity['set_flash'] = value
+        return await self.set_val_common(self.SET_INPUTS, f'MPP_FL={self.synonyms_red_yellow_dark.get(value)}')
 
     async def set_dark(self, value):
-        return await self.set_flash_dark_allred('MPP_OFF', value)
-
-        # res, actuator_val = self.validate_val(value, self.type_set_request_man_flash_dark_allred)
-        # if not res:
-        #     err_message = actuator_val
-        #     return err_message
-        # inputs_to_set = self.make_inputs_to_set_reset_flash_dark(True, 'MPP_OFF', actuator_val)
-        #
-        # return await self.main_async(inputs_to_set,
-        #                              self.type_set_request_man_flash_dark_allred,
-        #                              True if actuator_val == self.ACTUATOR_RESET else False)
+        self.set_entity['set_dark'] = value
+        return await self.set_val_common(self.SET_INPUTS, f'MPP_OFF={self.synonyms_red_yellow_dark.get(value)}')
 
     async def set_red(self, value):
+        self.set_entity['set_red'] = value
+        return await self.set_val_common(self.SET_INPUTS,
+                                         (f'CP_RED=ВЫКЛ;CP_RED=ВФ'))
 
-        return await self.set_flash_dark_allred('CP_RED', value)
+
         # res, actuator_val = self.validate_val(value, self.type_set_request_cp_red)
         #
         # if not res:
