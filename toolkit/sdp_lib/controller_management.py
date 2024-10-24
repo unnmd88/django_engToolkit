@@ -2213,9 +2213,9 @@ class PeekWeb(BaseCommon):
         self.errorIndication, self.varBinds = errorIndication, content
         return errorIndication, content, self
 
-    async def set_stage(self, stage_to_set: str, timeout=3):
+    async def set_stage(self, stage_to_set: str, timeout=3) -> tuple:
 
-        # self.type_request = EntityJsonResponce.TYPE_WEB_REQUEST_SET
+
         self.put_to_req_data({'protocol': 'http', 'type': 'set', 'request_time': self.set_curr_datetime()})
         self.set_entity['set_stage'] = stage_to_set
 
@@ -2352,7 +2352,6 @@ class PeekWeb(BaseCommon):
     #                                          json_entity=self.base_json_entity + self.JSON_SET_COMMAND_BODY,
     #                                          varBinds=processed_data,
     #                                          )
-
     async def set_val_common(self, set_type, data, timeout=3):
 
         self.put_to_req_data({'protocol': 'http', 'type': 'set', 'request_time': self.set_curr_datetime()})
@@ -2400,57 +2399,10 @@ class PeekWeb(BaseCommon):
 
         return errorIndication, self.last_set_commands, self
 
-
-
-    # def validate_val(self, value, type_set_request):
-    #     synonyms_of_set = ('1', 'true', 'on', 'включить', 'вкл')
-    #     synonyms_of_reset = ('0', 'false', 'reset', 'сброс', 'локал', 'local')
-    #
-    #     if type_set_request == self.type_set_request_man_stage:
-    #         if value.lower() in synonyms_of_reset:
-    #             return True, self.reset_man
-    #         elif value.isdigit() and int(value) in range(1, 9):
-    #             return True, f'MPP_PH{value}'
-    #         else:
-    #             return False, 'Invalid value'
-    #     elif type_set_request == self.type_set_request_user_parameter:
-    #         if not value:
-    #             return False, 'Invalid value'  # Передали пустой список. а должен быть напрмер ['MAN_ON=0'] или ['MAN_ON=0', '...']
-    #         params_for_set = {}
-    #         for name_val in value:
-    #             if not name_val:
-    #                 continue
-    #             name_val = re.sub(r'\D+$', '', name_val).replace(" ", '').split('=')
-    #             if len(name_val) == 2:
-    #                 params_for_set[name_val[0]] = name_val[1]
-    #
-    #         if not params_for_set:
-    #             return False, 'Bad syntax'  # Неправильно уазаны параметры, должен быть разделитель "="
-    #         print(f'params_for_set из проверки: {params_for_set}')
-    #         return True, params_for_set
-    #     elif (type_set_request == self.type_set_request_man_flash_dark_allred or
-    #           type_set_request == self.type_set_request_cp_red):
-    #         if value.lower() in synonyms_of_reset:
-    #             return True, self.ACTUATOR_RESET
-    #         elif value.lower() in synonyms_of_set:
-    #             return True, self.ACTUATOR_ON
-
     async def set_val_to_web(self, type_set_request, session, data_params, ):
 
         index, value = data_params
-        # if self.last_set_commands:
-        #     self.last_set_commands |= {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
-        # else:
-        #     self.last_set_commands = {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
-
         self.put_to_last_val({self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)})
-
-        # if self.last_set_commands:
-        #     self.put_to_last_val({self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)})
-        #     self.last_set_commands |= {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
-        # else:
-        #     self.last_set_commands = {self.last_read_parameters.get(index): self.ACTUATOR_VALUES2.get(value)}
-
 
         if type_set_request == self.SET_INPUTS:
             params = {'par_name': f'XIN.R20/{index}', 'par_value': value}
@@ -2477,6 +2429,11 @@ class PeekWeb(BaseCommon):
         self.set_entity['set_red'] = value
         return await self.set_val_common(self.SET_INPUTS,
                                          (f'CP_RED=ВЫКЛ;CP_RED=ВФ'))
+    async def reset_all_man_inputs(self):
+        self.set_entity['reset_mpp_inputs'] = True
+        inputs = itertools.chain(['MPP_MAN=ВФ', 'MPP_FL=ВФ', 'MPP_OFF=ВФ'], [f'MPP_PH{i}=ВФ' for i in range(1, 9)])
+        return await self.set_val_common(self.SET_INPUTS, ';'.join(list(inputs)))
+
 
 
         # res, actuator_val = self.validate_val(value, self.type_set_request_cp_red)
