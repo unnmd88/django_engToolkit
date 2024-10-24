@@ -203,12 +203,13 @@ class BaseCommon:
     controller_type: str | None
     json_body_second_part: Iterable | None
     parse_varBinds_get_state: Callable
+    parse_varBinds: Callable
 
     def __init__(self, ip_adress, host_id=None):
         self.ip_adress = ip_adress
         self.host_id = host_id
         self.get_mode_flag = False
-        self.type_curr_request = None
+        # self.type_curr_request = None
         # self.cur_req_entity = {}
         self.errorIndication = None
         self.varBinds = None
@@ -236,7 +237,9 @@ class BaseCommon:
         elif type(data) == list:
             self.get_entity += data
 
-
+    def put_to_req_data(self, data: dict):
+        if type(data) == dict:
+            self.req_data |= data
     # def create_json(self, errorIndication: None | Exception | str, varBinds: list, **kwargs) -> dict:
     #     """"
     #     Метод формирует словарь вида json
@@ -308,28 +311,28 @@ class BaseCommon:
         logger.debug('self.req_data %s', self.req_data)
         errorIndication = errorIndication.__str__() if errorIndication is not None else errorIndication
         self.req_data[EntityJsonResponce.REQUEST_ERRORS.value] = errorIndication
-        # json[EntityJsonResponce.TYPE_REQUEST.value] = self.type_curr_request
 
+        if self.get_entity:
+            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.get_entity
+            get_mode_flag = True
+        else:
+            get_mode_flag = False
+        if self.set_entity:
+            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.set_entity
 
         if errorIndication:
-            self.get_mode_flag = False
             if kwargs:
                 self.req_data |= {k: v for k, v in kwargs.items()}
             return self.req_data
 
-        if self.get_entity:
-            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.get_entity
-        elif self.set_entity:
-            self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.set_entity
-
-        if self.get_mode_flag:
+        if get_mode_flag:
             varBinds, curr_state = self.get_current_mode(varBinds)
             self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = curr_state
 
         if varBinds:
-            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = self.parse_varBinds_common(varBinds)
+            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] |= self.parse_varBinds(varBinds)
 
-        self.get_mode_flag = False
+        # self.get_mode_flag = False
         if kwargs:
             self.req_data |= {k: v for k, v in kwargs.items()}
 
@@ -337,6 +340,11 @@ class BaseCommon:
 
     def parse_varBinds_common(self, varBinds: list) -> dict:
         part_of_json = {}
+
+        if isinstance(self, (PeekWeb, )):
+            return varBinds
+
+
 
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
@@ -395,8 +403,7 @@ class BaseSNMP(BaseCommon):
         #     oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
         #     oids = [oid.value for oid in oids]
-        self.req_data['protocol'] = 'snmp'
-        self.req_data['type'] = 'get'
+        self.put_to_req_data({'protocol': 'snmp', 'type': 'get'})
 
         # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
 
@@ -469,8 +476,7 @@ class BaseSNMP(BaseCommon):
         """
         logging.debug(f'set_request_base')
 
-        self.req_data['protocol'] = 'snmp'
-        self.req_data['type'] = 'set'
+        self.put_to_req_data({'protocol': 'snmp', 'type': 'set'})
 
         # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
         oids = list(oids.items() if type(oids) is dict else oids)
@@ -580,7 +586,6 @@ class BaseSNMP(BaseCommon):
         if get_mode:
             self.put_to_get_entity('get_mode')
 
-
         if not oids and not get_mode:
             self.errorIndication, self.varBinds = EntityJsonResponce.NO_DATA_FOR_REQ.value, []
             return None, [], self
@@ -652,6 +657,23 @@ class BaseSNMP(BaseCommon):
                 raise ValueError(f'{ErrorMessages.BAD_TYPE_OID.value}, type oid: {type(oid)}, val oid: {oid}')
 
         return oid
+
+    def parse_varBinds(self, varBinds: list) -> dict:
+        part_of_json = {}
+
+        for oid, val in varBinds:
+            oid, val = oid.__str__(), val.prettyPrint()
+            if isinstance(self, (PotokP, PeekUG405)):
+                if oid.endswith(self.scn):
+                    oid = oid.replace(self.scn, '')
+            oid_name, oid_val = Oids(oid).name, Oids(oid).value
+            oid = f'{oid_name}[{oid_val}]'
+            if (Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.swarcoUTCTrafftechPhaseCommand.name
+                    in oid_name or Oids.utcReplyGn.name in oid_name):
+                num_stage = self.convert_val_to_num_stage_get_req(val)
+                val = f'num_stage[{num_stage}], val_stage[{val}]'
+            part_of_json[oid] = val
+        return part_of_json
 
 
 class BaseSTCIP(BaseSNMP):
@@ -1341,8 +1363,8 @@ class PotokP(BaseUG405):
                     hasDetErrors = val
                 elif oid in Oids.potokP_utcReplyLocalAdaptiv.value:
                     localAdaptiv = val
-                if self.user_oids and (oid in self.user_oids):
-                    new_varBins.append(data)
+                # if self.user_oids and (oid in self.user_oids):
+                #     new_varBins.append(data)
             else:
                 new_varBins.append(data)
 
@@ -1758,7 +1780,7 @@ class ConnectionSSH(BaseCommon):
 
     async def acreate_proc(self, ip: str, username: str, password: str, commands: Iterable, type_req: str = None):
         errorIndication = varBinds = None
-        self.type_curr_request = EntityJsonResponce.TYPE_SSH_REQUEST_SET.value
+        # self.type_curr_request = EntityJsonResponce.TYPE_SSH_REQUEST_SET.value
         try:
             async with asyncssh.connect(host=ip,
                                         username=username,
@@ -2032,6 +2054,33 @@ class PeekWeb(BaseCommon):
 
         return parsed_data
 
+    def parse_varBinds(self, content: str):
+        content = [
+            line.split(';')[3:][0] for line in content.replace(" ", '').splitlines() if line.startswith(':D')
+        ]
+        mode, stage = content[6].split('(')
+        stage = stage.replace(')', '')
+        plan = re.sub('[^0-9]', '', content[0])
+        plan = str(int(plan) if plan.isdigit() else plan)
+        param_plan = content[1]
+        current_time = content[2]
+        current_err = content[3]
+        current_state = content[4]
+        current_mode = self.statusMode.get(mode)
+
+        part_of_json = {
+            EntityJsonResponce.CURRENT_MODE.value: current_mode,
+            EntityJsonResponce.CURRENT_STAGE.value: stage,
+            EntityJsonResponce.CURRENT_PLAN.value: plan,
+            EntityJsonResponce.CURRENT_PARAM_PLAN.value: param_plan,
+            EntityJsonResponce.CURRENT_TIME.value: current_time,
+            EntityJsonResponce.CURRENT_ERRORS.value: current_err,
+            EntityJsonResponce.CURRENT_STATE.value: current_state,
+        }
+
+        return part_of_json
+
+
     def _check_errors_after_web_request(self, content, type_request):
 
         result_text_message = None
@@ -2096,17 +2145,19 @@ class PeekWeb(BaseCommon):
         finally:
             return errorIndication, content
 
-    async def get_request(self, get_mode: bool, timeout=1) -> tuple:
+    async def get_request(self, get_mode: bool = True, timeout=1) -> tuple:
         """
         Метод запроса контента web страницы получения текущего состояния ДК
         :param get_mode:
         :param timeout:
         :return tuple: (errorIndication, varBinds)
         """
-        self.get_mode_flag = True
-        self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
+        self.put_to_get_entity('get_mode')
+        self.put_to_req_data({'protocol': 'http', 'type': 'get'})
+        # self.type_curr_request = EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
         errorIndication, content = await self.get_content_from_web(self.GET_CURRENT_STATE, timeout=timeout)
-        return errorIndication, content, self, EntityJsonResponce.TYPE_WEB_REQUEST_GET.value
+        self.errorIndication, self.varBinds = errorIndication, content
+        return errorIndication, content, self
 
     async def set_stage(self, stage_to_set: str, timeout=3):
 
