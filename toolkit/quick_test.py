@@ -82,7 +82,7 @@ oids = [
 # h2 = controller_management.SwarcoSTCIP('10.179.106.89', host_id='Tetss2')
 h2 = controller_management.PeekWeb('10.45.154.19', host_id='Tetss2')
 
-errInd, varBinds, _ = asyncio.run(h2.reset_all_man_inputs())
+errInd, varBinds, _ = asyncio.run(h2.set_allred('0'))
 
 
 
