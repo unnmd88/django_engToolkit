@@ -1,6 +1,7 @@
 """" Модуль управления/получения данных различных типов контроллеров по различным протоколам """
 import abc
 import os
+from datetime import datetime as dt
 from typing import Generator
 
 import asyncssh
@@ -216,6 +217,13 @@ class BaseCommon:
         self.req_data = {}
         self.get_entity = []
         self.set_entity = {}
+        self.result_set_command = None
+        self.request_time = None
+
+    def set_curr_datetime(self) -> str:
+        self.request_time = datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.today().strftime("%Y-%m-%d %H:%M:%S")
+
 
     def set_controller_type(self) -> None:
         """ Метод устанавливает тип контроллера """
@@ -319,17 +327,24 @@ class BaseCommon:
             get_mode_flag = False
         if self.set_entity:
             self.req_data[EntityJsonResponce.REQUEST_ENTITY.value] = self.set_entity
+        logger.debug(self.set_entity)
+        logger.debug(self.req_data)
 
         if errorIndication:
             if kwargs:
                 self.req_data |= {k: v for k, v in kwargs.items()}
             return self.req_data
 
+        self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = {}
+
         if get_mode_flag:
             varBinds, curr_state = self.get_current_mode(varBinds)
-            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] = curr_state
+            self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] |= curr_state
 
         if varBinds:
+            if self.set_entity:
+                self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value]['result'] = 'request sent successfully'
+                self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value]['success'] = True
             self.req_data[EntityJsonResponce.RESPONCE_ENTITY.value] |= self.parse_varBinds(varBinds)
 
         # self.get_mode_flag = False
@@ -337,28 +352,6 @@ class BaseCommon:
             self.req_data |= {k: v for k, v in kwargs.items()}
 
         return self.req_data
-
-    def parse_varBinds_common(self, varBinds: list) -> dict:
-        part_of_json = {}
-
-        if isinstance(self, (PeekWeb, )):
-            return varBinds
-
-
-
-        for oid, val in varBinds:
-            oid, val = oid.__str__(), val.prettyPrint()
-            if isinstance(self, (PotokP, PeekUG405)):
-                if oid.endswith(self.scn):
-                    oid = oid.replace(self.scn, '')
-            oid_name, oid_val = Oids(oid).name, Oids(oid).value
-            oid = f'{oid_name}[{oid_val}]'
-            if (Oids.swarcoUTCTrafftechPhaseStatus.name in oid_name or Oids.swarcoUTCTrafftechPhaseCommand.name
-                    in oid_name or Oids.utcReplyGn.name in oid_name):
-                num_stage = self.convert_val_to_num_stage_get_req(val)
-                val = f'num_stage[{num_stage}], val_stage[{val}]'
-            part_of_json[oid] = val
-        return part_of_json
 
     def get_current_mode(self, args: list) -> list:
         ...
@@ -403,7 +396,7 @@ class BaseSNMP(BaseCommon):
         #     oids = (oid + self.scn if oid in Oids.scn_required_oids.value else oid for oid in oids)
         # elif isinstance(self, SwarcoSTCIP):
         #     oids = [oid.value for oid in oids]
-        self.put_to_req_data({'protocol': 'snmp', 'type': 'get'})
+        self.put_to_req_data({'protocol': 'snmp', 'type': 'get', 'request_time': self.set_curr_datetime()})
 
         # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_GET.value
 
@@ -476,7 +469,7 @@ class BaseSNMP(BaseCommon):
         """
         logging.debug(f'set_request_base')
 
-        self.put_to_req_data({'protocol': 'snmp', 'type': 'set'})
+        self.put_to_req_data({'protocol': 'snmp', 'type': 'set', 'request_time': self.set_curr_datetime()})
 
         # self.type_curr_request = EntityJsonResponce.TYPE_SNMP_REQUEST_SET.value
         oids = list(oids.items() if type(oids) is dict else oids)
@@ -659,8 +652,8 @@ class BaseSNMP(BaseCommon):
         return oid
 
     def parse_varBinds(self, varBinds: list) -> dict:
-        part_of_json = {}
 
+        part_of_json = {}
         for oid, val in varBinds:
             oid, val = oid.__str__(), val.prettyPrint()
             if isinstance(self, (PotokP, PeekUG405)):
@@ -673,6 +666,12 @@ class BaseSNMP(BaseCommon):
                 num_stage = self.convert_val_to_num_stage_get_req(val)
                 val = f'num_stage[{num_stage}], val_stage[{val}]'
             part_of_json[oid] = val
+
+            if self.set_entity:
+                part_of_json = {'raw_data': part_of_json}
+
+                # part_of_json[raw_data] = part_of_json
+
         return part_of_json
 
 
